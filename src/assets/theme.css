@@ -1,0 +1,102 @@
+/* Decenza Theme - Ported from vendor/decenza/qml/Theme.qml */
+:root {
+  /* Core colors */
+  --color-background: #1a1a2e;
+  --color-surface: #252538;
+  --color-primary: #4e85f4;
+  --color-secondary: #c0c5e3;
+  --color-text: #ffffff;
+  --color-text-secondary: #a0a8b8;
+  --color-accent: #e94560;
+  --color-success: #00cc6d;
+  --color-warning: #ffaa00;
+  --color-highlight: #ffaa00;
+  --color-error: #ff4444;
+  --color-border: #3a3a4e;
+
+  /* Chart line colors */
+  --color-pressure: #18c37e;
+  --color-pressure-goal: #69fdb3;
+  --color-flow: #4e85f4;
+  --color-flow-goal: #7aaaff;
+  --color-temperature: #e73249;
+  --color-temperature-goal: #ffa5a6;
+  --color-weight: #a2693d;
+
+  /* Font sizes */
+  --font-heading: 32px;
+  --font-title: 24px;
+  --font-subtitle: 18px;
+  --font-body: 18px;
+  --font-label: 14px;
+  --font-caption: 12px;
+  --font-value: 48px;
+  --font-timer: 72px;
+
+  /* Border radii */
+  --radius-button: 12px;
+  --radius-card: 16px;
+
+  /* Spacing */
+  --spacing-small: 8px;
+  --spacing-medium: 16px;
+  --spacing-large: 24px;
+  --margin-standard: 16px;
+
+  /* Layout constants */
+  --status-bar-height: 56px;
+  --bottom-bar-height: 56px;
+  --page-top-margin: 64px;
+
+  /* Touch targets */
+  --touch-target-min: 44px;
+  --touch-target-medium: 48px;
+  --touch-target-large: 56px;
+
+  /* Gauge */
+  --gauge-size: 120px;
+
+  /* Chart */
+  --chart-margin-small: 10px;
+  --chart-margin-large: 40px;
+  --chart-font-size: 14px;
+  --graph-line-width: 3px;
+
+  /* Shadows */
+  --shadow-color: rgba(0, 0, 0, 0.25);
+
+  /* Button states */
+  --button-disabled: #555555;
+}
+
+/* Global reset and base styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--font-body);
+  color: var(--color-text);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
