@@ -1,0 +1,6 @@
+[submodule "vendor/decenza"]
+	path = vendor/decenza
+	url = https://github.com/Kulitorum/Decenza.git
+[submodule "vendor/reaprime"]
+	path = vendor/reaprime
+	url = https://github.com/tadelv/reaprime.git
