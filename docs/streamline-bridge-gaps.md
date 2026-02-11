@@ -258,5 +258,6 @@ These features from Decenza don't make sense in a web skin context:
 1. **High priority**: `shotTime` or `shotStartTimestamp` in machine snapshot (eliminates client-side timer drift)
 2. **Medium priority**: `weightFlow` in scale snapshot (cleaner than client-side derivative)
 3. **Medium priority**: Server-side shot filtering with pagination
-4. **Low priority**: Machine battery level in snapshot
-5. **Low priority**: Water level in mL
+4. **Medium priority**: Auto-wake scheduling API (`POST /api/v1/machine/schedule`) — per-day wake timers (Mon-Sun with enable toggle + time). Server-side scheduling is reliable regardless of whether a skin is loaded in a browser, unlike client-side workarounds.
+5. **Low priority**: Machine battery level in snapshot
+6. **Low priority**: Water level in mL
