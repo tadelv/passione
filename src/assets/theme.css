@@ -44,9 +44,9 @@
   --margin-standard: 16px;
 
   /* Layout constants */
-  --status-bar-height: 56px;
-  --bottom-bar-height: 56px;
-  --page-top-margin: 64px;
+  --status-bar-height: 70px;
+  --bottom-bar-height: 70px;
+  --page-top-margin: 80px;
 
   /* Touch targets */
   --touch-target-min: 44px;
@@ -66,7 +66,14 @@
   --shadow-color: rgba(0, 0, 0, 0.25);
 
   /* Button states */
+  --button-default: var(--color-primary);
   --button-disabled: #555555;
+
+  /* DYE measurement colors */
+  --color-dye-dose: #6F4E37;
+  --color-dye-output: #9C27B0;
+  --color-dye-tds: #FF9800;
+  --color-dye-ey: #a2693d;
 }
 
 /* Global reset and base styles */

@@ -16,6 +16,13 @@ const isSteaming = computed(() =>
   machineState.value === 'steam'
 )
 
+const formattedShotTime = computed(() => {
+  const t = typeof shotTime.value === 'number' ? shotTime.value : 0
+  const mins = Math.floor(t / 60)
+  const secs = Math.floor(t % 60)
+  return `${mins}:${String(secs).padStart(2, '0')}`
+})
+
 const isHeatingUp = computed(() =>
   !isSteaming.value && steamTemperature.value < (targetSteamTemp.value - 5)
 )
@@ -56,7 +63,7 @@ function goBack() {
               -5s
             </button>
             <span class="steam-page__timer-text">
-              {{ shotTime.toFixed(1) }}s / {{ duration }}s
+              {{ formattedShotTime }} / {{ duration }}s
             </span>
             <button class="steam-page__adjust-btn" @click="duration = Math.min(120, duration + 5)">
               +5s

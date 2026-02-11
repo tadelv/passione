@@ -139,8 +139,8 @@ function goBack() {
 .flush-page__progress-bar {
   width: 100%;
   max-width: 500px;
-  height: 8px;
-  border-radius: 4px;
+  height: 6px;
+  border-radius: 3px;
   background: var(--color-surface);
 }
 

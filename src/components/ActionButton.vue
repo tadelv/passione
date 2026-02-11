@@ -40,6 +40,10 @@ defineEmits(['click'])
   -webkit-tap-highlight-color: transparent;
 }
 
+.action-button:hover:not(.disabled) {
+  filter: brightness(1.1);
+}
+
 .action-button:active:not(.disabled) {
   filter: brightness(0.85);
 }

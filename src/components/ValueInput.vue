@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Number, default: 0 },
@@ -33,6 +33,26 @@ function adjust(steps) {
     emit('update:modelValue', v)
   }
 }
+
+// Press-and-hold repeat (matches QML 80ms interval)
+let holdTimer = null
+let holdDelay = null
+
+function startHold(direction) {
+  // Initial delay before repeating (300ms), then 80ms repeat
+  holdDelay = setTimeout(() => {
+    holdTimer = setInterval(() => adjust(direction), 80)
+  }, 300)
+}
+
+function stopHold() {
+  clearTimeout(holdDelay)
+  clearInterval(holdTimer)
+  holdDelay = null
+  holdTimer = null
+}
+
+onUnmounted(stopHold)
 </script>
 
 <template>
@@ -41,6 +61,10 @@ function adjust(steps) {
       class="value-input__btn"
       :disabled="internalValue <= min"
       @click="adjust(-1)"
+      @pointerdown.prevent="startHold(-1)"
+      @pointerup="stopHold"
+      @pointerleave="stopHold"
+      @pointercancel="stopHold"
     >
       &minus;
     </button>
@@ -53,6 +77,10 @@ function adjust(steps) {
       class="value-input__btn"
       :disabled="internalValue >= max"
       @click="adjust(1)"
+      @pointerdown.prevent="startHold(1)"
+      @pointerup="stopHold"
+      @pointerleave="stopHold"
+      @pointercancel="stopHold"
     >
       +
     </button>

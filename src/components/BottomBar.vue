@@ -8,6 +8,7 @@ defineProps({
   title: { type: String, default: '' },
   showBackButton: { type: Boolean, default: true },
   barColor: { type: String, default: 'var(--color-primary)' },
+  rightText: { type: String, default: '' },
 })
 
 const emit = defineEmits(['back'])
@@ -40,6 +41,8 @@ function onBack() {
     <div class="bottom-bar__content">
       <slot />
     </div>
+
+    <span v-if="rightText" class="bottom-bar__right-text">{{ rightText }}</span>
   </nav>
 </template>
 
@@ -91,5 +94,11 @@ function onBack() {
   gap: var(--spacing-medium);
   color: white;
   font-size: var(--font-body);
+}
+
+.bottom-bar__right-text {
+  color: white;
+  font-size: var(--font-body);
+  white-space: nowrap;
 }
 </style>

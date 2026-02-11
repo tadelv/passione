@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ShotGraph from '../components/ShotGraph.vue'
 import { setMachineState } from '../api/rest.js'
@@ -15,9 +15,43 @@ const targetWeight = inject('targetWeight', ref(36))
 const shotTime = inject('shotTime', ref(0))
 const machineState = inject('machineState', ref('idle'))
 const substate = inject('substate', ref(''))
+const profileFrame = inject('profileFrame', ref(0))
+const machine = inject('machine', null)
 
 // Shot data for the chart (provided by App.vue from useShotData)
 const shotData = inject('shotData', null)
+
+// P1-7: Track frame transitions for phase markers on the chart
+const frameMarkers = ref([])
+let lastFrame = -1
+
+watch(profileFrame, (newFrame) => {
+  if (newFrame !== lastFrame && shotData?.isRecording?.value) {
+    const elapsed = shotData.elapsed()
+    if (elapsed > 0 && newFrame >= 0) {
+      // Determine pump mode from which target value is non-zero
+      // targetFlow > 0 means flow mode, otherwise pressure mode
+      const targetF = machine?.targetFlow?.value ?? 0
+      const pump = targetF > 0 ? 'flow' : 'pressure'
+      // Label shows transition reason: [T]=time default
+      // (the exact exit reason is not available in the snapshot)
+      const label = newFrame > 0 ? '[T]' : ''
+      frameMarkers.value = [
+        ...frameMarkers.value,
+        { time: elapsed, label, pump }
+      ]
+    }
+    lastFrame = newFrame
+  }
+})
+
+// Reset markers when recording starts
+watch(() => shotData?.isRecording?.value, (recording) => {
+  if (recording) {
+    frameMarkers.value = []
+    lastFrame = -1
+  }
+})
 
 const isPreheating = computed(() =>
   substate.value === 'preparingForShot' || substate.value === 'preheating'
@@ -33,9 +67,18 @@ const displayTargetWeight = computed(() => {
   return typeof tw === 'number' ? tw : tw?.value ?? 36
 })
 
-const displayShotTime = computed(() => {
+const rawShotTime = computed(() => {
   const t = shotTime.value
   return typeof t === 'number' ? t : (typeof t === 'function' ? t() : 0)
+})
+
+const displayShotTime = computed(() => {
+  const t = rawShotTime.value
+  const mins = Math.floor(t / 60)
+  const secs = t % 60
+  return mins > 0
+    ? `${mins}:${secs.toFixed(1).padStart(4, '0')}`
+    : `${secs.toFixed(1)}s`
 })
 
 async function stopAndGoBack() {
@@ -60,6 +103,8 @@ async function stopAndGoBack() {
       <ShotGraph
         v-if="shotData"
         :data="shotData.data.value"
+        :frame-markers="frameMarkers"
+        :show-legend="true"
       />
       <div v-else class="espresso-page__chart-placeholder">
         <span>Shot Graph</span>
@@ -78,7 +123,7 @@ async function stopAndGoBack() {
       <!-- Timer -->
       <div class="espresso-page__metric">
         <span class="espresso-page__metric-value espresso-page__metric-value--timer">
-          {{ displayShotTime.toFixed(1) }}s
+          {{ displayShotTime }}
         </span>
         <span class="espresso-page__metric-label">Time</span>
       </div>
@@ -142,14 +187,12 @@ async function stopAndGoBack() {
 
 .espresso-page__preheat {
   position: absolute;
-  top: 80px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 24px;
-  background: var(--color-accent);
-  border-radius: 18px;
-  font-size: var(--font-body);
-  color: var(--color-text);
+  transform: translate(-50%, -50%);
+  padding: 8px 32px;
+  font-size: var(--font-title);
+  color: var(--color-text-secondary);
   z-index: 5;
 }
 
@@ -250,10 +293,11 @@ async function stopAndGoBack() {
 }
 
 .espresso-page__progress {
-  height: var(--spacing-small);
+  height: 4px;
   background: var(--color-surface);
-  border-radius: 4px;
+  border-radius: 2px;
   overflow: hidden;
+  max-width: 120px;
 }
 
 .espresso-page__progress-fill {

@@ -2,13 +2,45 @@
  * Composable for real-time machine snapshot data.
  *
  * Connects to ws/v1/machine/snapshot (~10 Hz) and exposes reactive refs
- * for all telemetry fields. Also provides a method to request state changes.
+ * for all telemetry fields plus derived state flags for easy consumption.
  */
 
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
 import { setMachineState } from '../api/rest'
+
+// States where the machine is actively performing an operation
+const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush', 'descaling', 'cleaning'])
+const FLOWING_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush'])
+const HEATING_STATES = new Set(['heating', 'preheating'])
+const READY_STATES = new Set(['idle', 'heating'])
+
+// Map Streamline-Bridge states/substates to Decenza-style phases
+const PHASE_MAP = {
+  'sleeping': 'Sleep',
+  'idle': 'Idle',
+  'heating': 'Heating',
+  'booting': 'Idle',
+  'preheating': 'EspressoPreheating',
+  'espresso': 'Pouring',
+  'steam': 'Steaming',
+  'hotWater': 'HotWater',
+  'flush': 'Flushing',
+  'steamRinse': 'Flushing',
+  'descaling': 'Descaling',
+  'cleaning': 'Cleaning',
+  'needsWater': 'Refill',
+  'error': 'Disconnected',
+}
+
+// More specific phase mapping using substate
+const SUBSTATE_PHASE_MAP = {
+  'espresso:preparingForShot': 'EspressoPreheating',
+  'espresso:preinfusion': 'Preinfusion',
+  'espresso:pouring': 'Pouring',
+  'espresso:pouringDone': 'Ending',
+}
 
 export function useMachine() {
   // Connection state
@@ -17,6 +49,8 @@ export function useMachine() {
   // Machine state
   const state = ref('unknown')
   const substate = ref('unknown')
+  const previousState = ref(null)
+  const previousSubstate = ref(null)
 
   // Telemetry
   const pressure = ref(0)
@@ -34,6 +68,36 @@ export function useMachine() {
   // Raw snapshot for consumers that need the full object
   const snapshot = ref(null)
 
+  // Shot timer — computed client-side from state transitions
+  const _shotStartTime = ref(null)
+  const shotTime = ref(0)
+  let _shotTimerInterval = null
+
+  // ---- Derived states --------------------------------------------------------
+
+  /** Machine is in a ready-to-operate state (idle or heating). */
+  const isReady = computed(() => READY_STATES.has(state.value))
+
+  /** Machine is actively heating up. */
+  const isHeating = computed(() => HEATING_STATES.has(state.value))
+
+  /** Machine is actively performing a flowing operation. */
+  const isFlowing = computed(() => FLOWING_STATES.has(state.value))
+
+  /** Machine is performing any operation (espresso, steam, etc.). */
+  const isOperating = computed(() => OPERATION_STATES.has(state.value))
+
+  /** Machine is sleeping. */
+  const isSleeping = computed(() => state.value === 'sleeping')
+
+  /** Decenza-style phase derived from state + substate. */
+  const phase = computed(() => {
+    const key = `${state.value}:${substate.value}`
+    return SUBSTATE_PHASE_MAP[key] || PHASE_MAP[state.value] || 'Disconnected'
+  })
+
+  // ---- WebSocket handler ----------------------------------------------------
+
   let ws = null
 
   function onMessage(data) {
@@ -41,8 +105,19 @@ export function useMachine() {
     timestamp.value = data.timestamp ?? null
 
     if (data.state) {
-      state.value = data.state.state ?? 'unknown'
-      substate.value = data.state.substate ?? 'unknown'
+      const newState = data.state.state ?? 'unknown'
+      const newSubstate = data.state.substate ?? 'unknown'
+
+      // Track previous state for transition detection
+      if (newState !== state.value) {
+        previousState.value = state.value
+      }
+      if (newSubstate !== substate.value) {
+        previousSubstate.value = substate.value
+      }
+
+      state.value = newState
+      substate.value = newSubstate
     }
 
     pressure.value = data.pressure ?? 0
@@ -56,6 +131,47 @@ export function useMachine() {
     steamTemperature.value = data.steamTemperature ?? 0
     profileFrame.value = data.profileFrame ?? 0
   }
+
+  // ---- Shot timer -----------------------------------------------------------
+
+  function _startShotTimer() {
+    _shotStartTime.value = Date.now()
+    shotTime.value = 0
+    _stopShotTimer()
+    _shotTimerInterval = setInterval(() => {
+      if (_shotStartTime.value !== null) {
+        shotTime.value = (Date.now() - _shotStartTime.value) / 1000
+      }
+    }, 100)
+  }
+
+  function _stopShotTimer() {
+    if (_shotTimerInterval) {
+      clearInterval(_shotTimerInterval)
+      _shotTimerInterval = null
+    }
+  }
+
+  function _resetShotTimer() {
+    _stopShotTimer()
+    _shotStartTime.value = null
+    shotTime.value = 0
+  }
+
+  // Start/stop shot timer on state transitions
+  watch(state, (newState, oldState) => {
+    if (newState === oldState) return
+
+    if (FLOWING_STATES.has(newState) && !FLOWING_STATES.has(oldState)) {
+      // Entering a flowing operation
+      _startShotTimer()
+    } else if (!FLOWING_STATES.has(newState) && FLOWING_STATES.has(oldState)) {
+      // Leaving a flowing operation — keep final time visible but stop ticking
+      _stopShotTimer()
+    }
+  })
+
+  // ---- Connection management ------------------------------------------------
 
   function connect() {
     ws = new ReconnectingWebSocket(
@@ -72,6 +188,7 @@ export function useMachine() {
     ws?.close()
     ws = null
     isConnected.value = false
+    _stopShotTimer()
   }
 
   /**
@@ -90,8 +207,19 @@ export function useMachine() {
     // state
     state,
     substate,
+    previousState,
+    previousSubstate,
     snapshot,
     timestamp,
+    // derived states
+    isReady,
+    isHeating,
+    isFlowing,
+    isOperating,
+    isSleeping,
+    phase,
+    // shot timer
+    shotTime,
     // telemetry
     pressure,
     flow,

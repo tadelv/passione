@@ -18,4 +18,22 @@ const router = createRouter({
   routes,
 })
 
+// P0-9: Navigation guard — 300ms debounce to prevent double-tap
+let lastNavTime = 0
+const NAV_DEBOUNCE_MS = 300
+
+router.beforeEach((to, from, next) => {
+  const now = Date.now()
+  if (to.path === from.path) {
+    next(false)
+    return
+  }
+  if (now - lastNavTime < NAV_DEBOUNCE_MS) {
+    next(false)
+    return
+  }
+  lastNavTime = now
+  next()
+})
+
 export default router

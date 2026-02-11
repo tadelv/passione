@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { createShotChartOpts, COLORS } from '../composables/useChartConfig.js'
@@ -7,12 +7,24 @@ import { createShotChartOpts, COLORS } from '../composables/useChartConfig.js'
 const props = defineProps({
   /** uPlot-compatible data: [time[], p[], pGoal[], f[], fGoal[], t[], tGoal[], w[]] */
   data: { type: Array, required: true },
+  /**
+   * P1-7: Frame markers — array of { time, label, pump }
+   * time: elapsed seconds when frame transitioned
+   * label: transition reason code e.g. '[W]', '[P]', '[F]', '[T]'
+   * pump: 'pressure' or 'flow' — pump mode for this frame
+   */
+  frameMarkers: { type: Array, default: () => [] },
+  /** P1-9: Whether to show the legend overlay */
+  showLegend: { type: Boolean, default: true },
 })
 
 const chartEl = ref(null)
 let chart = null
 let resizeObserver = null
 let resizeTimer = null
+
+// P1-7: Store frame marker info for the draw hook
+const markersRef = computed(() => props.frameMarkers)
 
 function initChart() {
   if (!chartEl.value) return
@@ -22,12 +34,78 @@ function initChart() {
 
   const opts = createShotChartOpts(w, h)
 
+  // P1-7: Add draw hook for frame markers and pump mode bars
+  opts.hooks = {
+    draw: [drawPhaseOverlays],
+  }
+
   // Start with empty data if none provided yet
   const initial = props.data && props.data[0]?.length
     ? props.data
     : [[], [], [], [], [], [], [], []]
 
   chart = new uPlot(opts, initial, chartEl.value)
+}
+
+/**
+ * P1-7: uPlot draw hook — renders frame transition vertical lines,
+ * phase labels at top, and pump mode indicator bars at bottom.
+ */
+function drawPhaseOverlays(u) {
+  const markers = markersRef.value
+  if (!markers || markers.length === 0) return
+
+  const ctx = u.ctx
+  const { left, top, width, height } = u.bbox
+
+  // Need the x scale range to compute pixel positions
+  const xMin = u.scales.x.min ?? 0
+  const xMax = u.scales.x.max ?? 1
+
+  ctx.save()
+
+  for (let i = 0; i < markers.length; i++) {
+    const marker = markers[i]
+    const x = left + ((marker.time - xMin) / (xMax - xMin)) * width
+
+    // Skip markers outside visible range
+    if (x < left || x > left + width) continue
+
+    // Calculate bar width to next marker or end of data
+    const nextTime = i + 1 < markers.length ? markers[i + 1].time : xMax
+    const barW = ((nextTime - marker.time) / (xMax - xMin)) * width
+
+    // Pump mode indicator bar at bottom (4px)
+    if (barW > 0) {
+      ctx.fillStyle = marker.pump === 'flow' ? COLORS.flow : COLORS.pressure
+      ctx.globalAlpha = 0.7
+      ctx.fillRect(x, top + height - 4, Math.max(barW, 1), 4)
+      ctx.globalAlpha = 1
+    }
+
+    // Vertical boundary line at frame transition
+    if (i > 0) {
+      ctx.strokeStyle = COLORS.marker
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 3])
+      ctx.beginPath()
+      ctx.moveTo(x, top)
+      ctx.lineTo(x, top + height)
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+
+    // Phase label at top of chart
+    if (marker.label) {
+      ctx.font = '10px system-ui, sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      ctx.fillText(marker.label, x + Math.min(barW / 2, 20), top + 2)
+    }
+  }
+
+  ctx.restore()
 }
 
 function handleResize() {
@@ -50,6 +128,11 @@ watch(() => props.data, (newData) => {
     chart.setData(newData)
   }
 })
+
+// Redraw when frame markers change
+watch(() => props.frameMarkers, () => {
+  if (chart) chart.redraw()
+}, { deep: true })
 
 onMounted(() => {
   nextTick(() => {
@@ -77,27 +160,24 @@ onUnmounted(() => {
 <template>
   <div class="shot-graph">
     <div ref="chartEl" class="shot-graph__canvas"></div>
-    <div class="shot-graph__legend">
+
+    <!-- P1-9: Custom legend overlay in top-left corner -->
+    <div v-if="showLegend" class="shot-graph__legend-overlay">
       <span class="shot-graph__legend-item">
-        <span class="shot-graph__swatch" :style="{ background: COLORS.pressure }"></span>
+        <span class="shot-graph__dot" :style="{ background: COLORS.pressure }"></span>
         Pressure
       </span>
       <span class="shot-graph__legend-item">
-        <span class="shot-graph__swatch" :style="{ background: COLORS.flow }"></span>
+        <span class="shot-graph__dot" :style="{ background: COLORS.flow }"></span>
         Flow
       </span>
       <span class="shot-graph__legend-item">
-        <span class="shot-graph__swatch" :style="{ background: COLORS.temperature }"></span>
+        <span class="shot-graph__dot" :style="{ background: COLORS.temperature }"></span>
         Temp
       </span>
       <span class="shot-graph__legend-item">
-        <span class="shot-graph__swatch" :style="{ background: COLORS.weight }"></span>
+        <span class="shot-graph__dot" :style="{ background: COLORS.weight }"></span>
         Weight
-      </span>
-      <span class="shot-graph__legend-sep"></span>
-      <span class="shot-graph__legend-item shot-graph__legend-item--muted">
-        <span class="shot-graph__swatch shot-graph__swatch--dashed"></span>
-        target
       </span>
     </div>
   </div>
@@ -122,47 +202,34 @@ onUnmounted(() => {
   background: transparent !important;
 }
 
-.shot-graph__legend {
+/* P1-9: Legend overlay in top-left corner of the chart */
+.shot-graph__legend-overlay {
+  position: absolute;
+  top: 8px;
+  left: 12px;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 8px;
-  font-size: 11px;
-  color: var(--text-secondary, #a0a8b8);
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  background: rgba(26, 26, 46, 0.75);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
 }
 
 .shot-graph__legend-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
   white-space: nowrap;
 }
 
-.shot-graph__legend-item--muted {
-  opacity: 0.6;
-}
-
-.shot-graph__swatch {
-  display: inline-block;
-  width: 14px;
-  height: 3px;
-  border-radius: 1px;
-}
-
-.shot-graph__swatch--dashed {
-  background: repeating-linear-gradient(
-    90deg,
-    var(--text-secondary, #a0a8b8) 0px,
-    var(--text-secondary, #a0a8b8) 4px,
-    transparent 4px,
-    transparent 7px
-  );
-  height: 2px;
-}
-
-.shot-graph__legend-sep {
-  width: 1px;
-  height: 12px;
-  background: var(--border, #3a3a4e);
+.shot-graph__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>

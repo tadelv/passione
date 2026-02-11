@@ -17,10 +17,46 @@ const targetTemperature = inject('targetTemperature', ref(0))
 const pressure = inject('pressure', ref(0))
 const waterLevel = inject('waterLevel', ref(0))
 const profileName = inject('profileName', ref(''))
+const workflow = inject('workflow', null)
 
 const isReady = computed(() =>
   machineState.value === 'idle' || machineState.value === 'ready'
 )
+
+// P1-4: Shot Plan Text — display brewing plan from workflow data
+const shotPlanText = computed(() => {
+  if (!workflow) return ''
+
+  const doseData = workflow.doseData
+  const grinderData = workflow.grinderData
+
+  if (!doseData) return ''
+
+  const parts = []
+
+  const doseIn = doseData.doseIn ?? doseData.dose
+  const doseOut = doseData.doseOut ?? doseData.targetWeight
+  if (doseIn && doseOut) {
+    const ratio = doseOut / doseIn
+    parts.push(`${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`)
+  } else if (doseIn) {
+    parts.push(`${Number(doseIn).toFixed(1)}g in`)
+  } else if (doseOut) {
+    parts.push(`${Number(doseOut).toFixed(1)}g out`)
+  }
+
+  if (grinderData) {
+    const grinderName = grinderData.grinder || grinderData.name
+    const grinderSetting = grinderData.setting ?? grinderData.grindSetting
+    if (grinderName && grinderSetting != null) {
+      parts.push(`${grinderName} @ ${grinderSetting}`)
+    } else if (grinderName) {
+      parts.push(grinderName)
+    }
+  }
+
+  return parts.join(' | ')
+})
 
 async function startEspresso() {
   await setMachineState('espresso').catch(() => {})
@@ -85,6 +121,11 @@ async function startFlush() {
     <div class="idle-page__center">
       <div v-if="profileName" class="idle-page__profile">
         {{ profileName }}
+      </div>
+
+      <!-- P1-4: Shot plan text -->
+      <div v-if="shotPlanText" class="idle-page__shot-plan">
+        {{ shotPlanText }}
       </div>
 
       <div class="idle-page__actions">
@@ -153,8 +194,8 @@ async function startFlush() {
 }
 
 .idle-page__connection-label {
-  font-size: var(--font-value);
-  font-weight: bold;
+  font-size: var(--font-label);
+  font-weight: 600;
 }
 
 .idle-page__scale-status {
@@ -214,6 +255,16 @@ async function startFlush() {
   color: var(--color-text);
   text-align: center;
   max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-page__shot-plan {
+  font-size: var(--font-label);
+  color: var(--color-text-secondary);
+  text-align: center;
+  max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
