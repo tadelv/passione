@@ -165,7 +165,7 @@ async function startFlush() {
       </div>
 
       <!-- P1-4: Shot plan text -->
-      <div v-if="shotPlanText" class="idle-page__shot-plan">
+      <div v-if="shotPlanText" class="idle-page__shot-plan" @click="router.push('/bean-info')">
         {{ shotPlanText }}
       </div>
 
@@ -230,6 +230,9 @@ async function startFlush() {
 
       <!-- Navigation links -->
       <div class="idle-page__nav">
+        <button class="idle-page__nav-btn" @click="router.push('/bean-info')">
+          Beans
+        </button>
         <button class="idle-page__nav-btn" @click="router.push('/history')">
           History
         </button>
@@ -350,6 +353,12 @@ async function startFlush() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.idle-page__shot-plan:active {
+  opacity: 0.7;
 }
 
 .idle-page__actions {

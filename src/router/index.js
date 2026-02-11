@@ -12,6 +12,9 @@ import ShotDetailPage from '../pages/ShotDetailPage.vue'
 import PostShotReviewPage from '../pages/PostShotReviewPage.vue'
 import ShotComparisonPage from '../pages/ShotComparisonPage.vue'
 import ScreensaverPage from '../pages/ScreensaverPage.vue'
+import DescalingPage from '../pages/DescalingPage.vue'
+import VisualizerBrowserPage from '../pages/VisualizerBrowserPage.vue'
+import BeanInfoPage from '../pages/BeanInfoPage.vue'
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -27,6 +30,9 @@ const routes = [
   { path: '/shot-review/:id?', name: 'shot-review', component: PostShotReviewPage },
   { path: '/shot-comparison', name: 'shot-comparison', component: ShotComparisonPage },
   { path: '/screensaver', name: 'screensaver', component: ScreensaverPage },
+  { path: '/descaling', name: 'descaling', component: DescalingPage },
+  { path: '/visualizer-import', name: 'visualizer-import', component: VisualizerBrowserPage },
+  { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
 ]
 
 const router = createRouter({
