@@ -9,6 +9,8 @@ const props = defineProps({
   decimals: { type: Number, default: 0 },
   suffix: { type: String, default: '' },
   valueColor: { type: String, default: 'var(--color-text)' },
+  /** Override default display text (e.g. for custom formatting) */
+  displayText: { type: String, default: null },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -17,8 +19,10 @@ const internalValue = ref(props.modelValue)
 
 watch(() => props.modelValue, (v) => { internalValue.value = v })
 
-const displayText = computed(() =>
-  internalValue.value.toFixed(props.decimals) + props.suffix
+const formattedText = computed(() =>
+  props.displayText != null
+    ? props.displayText
+    : internalValue.value.toFixed(props.decimals) + props.suffix
 )
 
 function clamp(val) {
@@ -39,7 +43,6 @@ let holdTimer = null
 let holdDelay = null
 
 function startHold(direction) {
-  // Initial delay before repeating (300ms), then 80ms repeat
   holdDelay = setTimeout(() => {
     holdTimer = setInterval(() => adjust(direction), 80)
   }, 300)
@@ -52,13 +55,88 @@ function stopHold() {
   holdTimer = null
 }
 
+// Drag-to-adjust: horizontal pointer movement changes value (20px = 1 step)
+const isDragging = ref(false)
+let dragStartX = 0
+let dragStartValue = 0
+const DRAG_PX_PER_STEP = 20
+
+function onDisplayPointerDown(e) {
+  isDragging.value = true
+  dragStartX = e.clientX
+  dragStartValue = internalValue.value
+  e.target.setPointerCapture(e.pointerId)
+}
+
+function onDisplayPointerMove(e) {
+  if (!isDragging.value) return
+  const dx = e.clientX - dragStartX
+  const stepsDelta = Math.round(dx / DRAG_PX_PER_STEP)
+  const v = clamp(dragStartValue + stepsDelta * props.step)
+  if (v !== internalValue.value) {
+    internalValue.value = v
+    emit('update:modelValue', v)
+  }
+}
+
+function onDisplayPointerUp() {
+  isDragging.value = false
+}
+
+// Keyboard support
+function onKeyDown(e) {
+  switch (e.key) {
+    case 'ArrowUp':
+    case 'ArrowRight':
+      e.preventDefault()
+      adjust(1)
+      return
+    case 'ArrowDown':
+    case 'ArrowLeft':
+      e.preventDefault()
+      adjust(-1)
+      return
+    case 'PageUp':
+      e.preventDefault()
+      adjust(10)
+      return
+    case 'PageDown':
+      e.preventDefault()
+      adjust(-10)
+      return
+    case 'Home':
+      e.preventDefault()
+      if (internalValue.value !== props.min) {
+        internalValue.value = props.min
+        emit('update:modelValue', props.min)
+      }
+      return
+    case 'End':
+      e.preventDefault()
+      if (internalValue.value !== props.max) {
+        internalValue.value = props.max
+        emit('update:modelValue', props.max)
+      }
+      return
+  }
+}
+
 onUnmounted(stopHold)
 </script>
 
 <template>
-  <div class="value-input">
+  <div
+    class="value-input"
+    tabindex="0"
+    role="spinbutton"
+    :aria-valuenow="internalValue"
+    :aria-valuemin="min"
+    :aria-valuemax="max"
+    @keydown="onKeyDown"
+  >
     <button
       class="value-input__btn"
+      tabindex="-1"
       :disabled="internalValue <= min"
       @click="adjust(-1)"
       @pointerdown.prevent="startHold(-1)"
@@ -69,12 +147,21 @@ onUnmounted(stopHold)
       &minus;
     </button>
 
-    <div class="value-input__display" :style="{ color: valueColor }">
-      {{ displayText }}
+    <div
+      class="value-input__display"
+      :class="{ 'value-input__display--dragging': isDragging }"
+      :style="{ color: valueColor }"
+      @pointerdown.prevent="onDisplayPointerDown"
+      @pointermove="onDisplayPointerMove"
+      @pointerup="onDisplayPointerUp"
+      @pointercancel="onDisplayPointerUp"
+    >
+      {{ formattedText }}
     </div>
 
     <button
       class="value-input__btn"
+      tabindex="-1"
       :disabled="internalValue >= max"
       @click="adjust(1)"
       @pointerdown.prevent="startHold(1)"
@@ -123,6 +210,11 @@ onUnmounted(stopHold)
   background: rgba(255, 255, 255, 0.05);
 }
 
+.value-input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
 .value-input__display {
   flex: 1;
   text-align: center;
@@ -131,5 +223,12 @@ onUnmounted(stopHold)
   white-space: nowrap;
   min-width: 0;
   padding: 0 4px;
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.value-input__display--dragging {
+  opacity: 0.7;
 }
 </style>

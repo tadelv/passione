@@ -4,6 +4,11 @@ import EspressoPage from '../pages/EspressoPage.vue'
 import SteamPage from '../pages/SteamPage.vue'
 import HotWaterPage from '../pages/HotWaterPage.vue'
 import FlushPage from '../pages/FlushPage.vue'
+import ProfileSelectorPage from '../pages/ProfileSelectorPage.vue'
+import ProfileInfoPage from '../pages/ProfileInfoPage.vue'
+import SettingsPage from '../pages/SettingsPage.vue'
+import ShotHistoryPage from '../pages/ShotHistoryPage.vue'
+import ShotDetailPage from '../pages/ShotDetailPage.vue'
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -11,6 +16,11 @@ const routes = [
   { path: '/steam', name: 'steam', component: SteamPage },
   { path: '/hotwater', name: 'hotwater', component: HotWaterPage },
   { path: '/flush', name: 'flush', component: FlushPage },
+  { path: '/profiles', name: 'profiles', component: ProfileSelectorPage },
+  { path: '/profile-info/:id', name: 'profile-info', component: ProfileInfoPage },
+  { path: '/settings/:tab?', name: 'settings', component: SettingsPage },
+  { path: '/history', name: 'history', component: ShotHistoryPage },
+  { path: '/shot/:id', name: 'shot-detail', component: ShotDetailPage },
 ]
 
 const router = createRouter({

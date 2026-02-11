@@ -1,0 +1,329 @@
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import BottomBar from '../components/BottomBar.vue'
+import { getShotIds, getShots } from '../api/rest.js'
+
+const router = useRouter()
+
+const PAGE_SIZE = 50
+const SEARCH_DEBOUNCE_MS = 300
+
+const allShotIds = ref([])
+const loadedShots = ref([])
+const loadedCount = ref(0)
+const loading = ref(false)
+const initialLoading = ref(true)
+const searchQuery = ref('')
+
+let searchTimer = null
+
+// Load all shot IDs first, then load pages
+async function loadShotIds() {
+  initialLoading.value = true
+  try {
+    const result = await getShotIds()
+    allShotIds.value = Array.isArray(result) ? result : (result?.ids ?? [])
+  } catch {
+    allShotIds.value = []
+  }
+  // Load first page
+  loadedShots.value = []
+  loadedCount.value = 0
+  await loadMore()
+  initialLoading.value = false
+}
+
+async function loadMore() {
+  if (loading.value) return
+  const ids = filteredIds.value
+  if (loadedCount.value >= ids.length) return
+
+  loading.value = true
+  const pageIds = ids.slice(loadedCount.value, loadedCount.value + PAGE_SIZE)
+  try {
+    const result = await getShots(pageIds)
+    const shots = Array.isArray(result) ? result : (result?.shots ?? [])
+    loadedShots.value = [...loadedShots.value, ...shots]
+    loadedCount.value += pageIds.length
+  } catch {
+    // ignore
+  }
+  loading.value = false
+}
+
+const hasMore = computed(() => loadedCount.value < filteredIds.value.length)
+
+const filteredIds = computed(() => {
+  // Client-side search is applied after loading (basic filtering by ID)
+  // Since we only have IDs at this point, full search happens on loaded shots
+  return allShotIds.value
+})
+
+const displayedShots = computed(() => {
+  if (!searchQuery.value.trim()) return loadedShots.value
+  const q = searchQuery.value.toLowerCase()
+  return loadedShots.value.filter(shot => {
+    const fields = [
+      shot.profileName, shot.profile?.title, shot.beanBrand,
+      shot.beanType, shot.roaster, shot.barista, shot.notes,
+    ]
+    return fields.some(f => f && String(f).toLowerCase().includes(q))
+  })
+})
+
+function onSearchInput(e) {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    searchQuery.value = e.target.value
+  }, SEARCH_DEBOUNCE_MS)
+}
+
+function onScroll(e) {
+  const el = e.target
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+  if (nearBottom && hasMore.value && !loading.value) {
+    loadMore()
+  }
+}
+
+function openShot(shot) {
+  const id = shot.id || shot.shotId
+  if (id) {
+    router.push(`/shot/${encodeURIComponent(id)}`)
+  }
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return ''
+  const d = new Date(timestamp)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds <= 0) return '--'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${String(secs).padStart(2, '0')}`
+}
+
+function formatDoseYield(shot) {
+  const dose = shot.dose ?? shot.doseIn
+  const output = shot.output ?? shot.doseOut ?? shot.yield
+  if (dose && output) return `${Number(dose).toFixed(1)}g → ${Number(output).toFixed(1)}g`
+  if (dose) return `${Number(dose).toFixed(1)}g in`
+  if (output) return `${Number(output).toFixed(1)}g out`
+  return ''
+}
+
+onMounted(loadShotIds)
+</script>
+
+<template>
+  <div class="shot-history">
+    <!-- Search bar -->
+    <div class="shot-history__filter">
+      <input
+        class="shot-history__search"
+        type="text"
+        placeholder="Search shots..."
+        @input="onSearchInput"
+      />
+      <span class="shot-history__count">
+        {{ displayedShots.length }} shot{{ displayedShots.length !== 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    <!-- Shot list -->
+    <div
+      class="shot-history__list"
+      @scroll="onScroll"
+    >
+      <div v-if="initialLoading" class="shot-history__loading">
+        Loading shots...
+      </div>
+
+      <div
+        v-else-if="displayedShots.length === 0"
+        class="shot-history__empty"
+      >
+        {{ searchQuery ? 'No matching shots found.' : 'No shots recorded yet.' }}
+      </div>
+
+      <button
+        v-for="shot in displayedShots"
+        :key="shot.id || shot.shotId"
+        class="shot-history__row"
+        @click="openShot(shot)"
+      >
+        <div class="shot-history__row-left">
+          <span class="shot-history__date">
+            {{ formatDate(shot.timestamp || shot.date) }}
+          </span>
+          <span class="shot-history__profile">
+            {{ shot.profileName || shot.profile?.title || 'Unknown Profile' }}
+          </span>
+          <span class="shot-history__meta">
+            {{ formatDoseYield(shot) }}
+          </span>
+        </div>
+
+        <div class="shot-history__row-right">
+          <span class="shot-history__duration">
+            {{ formatDuration(shot.duration) }}
+          </span>
+          <span
+            v-if="shot.enjoyment > 0 || shot.rating > 0"
+            class="shot-history__rating"
+          >
+            {{ (shot.enjoyment || shot.rating) }}%
+          </span>
+          <svg class="shot-history__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </div>
+      </button>
+
+      <!-- Loading indicator -->
+      <div v-if="loading && !initialLoading" class="shot-history__loading-more">
+        Loading more...
+      </div>
+    </div>
+
+    <BottomBar title="Shot History" />
+  </div>
+</template>
+
+<style scoped>
+.shot-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-background);
+}
+
+.shot-history__filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  flex-shrink: 0;
+}
+
+.shot-history__search {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.shot-history__search::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.shot-history__search:focus {
+  border-color: var(--color-primary);
+}
+
+.shot-history__count {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.shot-history__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shot-history__loading,
+.shot-history__empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.shot-history__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 6px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-history__row:active {
+  opacity: 0.8;
+}
+
+.shot-history__row-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.shot-history__date {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.shot-history__profile {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shot-history__meta {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.shot-history__row-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.shot-history__duration {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+}
+
+.shot-history__rating {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-warning);
+}
+
+.shot-history__chevron {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.shot-history__loading-more {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+</style>

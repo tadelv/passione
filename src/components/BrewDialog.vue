@@ -1,0 +1,292 @@
+<script setup>
+import { ref, computed, watch } from 'vue'
+import ValueInput from './ValueInput.vue'
+
+const props = defineProps({
+  visible: { type: Boolean, default: false },
+  profileName: { type: String, default: '' },
+  temperature: { type: Number, default: 93 },
+  doseIn: { type: Number, default: 18 },
+  doseOut: { type: Number, default: 36 },
+  scaleWeight: { type: Number, default: 0 },
+})
+
+const emit = defineEmits([
+  'start',
+  'cancel',
+  'update-temperature',
+  'update-yield',
+  'tare-scale',
+])
+
+const localTemp = ref(props.temperature)
+const localDoseIn = ref(props.doseIn)
+const localDoseOut = ref(props.doseOut)
+
+watch(() => props.visible, (val) => {
+  if (val) {
+    localTemp.value = props.temperature
+    localDoseIn.value = props.doseIn
+    localDoseOut.value = props.doseOut
+  }
+})
+
+const ratio = computed(() => {
+  if (localDoseIn.value > 0 && localDoseOut.value > 0) {
+    return (localDoseOut.value / localDoseIn.value).toFixed(1)
+  }
+  return '0.0'
+})
+
+function readScale() {
+  localDoseIn.value = Math.round(props.scaleWeight * 10) / 10
+  emit('tare-scale')
+}
+
+function onStart() {
+  emit('start', {
+    temperature: localTemp.value,
+    doseIn: localDoseIn.value,
+    doseOut: localDoseOut.value,
+  })
+}
+
+function onCancel() {
+  emit('cancel')
+}
+
+function onUpdateTemperature() {
+  emit('update-temperature', localTemp.value)
+}
+
+function onUpdateYield() {
+  emit('update-yield', localDoseOut.value)
+}
+</script>
+
+<template>
+  <Transition name="brew-dialog-fade">
+    <div v-if="visible" class="brew-dialog" @click.self="onCancel">
+      <div class="brew-dialog__card">
+        <div class="brew-dialog__header">
+          <span class="brew-dialog__title">Brew</span>
+          <span v-if="profileName" class="brew-dialog__profile">{{ profileName }}</span>
+        </div>
+
+        <div class="brew-dialog__body">
+          <!-- Temperature -->
+          <div class="brew-dialog__row">
+            <div class="brew-dialog__row-label">
+              <span class="brew-dialog__label">Temperature</span>
+              <button class="brew-dialog__link" @click="onUpdateTemperature">
+                Update Profile
+              </button>
+            </div>
+            <ValueInput
+              :model-value="localTemp"
+              :min="70"
+              :max="100"
+              :step="0.5"
+              :decimals="1"
+              suffix="&deg;C"
+              value-color="var(--color-temperature)"
+              @update:model-value="localTemp = $event"
+            />
+          </div>
+
+          <!-- Dose In -->
+          <div class="brew-dialog__row">
+            <div class="brew-dialog__row-label">
+              <span class="brew-dialog__label">Dose In</span>
+              <button class="brew-dialog__link" @click="readScale">
+                Read Scale
+              </button>
+            </div>
+            <ValueInput
+              :model-value="localDoseIn"
+              :min="5"
+              :max="50"
+              :step="0.1"
+              :decimals="1"
+              suffix=" g"
+              value-color="var(--color-text)"
+              @update:model-value="localDoseIn = $event"
+            />
+          </div>
+
+          <!-- Dose Out / Yield -->
+          <div class="brew-dialog__row">
+            <div class="brew-dialog__row-label">
+              <span class="brew-dialog__label">Yield</span>
+              <button class="brew-dialog__link" @click="onUpdateYield">
+                Update Profile
+              </button>
+            </div>
+            <ValueInput
+              :model-value="localDoseOut"
+              :min="10"
+              :max="150"
+              :step="0.5"
+              :decimals="1"
+              suffix=" g"
+              value-color="var(--color-text)"
+              @update:model-value="localDoseOut = $event"
+            />
+          </div>
+
+          <!-- Ratio display -->
+          <div class="brew-dialog__ratio">
+            1:{{ ratio }}
+          </div>
+        </div>
+
+        <div class="brew-dialog__actions">
+          <button class="brew-dialog__btn brew-dialog__btn--cancel" @click="onCancel">
+            Cancel
+          </button>
+          <button class="brew-dialog__btn brew-dialog__btn--start" @click="onStart">
+            Start Brewing
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+</template>
+
+<style scoped>
+.brew-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brew-dialog__card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  width: 90%;
+  max-width: 420px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.brew-dialog__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 16px 8px;
+}
+
+.brew-dialog__title {
+  font-size: var(--font-title);
+  font-weight: bold;
+  color: var(--color-text);
+}
+
+.brew-dialog__profile {
+  font-size: var(--font-label);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brew-dialog__body {
+  padding: 8px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.brew-dialog__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brew-dialog__row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brew-dialog__label {
+  font-size: var(--font-body);
+  color: var(--color-text);
+}
+
+.brew-dialog__link {
+  font-size: var(--font-caption);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.brew-dialog__link:active {
+  opacity: 0.7;
+}
+
+.brew-dialog__ratio {
+  text-align: center;
+  font-size: var(--font-title);
+  font-weight: bold;
+  color: var(--color-primary);
+  padding: 8px 0;
+}
+
+.brew-dialog__actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
+.brew-dialog__btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  font-size: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.brew-dialog__btn:active {
+  filter: brightness(0.85);
+}
+
+.brew-dialog__btn--cancel {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.brew-dialog__btn--start {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.brew-dialog-fade-enter-active,
+.brew-dialog-fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.brew-dialog-fade-enter-from,
+.brew-dialog-fade-leave-to {
+  opacity: 0;
+}
+</style>

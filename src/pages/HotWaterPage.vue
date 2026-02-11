@@ -1,27 +1,117 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ValueInput from '../components/ValueInput.vue'
+import PresetPillRow from '../components/PresetPillRow.vue'
+import PresetEditPopup from '../components/PresetEditPopup.vue'
+import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
 
-// Injected from API layer
-const machineState = inject('machineState', ref('idle'))
-const weight = inject('weight', ref(0))
+// Injected from App.vue
+const machineState = inject('machineState')
+const weight = inject('weight')
+const settings = inject('settings')
+const scale = inject('scale')
 
 const isDispensing = computed(() =>
   machineState.value === 'hotWater'
 )
 
-// Settings
-const volume = ref(200)
-const temperature = ref(80)
-const isVolumeMode = ref(false)
+// Settings-backed values
+const volume = computed({
+  get: () => settings.settings.hotWaterVolume,
+  set: (v) => { settings.settings.hotWaterVolume = v },
+})
+
+const temperature = computed({
+  get: () => settings.settings.hotWaterTemperature,
+  set: (v) => { settings.settings.hotWaterTemperature = v },
+})
+
+const isVolumeMode = computed({
+  get: () => settings.settings.hotWaterMode === 'volume',
+  set: (v) => { settings.settings.hotWaterMode = v ? 'volume' : 'weight' },
+})
 
 const weightProgress = computed(() =>
   volume.value > 0 ? Math.min(1, weight.value / volume.value) : 0
 )
+
+// ---- Presets ----
+const presets = computed(() => settings.settings.waterVesselPresets)
+const selectedPreset = computed({
+  get: () => settings.settings.selectedWaterVesselPreset,
+  set: (v) => { settings.settings.selectedWaterVesselPreset = v },
+})
+
+function onPresetSelect(index) {
+  selectedPreset.value = index
+  const preset = presets.value[index]
+  if (preset) {
+    volume.value = preset.volume ?? volume.value
+    temperature.value = preset.temperature ?? temperature.value
+  }
+}
+
+function onPresetActivate() {
+  setMachineState('hotWater').catch(() => {})
+}
+
+const editPopupVisible = ref(false)
+const editPresetIndex = ref(-1)
+const editPresetData = ref(null)
+
+function onPresetLongPress(index) {
+  editPresetIndex.value = index
+  editPresetData.value = { ...presets.value[index] }
+  editPopupVisible.value = true
+}
+
+function onAddPreset() {
+  editPresetIndex.value = -1
+  editPresetData.value = {
+    name: '',
+    emoji: '',
+    volume: volume.value,
+    temperature: temperature.value,
+  }
+  editPopupVisible.value = true
+}
+
+function onPresetSave(data) {
+  const list = [...presets.value]
+  if (editPresetIndex.value >= 0) {
+    list[editPresetIndex.value] = data
+  } else {
+    list.push(data)
+    selectedPreset.value = list.length - 1
+  }
+  settings.settings.waterVesselPresets = list
+  editPopupVisible.value = false
+}
+
+function onPresetDelete() {
+  const list = [...presets.value]
+  list.splice(editPresetIndex.value, 1)
+  settings.settings.waterVesselPresets = list
+  if (selectedPreset.value >= list.length) {
+    selectedPreset.value = list.length - 1
+  }
+  editPopupVisible.value = false
+}
+
+function onPresetCancel() {
+  editPopupVisible.value = false
+}
+
+// Auto-tare on mount when in weight mode
+onMounted(() => {
+  if (!isVolumeMode.value && scale) {
+    scale.tare().catch(() => {})
+  }
+})
 
 function goBack() {
   router.push('/')
@@ -63,6 +153,17 @@ function goBack() {
 
       <!-- SETTINGS VIEW -->
       <div v-else class="hotwater-page__settings">
+        <!-- Vessel presets -->
+        <PresetPillRow
+          :presets="presets"
+          :selected-index="selectedPreset"
+          :long-press-enabled="true"
+          @select="onPresetSelect"
+          @activate="onPresetActivate"
+          @long-press="onPresetLongPress"
+        />
+        <button class="hotwater-page__add-preset" @click="onAddPreset">+ Add Preset</button>
+
         <!-- Settings card -->
         <div class="hotwater-page__card">
           <!-- Mode toggle + target value -->
@@ -124,6 +225,16 @@ function goBack() {
       <span style="opacity: 0.3">|</span>
       <span>{{ temperature }}&deg;C</span>
     </BottomBar>
+
+    <PresetEditPopup
+      :visible="editPopupVisible"
+      :preset="editPresetData"
+      :is-existing="editPresetIndex >= 0"
+      operation-type="hotwater"
+      @save="onPresetSave"
+      @delete="onPresetDelete"
+      @cancel="onPresetCancel"
+    />
   </div>
 </template>
 
@@ -182,6 +293,22 @@ function goBack() {
   border-radius: 4px;
   background: var(--color-primary);
   transition: width 0.1s linear;
+}
+
+.hotwater-page__add-preset {
+  align-self: center;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-text-secondary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-label);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hotwater-page__add-preset:active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .hotwater-page__settings {

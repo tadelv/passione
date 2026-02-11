@@ -3,24 +3,102 @@ import { ref, computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ValueInput from '../components/ValueInput.vue'
+import PresetPillRow from '../components/PresetPillRow.vue'
+import PresetEditPopup from '../components/PresetEditPopup.vue'
+import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
 
-// Injected from API layer
-const machineState = inject('machineState', ref('idle'))
-const shotTime = inject('shotTime', ref(0))
+// Injected from App.vue
+const machineState = inject('machineState')
+const shotTime = inject('shotTime')
+const settings = inject('settings')
 
 const isFlushing = computed(() =>
   machineState.value === 'flush'
 )
 
-// Settings
-const flushSeconds = ref(5)
-const flushFlow = ref(6.0)
+// Settings-backed values
+const flushSeconds = computed({
+  get: () => settings.settings.flushDuration,
+  set: (v) => { settings.settings.flushDuration = v },
+})
+
+const flushFlow = computed({
+  get: () => settings.settings.flushFlowRate,
+  set: (v) => { settings.settings.flushFlowRate = v },
+})
 
 const timerProgress = computed(() =>
   flushSeconds.value > 0 ? Math.min(1, shotTime.value / flushSeconds.value) : 0
 )
+
+// ---- Presets ----
+const presets = computed(() => settings.settings.flushPresets)
+const selectedPreset = computed({
+  get: () => settings.settings.selectedFlushPreset,
+  set: (v) => { settings.settings.selectedFlushPreset = v },
+})
+
+function onPresetSelect(index) {
+  selectedPreset.value = index
+  const preset = presets.value[index]
+  if (preset) {
+    flushSeconds.value = preset.duration ?? flushSeconds.value
+    flushFlow.value = preset.flow ?? flushFlow.value
+  }
+}
+
+function onPresetActivate() {
+  setMachineState('flush').catch(() => {})
+}
+
+const editPopupVisible = ref(false)
+const editPresetIndex = ref(-1)
+const editPresetData = ref(null)
+
+function onPresetLongPress(index) {
+  editPresetIndex.value = index
+  editPresetData.value = { ...presets.value[index] }
+  editPopupVisible.value = true
+}
+
+function onAddPreset() {
+  editPresetIndex.value = -1
+  editPresetData.value = {
+    name: '',
+    emoji: '',
+    duration: flushSeconds.value,
+    flow: flushFlow.value,
+  }
+  editPopupVisible.value = true
+}
+
+function onPresetSave(data) {
+  const list = [...presets.value]
+  if (editPresetIndex.value >= 0) {
+    list[editPresetIndex.value] = data
+  } else {
+    list.push(data)
+    selectedPreset.value = list.length - 1
+  }
+  settings.settings.flushPresets = list
+  editPopupVisible.value = false
+}
+
+function onPresetDelete() {
+  const list = [...presets.value]
+  list.splice(editPresetIndex.value, 1)
+  settings.settings.flushPresets = list
+  if (selectedPreset.value >= list.length) {
+    selectedPreset.value = list.length - 1
+  }
+  editPopupVisible.value = false
+}
+
+function onPresetCancel() {
+  editPopupVisible.value = false
+}
 
 function goBack() {
   router.push('/')
@@ -51,6 +129,17 @@ function goBack() {
 
       <!-- SETTINGS VIEW -->
       <div v-else class="flush-page__settings">
+        <!-- Flush presets -->
+        <PresetPillRow
+          :presets="presets"
+          :selected-index="selectedPreset"
+          :long-press-enabled="true"
+          @select="onPresetSelect"
+          @activate="onPresetActivate"
+          @long-press="onPresetLongPress"
+        />
+        <button class="flush-page__add-preset" @click="onAddPreset">+ Add Preset</button>
+
         <div class="flush-page__card">
           <!-- Duration -->
           <div class="flush-page__setting-row">
@@ -96,6 +185,16 @@ function goBack() {
       <span style="opacity: 0.3">|</span>
       <span>{{ flushFlow.toFixed(1) }} mL/s</span>
     </BottomBar>
+
+    <PresetEditPopup
+      :visible="editPopupVisible"
+      :preset="editPresetData"
+      :is-existing="editPresetIndex >= 0"
+      operation-type="flush"
+      @save="onPresetSave"
+      @delete="onPresetDelete"
+      @cancel="onPresetCancel"
+    />
   </div>
 </template>
 
@@ -149,6 +248,22 @@ function goBack() {
   border-radius: 4px;
   background: var(--color-primary);
   transition: width 0.1s linear;
+}
+
+.flush-page__add-preset {
+  align-self: center;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-text-secondary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-label);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flush-page__add-preset:active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .flush-page__settings {

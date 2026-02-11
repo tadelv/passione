@@ -1,16 +1,23 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ValueInput from '../components/ValueInput.vue'
+import PresetPillRow from '../components/PresetPillRow.vue'
+import PresetEditPopup from '../components/PresetEditPopup.vue'
+import { useSteamHeater } from '../composables/useSteamHeater.js'
+import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
 
-// Injected from API layer
-const machineState = inject('machineState', ref('idle'))
-const shotTime = inject('shotTime', ref(0))
-const steamTemperature = inject('steamTemperature', ref(0))
-const targetSteamTemp = inject('targetSteamTemp', ref(160))
+// Injected from App.vue
+const machineState = inject('machineState')
+const shotTime = inject('shotTime')
+const machine = inject('machine')
+const settings = inject('settings')
+
+// Steam heater control composable
+const steamHeater = useSteamHeater(machine, settings)
 
 const isSteaming = computed(() =>
   machineState.value === 'steam'
@@ -23,26 +30,111 @@ const formattedShotTime = computed(() => {
   return `${mins}:${String(secs).padStart(2, '0')}`
 })
 
-const isHeatingUp = computed(() =>
-  !isSteaming.value && steamTemperature.value < (targetSteamTemp.value - 5)
-)
+// Use settings-backed values directly
+const duration = computed({
+  get: () => settings.settings.steamDuration,
+  set: (v) => { settings.settings.steamDuration = v },
+})
 
-const heatProgress = computed(() =>
-  targetSteamTemp.value > 0 ? Math.min(1, steamTemperature.value / targetSteamTemp.value) : 0
-)
+const steamFlow = computed({
+  get: () => settings.settings.steamFlow,
+  set: (v) => { settings.settings.steamFlow = v },
+})
 
-// Settings
-const duration = ref(30)
-const steamFlow = ref(150)
-const temperature = ref(160)
+const temperature = computed({
+  get: () => settings.settings.steamTemperature,
+  set: (v) => { settings.settings.steamTemperature = v },
+})
 
 const timerProgress = computed(() =>
   duration.value > 0 ? Math.min(1, shotTime.value / duration.value) : 0
 )
 
+// Re-apply settings when temperature changes (updates machine heater target)
+watch(temperature, () => steamHeater.applySettings())
+
 function flowToDisplay(val) {
   return (val / 100).toFixed(1)
 }
+
+// ---- Presets ----
+const presets = computed(() => settings.settings.steamPitcherPresets)
+const selectedPreset = computed({
+  get: () => settings.settings.selectedSteamPitcherPreset,
+  set: (v) => { settings.settings.selectedSteamPitcherPreset = v },
+})
+
+function onPresetSelect(index) {
+  selectedPreset.value = index
+  const preset = presets.value[index]
+  if (preset) {
+    duration.value = preset.duration ?? duration.value
+    steamFlow.value = preset.flow ?? steamFlow.value
+    temperature.value = preset.temperature ?? temperature.value
+  }
+}
+
+function onPresetActivate() {
+  setMachineState('steam').catch(() => {})
+}
+
+// Preset edit popup
+const editPopupVisible = ref(false)
+const editPresetIndex = ref(-1)
+const editPresetData = ref(null)
+
+function onPresetLongPress(index) {
+  editPresetIndex.value = index
+  editPresetData.value = { ...presets.value[index] }
+  editPopupVisible.value = true
+}
+
+function onAddPreset() {
+  editPresetIndex.value = -1
+  editPresetData.value = {
+    name: '',
+    emoji: '',
+    duration: duration.value,
+    flow: steamFlow.value,
+    temperature: temperature.value,
+  }
+  editPopupVisible.value = true
+}
+
+function onPresetSave(data) {
+  const list = [...presets.value]
+  if (editPresetIndex.value >= 0) {
+    list[editPresetIndex.value] = data
+  } else {
+    list.push(data)
+    selectedPreset.value = list.length - 1
+  }
+  settings.settings.steamPitcherPresets = list
+  editPopupVisible.value = false
+}
+
+function onPresetDelete() {
+  const list = [...presets.value]
+  list.splice(editPresetIndex.value, 1)
+  settings.settings.steamPitcherPresets = list
+  if (selectedPreset.value >= list.length) {
+    selectedPreset.value = list.length - 1
+  }
+  editPopupVisible.value = false
+}
+
+function onPresetCancel() {
+  editPopupVisible.value = false
+}
+
+// Start heating on mount, handle leave
+onMounted(() => {
+  steamHeater.startHeating()
+})
+
+onUnmounted(() => {
+  steamHeater.onLeave()
+})
 
 function goBack() {
   router.push('/')
@@ -99,8 +191,19 @@ function goBack() {
 
       <!-- SETTINGS VIEW -->
       <div v-else class="steam-page__settings">
+        <!-- Pitcher presets -->
+        <PresetPillRow
+          :presets="presets"
+          :selected-index="selectedPreset"
+          :long-press-enabled="true"
+          @select="onPresetSelect"
+          @activate="onPresetActivate"
+          @long-press="onPresetLongPress"
+        />
+        <button class="steam-page__add-preset" @click="onAddPreset">+ Add Preset</button>
+
         <!-- Heating indicator -->
-        <div v-if="isHeatingUp" class="steam-page__heating">
+        <div v-if="steamHeater.isHeatingUp.value" class="steam-page__heating">
           <div class="steam-page__heating-info">
             <span class="steam-page__heating-icon">&#128293;</span>
             <div class="steam-page__heating-text">
@@ -108,12 +211,12 @@ function goBack() {
               <div class="steam-page__heating-bar">
                 <div
                   class="steam-page__heating-fill"
-                  :style="{ width: (heatProgress * 100) + '%' }"
+                  :style="{ width: (steamHeater.heatProgress.value * 100) + '%' }"
                 />
               </div>
             </div>
             <span class="steam-page__heating-temp">
-              {{ steamTemperature.toFixed(0) }} / {{ targetSteamTemp.toFixed(0) }}&deg;C
+              {{ steamHeater.currentSteamTemp.value.toFixed(0) }} / {{ steamHeater.targetTemp.value.toFixed(0) }}&deg;C
             </span>
           </div>
         </div>
@@ -188,6 +291,16 @@ function goBack() {
       <span style="opacity: 0.3">|</span>
       <span>{{ temperature }}&deg;C</span>
     </BottomBar>
+
+    <PresetEditPopup
+      :visible="editPopupVisible"
+      :preset="editPresetData"
+      :is-existing="editPresetIndex >= 0"
+      operation-type="steam"
+      @save="onPresetSave"
+      @delete="onPresetDelete"
+      @cancel="onPresetCancel"
+    />
   </div>
 </template>
 
@@ -281,6 +394,22 @@ function goBack() {
 .steam-page__flow-hint {
   font-size: var(--font-label);
   color: var(--color-text-secondary);
+}
+
+.steam-page__add-preset {
+  align-self: center;
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-text-secondary);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-label);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.steam-page__add-preset:active {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .steam-page__settings {

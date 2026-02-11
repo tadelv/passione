@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import ActionButton from '../components/ActionButton.vue'
 import CircularGauge from '../components/CircularGauge.vue'
 import ConnectionIndicator from '../components/ConnectionIndicator.vue'
+import PresetPillRow from '../components/PresetPillRow.vue'
 import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
@@ -18,6 +19,7 @@ const pressure = inject('pressure', ref(0))
 const waterLevel = inject('waterLevel', ref(0))
 const profileName = inject('profileName', ref(''))
 const workflow = inject('workflow', null)
+const settings = inject('settings', null)
 
 const isReady = computed(() =>
   machineState.value === 'idle' || machineState.value === 'ready'
@@ -57,6 +59,45 @@ const shotPlanText = computed(() => {
 
   return parts.join(' | ')
 })
+
+// ---- Quick-start presets on idle page ----
+const steamPresets = computed(() => settings?.settings?.steamPitcherPresets ?? [])
+const selectedSteamPreset = computed(() => settings?.settings?.selectedSteamPitcherPreset ?? -1)
+const hotWaterPresets = computed(() => settings?.settings?.waterVesselPresets ?? [])
+const selectedHotWaterPreset = computed(() => settings?.settings?.selectedWaterVesselPreset ?? -1)
+const flushPresets = computed(() => settings?.settings?.flushPresets ?? [])
+const selectedFlushPreset = computed(() => settings?.settings?.selectedFlushPreset ?? -1)
+
+function onSteamPresetSelect(index) {
+  if (!settings) return
+  settings.settings.selectedSteamPitcherPreset = index
+  const preset = steamPresets.value[index]
+  if (preset) {
+    settings.settings.steamDuration = preset.duration ?? settings.settings.steamDuration
+    settings.settings.steamFlow = preset.flow ?? settings.settings.steamFlow
+    settings.settings.steamTemperature = preset.temperature ?? settings.settings.steamTemperature
+  }
+}
+
+function onHotWaterPresetSelect(index) {
+  if (!settings) return
+  settings.settings.selectedWaterVesselPreset = index
+  const preset = hotWaterPresets.value[index]
+  if (preset) {
+    settings.settings.hotWaterVolume = preset.volume ?? settings.settings.hotWaterVolume
+    settings.settings.hotWaterTemperature = preset.temperature ?? settings.settings.hotWaterTemperature
+  }
+}
+
+function onFlushPresetSelect(index) {
+  if (!settings) return
+  settings.settings.selectedFlushPreset = index
+  const preset = flushPresets.value[index]
+  if (preset) {
+    settings.settings.flushDuration = preset.duration ?? settings.settings.flushDuration
+    settings.settings.flushFlowRate = preset.flow ?? settings.settings.flushFlowRate
+  }
+}
 
 async function startEspresso() {
   await setMachineState('espresso').catch(() => {})
@@ -119,7 +160,7 @@ async function startFlush() {
 
     <!-- Center action buttons -->
     <div class="idle-page__center">
-      <div v-if="profileName" class="idle-page__profile">
+      <div v-if="profileName" class="idle-page__profile" @click="router.push('/profiles')">
         {{ profileName }}
       </div>
 
@@ -156,6 +197,45 @@ async function startFlush() {
           :disabled="!isReady"
           @click="startFlush"
         />
+      </div>
+
+      <!-- Quick-start presets -->
+      <div v-if="steamPresets.length" class="idle-page__preset-section">
+        <span class="idle-page__preset-label">Steam</span>
+        <PresetPillRow
+          :presets="steamPresets"
+          :selected-index="selectedSteamPreset"
+          @select="onSteamPresetSelect"
+          @activate="() => setMachineState('steam').catch(() => {})"
+        />
+      </div>
+      <div v-if="hotWaterPresets.length" class="idle-page__preset-section">
+        <span class="idle-page__preset-label">Hot Water</span>
+        <PresetPillRow
+          :presets="hotWaterPresets"
+          :selected-index="selectedHotWaterPreset"
+          @select="onHotWaterPresetSelect"
+          @activate="() => setMachineState('hotWater').catch(() => {})"
+        />
+      </div>
+      <div v-if="flushPresets.length" class="idle-page__preset-section">
+        <span class="idle-page__preset-label">Flush</span>
+        <PresetPillRow
+          :presets="flushPresets"
+          :selected-index="selectedFlushPreset"
+          @select="onFlushPresetSelect"
+          @activate="() => setMachineState('flush').catch(() => {})"
+        />
+      </div>
+
+      <!-- Navigation links -->
+      <div class="idle-page__nav">
+        <button class="idle-page__nav-btn" @click="router.push('/history')">
+          History
+        </button>
+        <button class="idle-page__nav-btn" @click="router.push('/settings')">
+          Settings
+        </button>
       </div>
     </div>
   </div>
@@ -258,6 +338,8 @@ async function startFlush() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .idle-page__shot-plan {
@@ -275,5 +357,41 @@ async function startFlush() {
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--spacing-medium);
+}
+
+.idle-page__preset-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.idle-page__preset-label {
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.idle-page__nav {
+  display: flex;
+  gap: var(--spacing-medium);
+}
+
+.idle-page__nav-btn {
+  padding: 8px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.idle-page__nav-btn:active {
+  opacity: 0.7;
 }
 </style>

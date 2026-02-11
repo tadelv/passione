@@ -21,6 +21,9 @@ const machine = inject('machine', null)
 // Shot data for the chart (provided by App.vue from useShotData)
 const shotData = inject('shotData', null)
 
+// Volume mode composable (provided by App.vue)
+const volumeMode = inject('volumeMode', null)
+
 // P1-7: Track frame transitions for phase markers on the chart
 const frameMarkers = ref([])
 let lastFrame = -1
@@ -58,13 +61,31 @@ const isPreheating = computed(() =>
 )
 
 const weightProgress = computed(() => {
+  if (volumeMode) return volumeMode.progress.value
   const tw = typeof targetWeight.value === 'number' ? targetWeight.value : targetWeight.value?.value ?? 36
   return tw > 0 ? Math.min(1, (weight.value ?? 0) / tw) : 0
 })
 
 const displayTargetWeight = computed(() => {
+  if (volumeMode) return volumeMode.displayTarget.value
   const tw = targetWeight.value
   return typeof tw === 'number' ? tw : tw?.value ?? 36
+})
+
+const displayOutputValue = computed(() => {
+  if (volumeMode) return volumeMode.displayValue.value
+  return weight.value ?? 0
+})
+
+const displayOutputSuffix = computed(() => {
+  if (volumeMode) return volumeMode.displaySuffix.value
+  return 'g'
+})
+
+const brewRatioText = computed(() => {
+  if (!volumeMode) return ''
+  const ratio = volumeMode.brewByRatio.value
+  return ratio > 0 ? `1:${ratio.toFixed(1)}` : ''
 })
 
 const rawShotTime = computed(() => {
@@ -156,15 +177,18 @@ async function stopAndGoBack() {
 
       <div class="espresso-page__divider" />
 
-      <!-- Weight with progress -->
+      <!-- Weight / Volume with progress -->
       <div class="espresso-page__weight">
         <div class="espresso-page__weight-row">
           <span class="espresso-page__metric-value" style="color: var(--color-weight)">
-            {{ weight.toFixed(1) }}
+            {{ displayOutputValue.toFixed(1) }}
           </span>
           <span class="espresso-page__weight-target">
-            / {{ displayTargetWeight.toFixed(0) }} g
+            / {{ displayTargetWeight.toFixed(0) }} {{ displayOutputSuffix }}
           </span>
+        </div>
+        <div v-if="brewRatioText" class="espresso-page__brew-ratio">
+          {{ brewRatioText }}
         </div>
         <div class="espresso-page__progress">
           <div
@@ -289,6 +313,11 @@ async function stopAndGoBack() {
 
 .espresso-page__weight-target {
   font-size: var(--font-body);
+  color: var(--color-text-secondary);
+}
+
+.espresso-page__brew-ratio {
+  font-size: var(--font-label);
   color: var(--color-text-secondary);
 }
 
