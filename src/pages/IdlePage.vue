@@ -137,14 +137,14 @@ async function startFlush() {
       </div>
       <div class="idle-page__top-right">
         <div class="idle-page__connection">
-          <ConnectionIndicator :connected="machineConnected" :size="12" />
+          <ConnectionIndicator
+            :connected="machineConnected"
+            :size="12"
+            :detail="machineConnected && scaleConnected ? 'Machine + Scale' : machineConnected ? 'Machine' : ''"
+          />
           <span class="idle-page__connection-label">
             {{ machineConnected ? 'Online' : 'Offline' }}
           </span>
-        </div>
-        <div v-if="scaleConnected" class="idle-page__scale-status">
-          <ConnectionIndicator :connected="scaleConnected" :size="8" />
-          <span class="idle-page__scale-label">Scale</span>
         </div>
         <div class="idle-page__water">
           <div class="idle-page__water-bar">

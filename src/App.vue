@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import StatusBar from './components/StatusBar.vue'
 import CompletionOverlay from './components/CompletionOverlay.vue'
 import StopReasonOverlay from './components/StopReasonOverlay.vue'
+import ToastNotification from './components/ToastNotification.vue'
 import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
 import { useWaterLevels } from './composables/useWaterLevels.js'
@@ -15,6 +16,7 @@ import { useTheme } from './composables/useTheme.js'
 import { useAutoSleep } from './composables/useAutoSleep.js'
 import { useVolumeMode } from './composables/useVolumeMode.js'
 import { useOperationSettings } from './composables/useOperationSettings.js'
+import { useToast } from './composables/useToast.js'
 import { setMachineState } from './api/rest.js'
 
 const router = useRouter()
@@ -34,6 +36,7 @@ const theme = useTheme()
 const volumeMode = useVolumeMode(machine, scale, workflow)
 const operationSettings = useOperationSettings(settings, workflow)
 const autoSleep = useAutoSleep(machine, settings)
+const toast = useToast()
 
 // Provide reactive data for child components that use inject
 provide('machineState', machine.state)
@@ -62,6 +65,47 @@ provide('settings', settings)
 provide('theme', theme)
 provide('volumeMode', volumeMode)
 provide('autoSleep', autoSleep)
+provide('toast', toast)
+
+// ---- Connection state toasts ----
+let machineWasConnected = false
+let scaleWasConnected = false
+
+watch(machine.isConnected, (connected) => {
+  if (connected && machineWasConnected === false) {
+    toast.success('Machine connected')
+  } else if (!connected && machineWasConnected === true) {
+    toast.warning('Machine connection lost')
+  }
+  machineWasConnected = connected
+})
+
+watch(scale.isConnected, (connected) => {
+  if (connected && scaleWasConnected === false) {
+    toast.info('Scale connected')
+  } else if (!connected && scaleWasConnected === true) {
+    toast.warning('Scale disconnected')
+  }
+  scaleWasConnected = connected
+})
+
+// ---- Page transition control ----
+// Auto-navigation (machine state changes) uses no transition.
+// User-initiated navigation uses a subtle fade.
+const transitionName = ref('')
+let autoNavActive = false
+
+// Mark auto-navigation before router.replace
+const origReplace = router.replace.bind(router)
+router.replace = function (...args) {
+  autoNavActive = true
+  return origReplace(...args)
+}
+
+router.beforeEach(() => {
+  transitionName.value = autoNavActive ? '' : 'page-fade'
+  autoNavActive = false
+})
 
 // Feed machine + scale snapshots into shot data buffer during espresso
 watch(machine.snapshot, (snap) => {
@@ -93,12 +137,23 @@ const STATE_ROUTES = {
   steam: '/steam',
   hotWater: '/hotwater',
   flush: '/flush',
+  sleeping: '/screensaver',
 }
 
 const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush'])
 
 watch(machine.state, (newState, oldState) => {
   if (newState === oldState) return
+
+  // Screensaver: navigate when sleeping, navigate away when waking
+  if (newState === 'sleeping' && settings.settings.screensaverType !== 'disabled') {
+    router.replace('/screensaver')
+    return
+  }
+  if (oldState === 'sleeping' && route.path === '/screensaver') {
+    router.replace('/')
+    return
+  }
 
   const targetRoute = STATE_ROUTES[newState]
 
@@ -229,7 +284,11 @@ onUnmounted(() => {
     :profile-name="workflow.profile?.title ?? ''"
   />
   <main class="app-main">
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <Transition :name="transitionName" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </router-view>
   </main>
 
   <!-- P0-5: Completion overlay (steam/hotwater/flush) -->
@@ -246,6 +305,12 @@ onUnmounted(() => {
     :reason="stopReasonText"
     @dismiss="onStopReasonDismiss"
   />
+
+  <!-- Toast notifications -->
+  <ToastNotification
+    :toasts="toast.toasts.value"
+    @dismiss="toast.dismiss"
+  />
 </template>
 
 <style scoped>
@@ -255,5 +320,16 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Page fade transition for user-initiated navigation */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
 }
 </style>

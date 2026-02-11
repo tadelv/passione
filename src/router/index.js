@@ -9,6 +9,9 @@ import ProfileInfoPage from '../pages/ProfileInfoPage.vue'
 import SettingsPage from '../pages/SettingsPage.vue'
 import ShotHistoryPage from '../pages/ShotHistoryPage.vue'
 import ShotDetailPage from '../pages/ShotDetailPage.vue'
+import PostShotReviewPage from '../pages/PostShotReviewPage.vue'
+import ShotComparisonPage from '../pages/ShotComparisonPage.vue'
+import ScreensaverPage from '../pages/ScreensaverPage.vue'
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -21,6 +24,9 @@ const routes = [
   { path: '/settings/:tab?', name: 'settings', component: SettingsPage },
   { path: '/history', name: 'history', component: ShotHistoryPage },
   { path: '/shot/:id', name: 'shot-detail', component: ShotDetailPage },
+  { path: '/shot-review/:id?', name: 'shot-review', component: PostShotReviewPage },
+  { path: '/shot-comparison', name: 'shot-comparison', component: ShotComparisonPage },
+  { path: '/screensaver', name: 'screensaver', component: ScreensaverPage },
 ]
 
 const router = createRouter({

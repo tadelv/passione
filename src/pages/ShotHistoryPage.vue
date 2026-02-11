@@ -15,8 +15,34 @@ const loadedCount = ref(0)
 const loading = ref(false)
 const initialLoading = ref(true)
 const searchQuery = ref('')
+const compareMode = ref(false)
+const selectedIds = ref(new Set())
 
 let searchTimer = null
+
+function toggleCompareMode() {
+  compareMode.value = !compareMode.value
+  if (!compareMode.value) selectedIds.value = new Set()
+}
+
+function toggleSelect(shot) {
+  const id = shot.id || shot.shotId
+  if (!id) return
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) {
+    next.delete(id)
+  } else if (next.size < 3) {
+    next.add(id)
+  }
+  selectedIds.value = next
+}
+
+function openComparison() {
+  const ids = [...selectedIds.value]
+  if (ids.length >= 2) {
+    router.push({ path: '/shot-comparison', query: { ids: ids.join(',') } })
+  }
+}
 
 // Load all shot IDs first, then load pages
 async function loadShotIds() {
@@ -122,7 +148,7 @@ onMounted(loadShotIds)
 
 <template>
   <div class="shot-history">
-    <!-- Search bar -->
+    <!-- Search bar + compare -->
     <div class="shot-history__filter">
       <input
         class="shot-history__search"
@@ -133,6 +159,21 @@ onMounted(loadShotIds)
       <span class="shot-history__count">
         {{ displayedShots.length }} shot{{ displayedShots.length !== 1 ? 's' : '' }}
       </span>
+      <button
+        class="shot-history__compare-toggle"
+        :class="{ active: compareMode }"
+        @click="toggleCompareMode"
+      >
+        {{ compareMode ? 'Cancel' : 'Compare' }}
+      </button>
+    </div>
+
+    <!-- Compare action bar -->
+    <div v-if="compareMode && selectedIds.size >= 2" class="shot-history__compare-bar">
+      <span>{{ selectedIds.size }} selected</span>
+      <button class="shot-history__compare-btn" @click="openComparison">
+        Compare Shots
+      </button>
     </div>
 
     <!-- Shot list -->
@@ -155,8 +196,14 @@ onMounted(loadShotIds)
         v-for="shot in displayedShots"
         :key="shot.id || shot.shotId"
         class="shot-history__row"
-        @click="openShot(shot)"
+        :class="{ 'shot-history__row--selected': compareMode && selectedIds.has(shot.id || shot.shotId) }"
+        @click="compareMode ? toggleSelect(shot) : openShot(shot)"
       >
+        <div v-if="compareMode" class="shot-history__checkbox" :class="{ checked: selectedIds.has(shot.id || shot.shotId) }">
+          <svg v-if="selectedIds.has(shot.id || shot.shotId)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
         <div class="shot-history__row-left">
           <span class="shot-history__date">
             {{ formatDate(shot.timestamp || shot.date) }}
@@ -325,5 +372,71 @@ onMounted(loadShotIds)
   text-align: center;
   color: var(--color-text-secondary);
   font-size: 13px;
+}
+
+.shot-history__compare-toggle {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-history__compare-toggle.active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.shot-history__compare-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.shot-history__compare-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-history__compare-btn:active {
+  filter: brightness(0.85);
+}
+
+.shot-history__checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.shot-history__checkbox.checked {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.shot-history__row--selected {
+  border-color: var(--color-primary);
 }
 </style>

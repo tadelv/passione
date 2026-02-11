@@ -9,6 +9,11 @@ const router = useRouter()
 const TABS = [
   { id: 'device', label: 'Device' },
   { id: 'preferences', label: 'Preferences' },
+  { id: 'options', label: 'Options' },
+  { id: 'visualizer', label: 'Visualizer' },
+  { id: 'history', label: 'History' },
+  { id: 'gateway', label: 'Gateway' },
+  { id: 'screensaver', label: 'Screensaver' },
   { id: 'themes', label: 'Themes' },
   { id: 'about', label: 'About' },
 ]
@@ -45,14 +50,22 @@ watch(currentTab, () => {
 })
 
 // Lazy-load tab components
+import { defineAsyncComponent } from 'vue'
+
 const DeviceTab = defineAsyncComponent(() => import('../components/settings/DeviceTab.vue'))
 const PreferencesTab = defineAsyncComponent(() => import('../components/settings/PreferencesTab.vue'))
+const OptionsTab = defineAsyncComponent(() => import('../components/settings/OptionsTab.vue'))
+const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
+const ShotHistoryTab = defineAsyncComponent(() => import('../components/settings/ShotHistoryTab.vue'))
+const GatewayTab = defineAsyncComponent(() => import('../components/settings/GatewayTab.vue'))
+const ScreensaverTab = defineAsyncComponent(() => import('../components/settings/ScreensaverTab.vue'))
 const ThemesTab = defineAsyncComponent(() => import('../components/settings/ThemesTab.vue'))
 const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
 
-import { defineAsyncComponent } from 'vue'
-
-const tabComponents = [DeviceTab, PreferencesTab, ThemesTab, AboutTab]
+const tabComponents = [
+  DeviceTab, PreferencesTab, OptionsTab, VisualizerTab,
+  ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab, AboutTab,
+]
 </script>
 
 <template>

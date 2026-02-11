@@ -4,7 +4,8 @@ import { useRoute, useRouter } from 'vue-router'
 import HistoryShotGraph from '../components/HistoryShotGraph.vue'
 import RatingInput from '../components/RatingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
-import { getShot, updateShot, deleteShot } from '../api/rest.js'
+import SwipeableArea from '../components/SwipeableArea.vue'
+import { getShot, getShotIds, updateShot, deleteShot } from '../api/rest.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,6 +15,40 @@ const shot = ref(null)
 const loading = ref(true)
 const confirmingDelete = ref(false)
 const rating = ref(0)
+
+// Shot navigation support (swipe between shots)
+const allShotIds = ref([])
+const currentIndex = computed(() => {
+  if (!allShotIds.value.length) return -1
+  return allShotIds.value.indexOf(shotId.value)
+})
+
+const positionText = computed(() => {
+  if (currentIndex.value < 0 || !allShotIds.value.length) return ''
+  return `${currentIndex.value + 1} / ${allShotIds.value.length}`
+})
+
+async function loadShotIds() {
+  try {
+    const result = await getShotIds()
+    allShotIds.value = Array.isArray(result) ? result : (result?.ids ?? [])
+  } catch {
+    allShotIds.value = []
+  }
+}
+
+function navigateShot(delta) {
+  if (!allShotIds.value.length || currentIndex.value < 0) return
+  let next = currentIndex.value + delta
+  // Wrap around
+  if (next < 0) next = allShotIds.value.length - 1
+  if (next >= allShotIds.value.length) next = 0
+  const nextId = allShotIds.value[next]
+  if (nextId) router.replace(`/shot/${encodeURIComponent(nextId)}`)
+}
+
+function onSwipeLeft() { navigateShot(1) }
+function onSwipeRight() { navigateShot(-1) }
 
 async function loadShot(id) {
   if (!id) return
@@ -28,7 +63,10 @@ async function loadShot(id) {
   loading.value = false
 }
 
-onMounted(() => loadShot(shotId.value))
+onMounted(() => {
+  loadShot(shotId.value)
+  loadShotIds()
+})
 watch(shotId, (id) => loadShot(id))
 
 // Metrics
@@ -106,9 +144,16 @@ function cancelDelete() {
     <div v-if="loading" class="shot-detail__loading">Loading shot...</div>
 
     <template v-else-if="shot">
-      <!-- Graph -->
-      <div class="shot-detail__graph">
+      <!-- Graph with swipe navigation -->
+      <SwipeableArea
+        class="shot-detail__graph"
+        @swipe-left="onSwipeLeft"
+        @swipe-right="onSwipeRight"
+      >
         <HistoryShotGraph :shot="shot" />
+      </SwipeableArea>
+      <div v-if="positionText" class="shot-detail__position">
+        {{ positionText }}
       </div>
 
       <!-- Metrics row -->
@@ -178,8 +223,15 @@ function cancelDelete() {
         </div>
       </div>
 
-      <!-- Delete button -->
+      <!-- Action buttons -->
       <div class="shot-detail__actions">
+        <button
+          class="shot-detail__edit-btn"
+          @click="router.push(`/shot-review/${encodeURIComponent(shotId)}`)"
+        >
+          Edit Metadata
+        </button>
+
         <button
           v-if="!confirmingDelete"
           class="shot-detail__delete-btn"
@@ -227,6 +279,13 @@ function cancelDelete() {
   height: 250px;
   flex-shrink: 0;
   padding: 8px 16px;
+}
+
+.shot-detail__position {
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  padding-bottom: 4px;
 }
 
 .shot-detail__metrics {
@@ -297,6 +356,22 @@ function cancelDelete() {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+.shot-detail__edit-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-detail__edit-btn:active {
+  opacity: 0.7;
 }
 
 .shot-detail__delete-btn {

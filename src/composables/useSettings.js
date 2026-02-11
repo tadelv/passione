@@ -68,6 +68,30 @@ const DEFAULT_SETTINGS = {
   activeThemeName: 'default',
   customThemeColors: {},
 
+  // Screensaver
+  screensaverType: 'flipClock',    // 'disabled', 'flipClock'
+  flipClock24h: true,
+  flipClock3d: false,
+
+  // Options
+  waterRefillThreshold: 10,
+  headlessMode: false,
+  autoWakeEnabled: false,
+  autoWakeSchedule: {
+    mon: { enabled: false, time: '07:00' },
+    tue: { enabled: false, time: '07:00' },
+    wed: { enabled: false, time: '07:00' },
+    thu: { enabled: false, time: '07:00' },
+    fri: { enabled: false, time: '07:00' },
+    sat: { enabled: false, time: '08:00' },
+    sun: { enabled: false, time: '08:00' },
+  },
+  stayAwakeDuration: 60,
+
+  // Shot History
+  showLastShotOnIdle: false,
+  autoFavorites: false,
+
   // DYE sticky metadata
   dyeBeanBrand: '',
   dyeBeanType: '',
@@ -168,6 +192,16 @@ export function useSettings() {
     ],
     theme: [
       'activeThemeName', 'customThemeColors',
+    ],
+    screensaver: [
+      'screensaverType', 'flipClock24h', 'flipClock3d',
+    ],
+    options: [
+      'waterRefillThreshold', 'headlessMode',
+      'autoWakeEnabled', 'autoWakeSchedule', 'stayAwakeDuration',
+    ],
+    history: [
+      'showLastShotOnIdle', 'autoFavorites',
     ],
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',
