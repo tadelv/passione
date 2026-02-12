@@ -1,11 +1,12 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ActionButton from '../components/ActionButton.vue'
 import CircularGauge from '../components/CircularGauge.vue'
 import ConnectionIndicator from '../components/ConnectionIndicator.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
-import { setMachineState } from '../api/rest.js'
+import ProfilePreviewPopup from '../components/ProfilePreviewPopup.vue'
+import { setMachineState, getProfiles, updateWorkflow } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -59,6 +60,71 @@ const shotPlanText = computed(() => {
 
   return parts.join(' | ')
 })
+
+// ---- Espresso favorite presets (two-step: tap to load profile, tap again to start) ----
+const favoriteIds = computed(() => settings?.settings?.favoriteProfiles ?? [])
+const allProfiles = ref([])
+const espressoPresets = computed(() => {
+  const ids = favoriteIds.value
+  if (!ids.length || !allProfiles.value.length) return []
+  const map = new Map(allProfiles.value.map(r => [r.id, r]))
+  return ids.map(id => map.get(id)).filter(Boolean).map(r => ({
+    name: r.profile?.title ?? 'Untitled',
+    emoji: '',
+    _record: r,
+  }))
+})
+const selectedEspressoPreset = ref(-1)
+const previewProfile = ref(null)
+const previewVisible = ref(false)
+
+async function loadFavoriteProfiles() {
+  if (!favoriteIds.value.length) return
+  try {
+    const data = await getProfiles()
+    allProfiles.value = Array.isArray(data) ? data : []
+  } catch {
+    allProfiles.value = []
+  }
+}
+
+onMounted(() => {
+  loadFavoriteProfiles()
+})
+
+function onEspressoPresetSelect(index) {
+  const preset = espressoPresets.value[index]
+  if (!preset) return
+  // First tap: load profile into workflow
+  selectedEspressoPreset.value = index
+  updateWorkflow({ profile: preset._record.profile }).catch(() => {})
+}
+
+async function onEspressoPresetActivate() {
+  // Second tap on selected: start espresso
+  await setMachineState('espresso').catch(() => {})
+  router.push('/espresso')
+}
+
+function onEspressoPresetLongPress(index) {
+  const preset = espressoPresets.value[index]
+  if (!preset?._record) return
+  previewProfile.value = preset._record.profile
+  previewVisible.value = true
+}
+
+function onPreviewClose() {
+  previewVisible.value = false
+}
+
+function onPreviewMoreInfo() {
+  const idx = selectedEspressoPreset.value
+  const preset = espressoPresets.value[idx]
+  previewVisible.value = false
+  if (preset?._record?.id) {
+    router.push(`/profile-info/${encodeURIComponent(preset._record.id)}`)
+  }
+}
 
 // ---- Quick-start presets on idle page ----
 const steamPresets = computed(() => settings?.settings?.steamPitcherPresets ?? [])
@@ -199,6 +265,19 @@ async function startFlush() {
         />
       </div>
 
+      <!-- Espresso favorite presets (two-step: tap loads profile, double-tap starts) -->
+      <div v-if="espressoPresets.length" class="idle-page__preset-section">
+        <span class="idle-page__preset-label">Espresso</span>
+        <PresetPillRow
+          :presets="espressoPresets"
+          :selected-index="selectedEspressoPreset"
+          :long-press-enabled="true"
+          @select="onEspressoPresetSelect"
+          @activate="onEspressoPresetActivate"
+          @long-press="onEspressoPresetLongPress"
+        />
+      </div>
+
       <!-- Quick-start presets -->
       <div v-if="steamPresets.length" class="idle-page__preset-section">
         <span class="idle-page__preset-label">Steam</span>
@@ -241,6 +320,14 @@ async function startFlush() {
         </button>
       </div>
     </div>
+
+    <!-- Profile preview popup (on long-press of espresso preset) -->
+    <ProfilePreviewPopup
+      :visible="previewVisible"
+      :profile="previewProfile"
+      @close="onPreviewClose"
+      @more-info="onPreviewMoreInfo"
+    />
   </div>
 </template>
 

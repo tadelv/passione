@@ -136,6 +136,10 @@ onUnmounted(() => {
   steamHeater.onLeave()
 })
 
+function stopSteam() {
+  setMachineState('idle').catch(() => {})
+}
+
 function goBack() {
   router.push('/')
 }
@@ -146,6 +150,14 @@ function goBack() {
     <div class="steam-page__content">
       <!-- STEAMING VIEW -->
       <div v-if="isSteaming" class="steam-page__live">
+        <!-- Pitcher presets during steaming -->
+        <PresetPillRow
+          v-if="presets.length"
+          :presets="presets"
+          :selected-index="selectedPreset"
+          @select="onPresetSelect"
+        />
+
         <div class="steam-page__spacer" />
 
         <!-- Timer display -->
@@ -187,6 +199,11 @@ function goBack() {
         </div>
 
         <div class="steam-page__spacer" />
+
+        <!-- Stop button -->
+        <button class="steam-page__stop-btn" @click="stopSteam">
+          Stop
+        </button>
       </div>
 
       <!-- SETTINGS VIEW -->
@@ -394,6 +411,26 @@ function goBack() {
 .steam-page__flow-hint {
   font-size: var(--font-label);
   color: var(--color-text-secondary);
+}
+
+.steam-page__stop-btn {
+  align-self: center;
+  width: 100%;
+  max-width: 300px;
+  height: 56px;
+  border-radius: var(--radius-card);
+  border: none;
+  background: var(--color-error);
+  color: #fff;
+  font-size: var(--font-title);
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: var(--spacing-medium);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.steam-page__stop-btn:active {
+  filter: brightness(0.85);
 }
 
 .steam-page__add-preset {

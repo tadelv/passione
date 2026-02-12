@@ -113,6 +113,10 @@ onMounted(() => {
   }
 })
 
+function stopHotWater() {
+  setMachineState('idle').catch(() => {})
+}
+
 function goBack() {
   router.push('/')
 }
@@ -123,6 +127,14 @@ function goBack() {
     <div class="hotwater-page__content">
       <!-- DISPENSING VIEW -->
       <div v-if="isDispensing" class="hotwater-page__live">
+        <!-- Vessel presets during dispensing -->
+        <PresetPillRow
+          v-if="presets.length"
+          :presets="presets"
+          :selected-index="selectedPreset"
+          @select="onPresetSelect"
+        />
+
         <div class="hotwater-page__spacer" />
 
         <div class="hotwater-page__progress-section">
@@ -149,6 +161,11 @@ function goBack() {
         </div>
 
         <div class="hotwater-page__spacer" />
+
+        <!-- Stop button -->
+        <button class="hotwater-page__stop-btn" @click="stopHotWater">
+          Stop
+        </button>
       </div>
 
       <!-- SETTINGS VIEW -->
@@ -293,6 +310,26 @@ function goBack() {
   border-radius: 4px;
   background: var(--color-primary);
   transition: width 0.1s linear;
+}
+
+.hotwater-page__stop-btn {
+  align-self: center;
+  width: 100%;
+  max-width: 300px;
+  height: 56px;
+  border-radius: var(--radius-card);
+  border: none;
+  background: var(--color-error);
+  color: #fff;
+  font-size: var(--font-title);
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: var(--spacing-medium);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hotwater-page__stop-btn:active {
+  filter: brightness(0.85);
 }
 
 .hotwater-page__add-preset {

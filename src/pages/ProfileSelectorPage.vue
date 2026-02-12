@@ -9,6 +9,7 @@ const router = useRouter()
 
 const settings = inject('settings')
 const workflow = inject('workflow')
+const toast = inject('toast', null)
 
 // All profiles from the server
 const allProfiles = ref([])
@@ -107,11 +108,17 @@ const activeProfileId = computed(() => {
 // Selected profile for preview (right panel / detail)
 const selectedRecord = ref(null)
 
-function selectProfile(record) {
+// Single click: select AND apply (matches QML behavior)
+async function selectAndApplyProfile(record) {
   selectedRecord.value = record
+  try {
+    await updateWorkflow({ profile: record.profile })
+  } catch (e) {
+    console.warn('[ProfileSelectorPage] Failed to apply profile:', e.message)
+  }
 }
 
-// Apply profile to workflow
+// Apply profile to workflow (for favorites and buttons)
 async function applyProfile(record) {
   try {
     await updateWorkflow({ profile: record.profile })
@@ -119,6 +126,10 @@ async function applyProfile(record) {
   } catch (e) {
     console.warn('[ProfileSelectorPage] Failed to apply profile:', e.message)
   }
+}
+
+function showNotImplemented(feature) {
+  if (toast) toast.info(`${feature} is not yet available`)
 }
 
 function viewProfileInfo(record) {
@@ -180,8 +191,7 @@ onMounted(fetchProfiles)
               'profile-selector__item--active': record.id === activeProfileId,
               'profile-selector__item--selected': record.id === selectedRecord?.id,
             }"
-            @click="selectProfile(record)"
-            @dblclick="applyProfile(record)"
+            @click="selectAndApplyProfile(record)"
           >
             <span class="profile-selector__badge" :class="'profile-selector__badge--' + getSourceBadge(record).toLowerCase()">
               {{ getSourceBadge(record) }}
@@ -250,6 +260,13 @@ onMounted(fetchProfiles)
 
     <BottomBar title="Profiles" @back="goBack">
       <span>{{ allProfiles.length }} profiles</span>
+      <span style="opacity: 0.3">|</span>
+      <button class="profile-selector__import-btn" @click="router.push('/visualizer-import')">
+        Import
+      </button>
+      <button class="profile-selector__import-btn" @click="router.push('/descaling')">
+        Descaling
+      </button>
     </BottomBar>
   </div>
 </template>
@@ -494,6 +511,22 @@ onMounted(fetchProfiles)
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: white;
+}
+
+.profile-selector__import-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-selector__import-btn:active {
+  opacity: 0.7;
 }
 
 .profile-selector__placeholder {

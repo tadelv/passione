@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { getShotIds, getShots } from '../api/rest.js'
+import { getShotIds, getShots, updateWorkflow } from '../api/rest.js'
 
 const router = useRouter()
+const toast = inject('toast', null)
 
 const PAGE_SIZE = 50
 const SEARCH_DEBOUNCE_MS = 300
@@ -120,6 +121,59 @@ function openShot(shot) {
   }
 }
 
+function editShot(shot) {
+  const id = shot.id || shot.shotId
+  if (id) {
+    router.push(`/shot-review/${encodeURIComponent(id)}`)
+  }
+}
+
+async function loadShotProfile(shot) {
+  const profile = shot.profile || shot.workflow?.profile
+  if (!profile) {
+    if (toast) toast.warning('No profile data available for this shot')
+    return
+  }
+  try {
+    await updateWorkflow({ profile })
+    if (toast) toast.success('Profile loaded')
+    router.push('/')
+  } catch {
+    if (toast) toast.error('Failed to load profile')
+  }
+}
+
+// Long-press support
+let longPressTimer = null
+let longPressTriggered = false
+
+function onRowPointerDown(shot) {
+  longPressTriggered = false
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true
+    openShot(shot)
+  }, 500)
+}
+
+function onRowPointerUp() {
+  clearTimeout(longPressTimer)
+  longPressTimer = null
+}
+
+function onRowPointerLeave() {
+  clearTimeout(longPressTimer)
+  longPressTimer = null
+}
+
+function onRowClick(shot) {
+  if (longPressTriggered) return
+  if (compareMode.value) {
+    toggleSelect(shot)
+  } else {
+    openShot(shot)
+  }
+}
+
 function formatDate(timestamp) {
   if (!timestamp) return ''
   const d = new Date(timestamp)
@@ -192,12 +246,15 @@ onMounted(loadShotIds)
         {{ searchQuery ? 'No matching shots found.' : 'No shots recorded yet.' }}
       </div>
 
-      <button
+      <div
         v-for="shot in displayedShots"
         :key="shot.id || shot.shotId"
         class="shot-history__row"
         :class="{ 'shot-history__row--selected': compareMode && selectedIds.has(shot.id || shot.shotId) }"
-        @click="compareMode ? toggleSelect(shot) : openShot(shot)"
+        @click="onRowClick(shot)"
+        @pointerdown.prevent="onRowPointerDown(shot)"
+        @pointerup="onRowPointerUp()"
+        @pointerleave="onRowPointerLeave()"
       >
         <div v-if="compareMode" class="shot-history__checkbox" :class="{ checked: selectedIds.has(shot.id || shot.shotId) }">
           <svg v-if="selectedIds.has(shot.id || shot.shotId)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -226,11 +283,29 @@ onMounted(loadShotIds)
           >
             {{ (shot.enjoyment || shot.rating) }}%
           </span>
+
+          <!-- Per-row action buttons (matching QML: Load, Edit, Detail) -->
+          <button
+            v-if="!compareMode"
+            class="shot-history__action-btn shot-history__action-btn--load"
+            @click.stop="loadShotProfile(shot)"
+            title="Load profile"
+          >
+            L
+          </button>
+          <button
+            v-if="!compareMode"
+            class="shot-history__action-btn shot-history__action-btn--edit"
+            @click.stop="editShot(shot)"
+            title="Edit metadata"
+          >
+            E
+          </button>
           <svg class="shot-history__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </div>
-      </button>
+      </div>
 
       <!-- Loading indicator -->
       <div v-if="loading && !initialLoading" class="shot-history__loading-more">
@@ -360,6 +435,35 @@ onMounted(loadShotIds)
   font-size: 14px;
   font-weight: 600;
   color: var(--color-warning);
+}
+
+.shot-history__action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-history__action-btn:active {
+  filter: brightness(0.8);
+}
+
+.shot-history__action-btn--load {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.shot-history__action-btn--edit {
+  background: var(--color-success);
+  color: #fff;
 }
 
 .shot-history__chevron {

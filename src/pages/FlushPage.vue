@@ -100,6 +100,10 @@ function onPresetCancel() {
   editPopupVisible.value = false
 }
 
+function stopFlush() {
+  setMachineState('idle').catch(() => {})
+}
+
 function goBack() {
   router.push('/')
 }
@@ -110,6 +114,14 @@ function goBack() {
     <div class="flush-page__content">
       <!-- FLUSHING VIEW -->
       <div v-if="isFlushing" class="flush-page__live">
+        <!-- Presets during flushing -->
+        <PresetPillRow
+          v-if="presets.length"
+          :presets="presets"
+          :selected-index="selectedPreset"
+          @select="onPresetSelect"
+        />
+
         <div class="flush-page__spacer" />
 
         <div class="flush-page__timer-section">
@@ -125,6 +137,11 @@ function goBack() {
         </div>
 
         <div class="flush-page__spacer" />
+
+        <!-- Stop button -->
+        <button class="flush-page__stop-btn" @click="stopFlush">
+          Stop
+        </button>
       </div>
 
       <!-- SETTINGS VIEW -->
@@ -248,6 +265,26 @@ function goBack() {
   border-radius: 4px;
   background: var(--color-primary);
   transition: width 0.1s linear;
+}
+
+.flush-page__stop-btn {
+  align-self: center;
+  width: 100%;
+  max-width: 300px;
+  height: 56px;
+  border-radius: var(--radius-card);
+  border: none;
+  background: var(--color-error);
+  color: #fff;
+  font-size: var(--font-title);
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: var(--spacing-medium);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.flush-page__stop-btn:active {
+  filter: brightness(0.85);
 }
 
 .flush-page__add-preset {

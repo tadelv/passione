@@ -102,45 +102,50 @@ idle → flush → idle
 | `ListView` / `Repeater` | `v-for` |
 | `Timer` | `setInterval` / `useIntervalFn` from VueUse |
 
-### Porting Priority (Decenza QML pages)
+### Implementation Status (Decenza QML pages)
 
-**Phase 1 — Core brewing flow:**
-- `IdlePage.qml` → Main dashboard (status, temperature, water level, profile display)
-- `EspressoPage.qml` → Live shot view (real-time graph with uPlot)
-- `SteamPage.qml` → Steam controls and heating indicator
-- `HotWaterPage.qml` → Hot water dispensing
-- `FlushPage.qml` → Group flush
+See `docs/implementation-tasks.md` for the full phased task list with status indicators.
 
-**Phase 2 — Profile & recipe management:**
-- `ProfileSelectorPage.qml` → Profile browser and selection
-- `ProfileEditorPage.qml` → Visual frame-based profile editor
-- `ProfileInfoPage.qml` → Profile details view
-- `RecipeEditorPage.qml` → Workflow/recipe editor
+**Phase 1 — Core brewing flow (done):**
+- `IdlePage.vue` — Dashboard with gauge, presets (espresso favorites + steam/hotwater/flush), shot plan text
+- `EspressoPage.vue` — Live shot graph with phase markers, volume mode, legend overlay
+- `SteamPage.vue` — Presets, heater control, live flow slider, stop button
+- `HotWaterPage.vue` — Presets, weight/volume mode, stop button
+- `FlushPage.vue` — Presets, duration/flow, stop button
 
-**Phase 3 — History & settings:**
-- `ShotHistoryPage.qml` → Shot history browser
-- `ShotDetailPage.qml` → Individual shot review with graph
-- `ShotComparisonPage.qml` → Compare multiple shots
-- `PostShotReviewPage.qml` → Post-shot review with notes/rating
-- `SettingsPage.qml` → App and machine settings
+**Phase 2 — Profile & recipe management (partial):**
+- `ProfileSelectorPage.vue` — Two-panel browser, favorites, search, single-click-to-apply
+- `ProfileInfoPage.vue` — Read-only profile details with graph
+- `ProfileEditorPage` — Not yet implemented (XL complexity)
+- `RecipeEditorPage` — Not yet implemented (XL complexity)
 
-**Phase 4 — Advanced features:**
-- `ScreensaverPage.qml` → Screensaver modes
-- `DescalingPage.qml` → Descaling wizard
-- `VisualizerBrowserPage.qml` → Visualizer.coffee integration
-- `BeanInfoPage.qml` — Bean/coffee metadata (DYE)
+**Phase 3 — History & settings (done):**
+- `ShotHistoryPage.vue` — Paginated list, search, compare mode, per-row Load/Edit buttons, long-press
+- `ShotDetailPage.vue` — Swipeable graph, metrics, rating, delete
+- `ShotComparisonPage.vue` — Overlay graph, curve toggles, remove shot
+- `PostShotReviewPage.vue` — Full DYE editor with suggestions, rating, unsaved changes guard
+- `SettingsPage.vue` — Tab container with 9 settings tabs
 
-### Key Components to Port
+**Phase 4 — Advanced features (done):**
+- `ScreensaverPage.vue` — Flip clock mode
+- `DescalingPage.vue` — 3-phase wizard
+- `VisualizerBrowserPage.vue` — Share code import (scaffolded)
+- `BeanInfoPage.vue` — Bean preset management
 
-- `ShotGraph.qml` → uPlot real-time chart (pressure, flow, temp, weight curves with goal lines)
-- `ProfileGraph.qml` → uPlot static profile visualization
-- `StatusBar.qml` → Connection status, machine state, temperature readouts
-- `CircularGauge.qml` → SVG/Canvas gauge for pressure/temperature
-- `ActionButton.qml` → Styled button (dims when disabled)
-- `BottomBar.qml` → Navigation bar
-- `ConnectionIndicator.qml` → BLE connection status dot
-- `TouchSlider.qml` → Touch-friendly range input
-- `ValueInput.qml` → Numeric input with increment/decrement
+### Implemented Components (30)
+
+**Core UI:** ActionButton, BottomBar, StatusBar, CircularGauge, ConnectionIndicator
+**Charts:** ShotGraph (uPlot real-time), ProfileGraph (static), HistoryShotGraph, ComparisonGraph
+**Input:** ValueInput (+/-, drag, hold-repeat, keyboard), TouchSlider, RatingInput, PresetPillRow
+**Dialogs:** BrewDialog, PresetEditPopup, ProfilePreviewPopup, CompletionOverlay, StopReasonOverlay, ToastNotification
+**Utility:** SwipeableArea, SuggestionField
+**Settings tabs:** Gateway, Device, Preferences, Screensaver, Visualizer, ShotHistory, Options, Themes, About
+
+### Composables (14)
+
+**WebSocket/API:** useMachine, useScale, useShotSettings, useWaterLevels, useWorkflow
+**State:** useShotData, useChartConfig, useSettings, useTheme, useVolumeMode
+**Behavioral:** useAutoSleep, useSteamHeater, useOperationSettings, useToast
 
 ### Decenza Design Principles to Preserve
 
@@ -148,6 +153,19 @@ idle → flush → idle
 - Machine phase transitions drive navigation (espresso starts → show EspressoPage, etc.)
 - Profile exit conditions: weight exits are independent of pressure/flow exits (app-side vs machine-side)
 - Tare happens when frame 0 starts (after machine preheat)
+
+### Interaction Pattern Conventions
+
+These interaction patterns must match the QML version:
+
+- **Preset pills:** Single tap selects, double-tap on selected activates (starts operation), long-press (500ms) opens edit popup
+- **ValueInput:** +/- buttons with press-and-hold repeat (80ms), drag-to-adjust on display (20px = 1 step), full keyboard support (arrows, PageUp/Down, Home/End)
+- **Operation pages:** Show preset pills AND stop button during active operation (not just in settings view)
+- **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Long-press shows ProfilePreviewPopup
+- **ProfileSelectorPage:** Single click applies profile (not just previews)
+- **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, long-press opens detail
+- **Global keyboard shortcuts:** E/S/W/F to start operations when idle, Space/Escape to stop current operation
+- **Features not backed by ReaPrime API** should show a toast notification ("not yet available") rather than silently failing
 
 ## Build & Development
 

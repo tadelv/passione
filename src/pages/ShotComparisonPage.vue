@@ -47,6 +47,10 @@ function formatDoseRatio(shot) {
   return '--'
 }
 
+function removeShot(index) {
+  shots.value = shots.value.filter((_, i) => i !== index)
+}
+
 function goBack() {
   router.push('/history')
 }
@@ -96,9 +100,19 @@ onMounted(loadShots)
           :key="shot.id || i"
           class="comparison-page__shot-col"
         >
-          <span class="comparison-page__shot-title">
-            {{ shot.profileName || shot.profile?.title || `Shot ${i + 1}` }}
-          </span>
+          <div class="comparison-page__shot-header">
+            <span class="comparison-page__shot-title">
+              {{ shot.profileName || shot.profile?.title || `Shot ${i + 1}` }}
+            </span>
+            <button
+              v-if="shots.length > 2"
+              class="comparison-page__remove-btn"
+              @click="removeShot(i)"
+              aria-label="Remove shot from comparison"
+            >
+              &times;
+            </button>
+          </div>
           <div class="comparison-page__shot-meta">
             <span>{{ formatDuration(shot.duration) }}</span>
             <span>{{ formatDoseRatio(shot) }}</span>
@@ -189,6 +203,13 @@ onMounted(loadShots)
   gap: 6px;
 }
 
+.comparison-page__shot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
 .comparison-page__shot-title {
   font-size: 14px;
   font-weight: 600;
@@ -196,6 +217,29 @@ onMounted(loadShots)
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.comparison-page__remove-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-error);
+  background: transparent;
+  color: var(--color-error);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.comparison-page__remove-btn:active {
+  background: var(--color-error);
+  color: #fff;
 }
 
 .comparison-page__shot-meta {
