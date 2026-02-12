@@ -124,22 +124,23 @@ See `docs/implementation-tasks.md` for the full phased task list with status ind
 - `ShotDetailPage.vue` — Swipeable graph, metrics, rating, delete
 - `ShotComparisonPage.vue` — Overlay graph, curve toggles, remove shot
 - `PostShotReviewPage.vue` — Full DYE editor with suggestions, rating, unsaved changes guard
-- `SettingsPage.vue` — Tab container with 9 settings tabs
+- `SettingsPage.vue` — Tab container with 11 settings tabs (incl. AI + Accessibility)
 
 **Phase 4 — Advanced features (done):**
 - `ScreensaverPage.vue` — Flip clock mode
 - `DescalingPage.vue` — 3-phase wizard
-- `VisualizerBrowserPage.vue` — Share code import (scaffolded)
+- `VisualizerBrowserPage.vue` — Share code import with CORS handling, duplicate detection
+- `VisualizerMultiImportPage.vue` — Batch import from visualizer.coffee
 - `BeanInfoPage.vue` — Bean preset management
 
-### Implemented Components (30)
+### Implemented Components (32)
 
 **Core UI:** ActionButton, BottomBar, StatusBar, CircularGauge, ConnectionIndicator
-**Charts:** ShotGraph (uPlot real-time), ProfileGraph (static), HistoryShotGraph, ComparisonGraph
+**Charts:** ShotGraph (uPlot real-time), ProfileGraph (static), HistoryShotGraph (multi-format normalization), ComparisonGraph
 **Input:** ValueInput (+/-, drag, hold-repeat, keyboard), TouchSlider, RatingInput, PresetPillRow
-**Dialogs:** BrewDialog, PresetEditPopup, ProfilePreviewPopup, CompletionOverlay, StopReasonOverlay, ToastNotification
+**Dialogs:** BrewDialog (grinder fields, ratio display, last-shot), PresetEditPopup, ProfilePreviewPopup, CompletionOverlay, StopReasonOverlay, ToastNotification
 **Utility:** SwipeableArea, SuggestionField
-**Settings tabs:** Gateway, Device, Preferences, Screensaver, Visualizer, ShotHistory, Options, Themes, About
+**Settings tabs:** Gateway, Device, Preferences, Screensaver, Visualizer, ShotHistory, Options, Themes, About, AI, Accessibility
 
 ### Composables (14)
 
@@ -160,12 +161,17 @@ These interaction patterns must match the QML version:
 
 - **Preset pills:** Single tap selects, double-tap on selected activates (starts operation), long-press (500ms) opens edit popup
 - **ValueInput:** +/- buttons with press-and-hold repeat (80ms), drag-to-adjust on display (20px = 1 step), full keyboard support (arrows, PageUp/Down, Home/End)
-- **Operation pages:** Show preset pills AND stop button during active operation (not just in settings view)
+- **Operation pages:** Show preset pills AND stop button during active operation (not just in settings view). Settings sync to workflow API with 300ms debounce.
 - **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Long-press shows ProfilePreviewPopup
+- **BrewDialog:** Optional pre-brew dialog (controlled by `showBrewDialog` setting). Shows temperature, dose, yield, ratio, grinder fields. Integrates with workflow API.
 - **ProfileSelectorPage:** Single click applies profile (not just previews)
 - **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, long-press opens detail
 - **Global keyboard shortcuts:** E/S/W/F to start operations when idle, Space/Escape to stop current operation
 - **Features not backed by ReaPrime API** should show a toast notification ("not yet available") rather than silently failing
+
+### Settings Persistence
+
+App settings persist via ReaPrime's key-value store (`/api/v1/store/decenza-js/{key}`). The `useSettings` composable handles auto-load on mount and debounced auto-save. Settings are grouped by category (preferences, theme, presets, espresso, history, dye, etc.) for efficient storage.
 
 ## Build & Development
 
@@ -229,3 +235,34 @@ export default {
 - Buffer shot data points for chart rendering (~500 point rolling window)
 - Track machine state transitions to trigger page navigation and shot recording
 - Use separate WebSocket connections for machine snapshot and scale snapshot
+
+## Current Status & Resume Point (Feb 2026)
+
+**Completion: 83%** (58 of 70 tasks done). Build passes cleanly (144 modules, ~600ms).
+
+### Remaining Tasks (priority order)
+
+1. **P2-2 ProfileEditorPage** (XL) — Frame-based visual profile editor with interactive graph. Click frame regions to select, add/delete/move/duplicate frames, step editor panel with pump mode, targets, exit conditions. This is the largest remaining feature. Depends on P2-5 (interactive ProfileGraph).
+2. **P2-4 RecipeEditorPage** (XL) — Simplified D-Flow recipe editor with phase sections (Fill, Bloom, Infuse, Ramp, Pour, Decline). Recipe presets. Needs client-side recipe↔frame conversion. Can switch to ProfileEditorPage for advanced editing.
+3. **P2-5 ProfileGraph Interactive** (M) — Enhance ProfileGraph with clickable frame regions, alternating background tints, frame selection highlighting. Prerequisite for P2-2.
+4. **P1-5 Layout System** (XL) — JSON-driven configurable 8-zone home screen. LayoutBarZone + LayoutCenterZone renderers. Stored in KV store. Blocks P1-16 (StatusBar layout) and P4-6 (Layout settings tab).
+5. **P6-5 Performance** (M) — RAF throttling for charts, batch reactive updates for WebSocket, virtual scrolling for long lists, lazy-load routes (partially done).
+6. **P6-7 i18n** (M) — vue-i18n setup, extract all user-facing strings to locale files.
+7. **P5-7 Visualizer Upload** (L, blocked) — Upload shots to visualizer.coffee. Needs CORS proxy or server-side relay.
+8. **P5-8 AI Shot Analysis** (L, blocked) — Client-side AI integration for shot analysis with multiple providers. Depends on P4-8 (done).
+9. **P5-9 Dialing Assistant** (M, blocked) — AI-generated dialing recommendations page. Depends on P5-8.
+
+### Partial Tasks to Polish
+
+- **P6-4 Accessibility ARIA** — Add ARIA attributes to interactive elements, focus management
+- **P6-8 Responsive Layout** — Ensure all pages work across tablet/desktop/mobile
+- **P1-6 BrewDialog** — Done but could add extended metadata fields toggle in settings
+
+### Key Architecture Notes for Resuming
+
+- Settings persist via ReaPrime KV store (`/api/v1/store/decenza-js/{key}`) — NOT local storage
+- Operation pages (Steam/HotWater/Flush) sync to workflow API with 300ms debounce pattern
+- Derived machine state flags (`isReady`, `isHeating`, `isFlowing`, `previousState`) are provided from App.vue
+- HistoryShotGraph handles 3 data formats (flat arrays, nested machine/scale, flat measurements)
+- VisualizerBrowserPage has CORS fallback messaging (direct fetch to visualizer.coffee blocked from web skin)
+- All 11 settings tabs are lazy-loaded via `defineAsyncComponent`

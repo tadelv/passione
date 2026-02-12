@@ -6,7 +6,7 @@ import ValueInput from '../components/ValueInput.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import { useSteamHeater } from '../composables/useSteamHeater.js'
-import { setMachineState } from '../api/rest.js'
+import { setMachineState, updateWorkflow } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -52,6 +52,22 @@ const timerProgress = computed(() =>
 
 // Re-apply settings when temperature changes (updates machine heater target)
 watch(temperature, () => steamHeater.applySettings())
+
+// Sync steam settings to workflow API when any setting changes
+let _steamSyncTimer = null
+function syncSteamToWorkflow() {
+  clearTimeout(_steamSyncTimer)
+  _steamSyncTimer = setTimeout(async () => {
+    await updateWorkflow({
+      steamSettings: {
+        targetTemperature: temperature.value,
+        duration: duration.value,
+        flow: steamFlow.value / 100, // convert from 0.01 units to actual
+      },
+    }).catch(() => {})
+  }, 300)
+}
+watch([duration, steamFlow, temperature], syncSteamToWorkflow)
 
 function flowToDisplay(val) {
   return (val / 100).toFixed(1)

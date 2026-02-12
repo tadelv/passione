@@ -88,6 +88,9 @@ const DEFAULT_SETTINGS = {
   },
   stayAwakeDuration: 60,
 
+  // Espresso / Brew Dialog
+  showBrewDialog: false,
+
   // Shot History
   showLastShotOnIdle: false,
   autoFavorites: false,
@@ -199,6 +202,9 @@ export function useSettings() {
     options: [
       'waterRefillThreshold', 'headlessMode',
       'autoWakeEnabled', 'autoWakeSchedule', 'stayAwakeDuration',
+    ],
+    espresso: [
+      'showBrewDialog',
     ],
     history: [
       'showLastShotOnIdle', 'autoFavorites',

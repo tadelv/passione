@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ValueInput from '../components/ValueInput.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
-import { setMachineState } from '../api/rest.js'
+import { setMachineState, updateWorkflow } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -38,6 +38,21 @@ const isVolumeMode = computed({
 const weightProgress = computed(() =>
   volume.value > 0 ? Math.min(1, weight.value / volume.value) : 0
 )
+
+// Sync hot water settings to workflow API when any setting changes
+let _hotWaterSyncTimer = null
+function syncHotWaterToWorkflow() {
+  clearTimeout(_hotWaterSyncTimer)
+  _hotWaterSyncTimer = setTimeout(async () => {
+    await updateWorkflow({
+      hotWaterData: {
+        targetTemperature: temperature.value,
+        volume: volume.value,
+      },
+    }).catch(() => {})
+  }, 300)
+}
+watch([volume, temperature], syncHotWaterToWorkflow)
 
 // ---- Presets ----
 const presets = computed(() => settings.settings.waterVesselPresets)

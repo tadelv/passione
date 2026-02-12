@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ValueInput from '../components/ValueInput.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
-import { setMachineState } from '../api/rest.js'
+import { setMachineState, updateWorkflow } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -32,6 +32,21 @@ const flushFlow = computed({
 const timerProgress = computed(() =>
   flushSeconds.value > 0 ? Math.min(1, shotTime.value / flushSeconds.value) : 0
 )
+
+// Sync flush/rinse settings to workflow API when any setting changes
+let _flushSyncTimer = null
+function syncFlushToWorkflow() {
+  clearTimeout(_flushSyncTimer)
+  _flushSyncTimer = setTimeout(async () => {
+    await updateWorkflow({
+      rinseData: {
+        duration: flushSeconds.value,
+        flow: flushFlow.value,
+      },
+    }).catch(() => {})
+  }, 300)
+}
+watch([flushSeconds, flushFlow], syncFlushToWorkflow)
 
 // ---- Presets ----
 const presets = computed(() => settings.settings.flushPresets)

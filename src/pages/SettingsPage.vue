@@ -11,11 +11,13 @@ const TABS = [
   { id: 'preferences', label: 'Preferences' },
   { id: 'options', label: 'Options' },
   { id: 'visualizer', label: 'Visualizer' },
+  { id: 'ai', label: 'AI' },
   { id: 'history', label: 'History' },
   { id: 'gateway', label: 'Gateway' },
   { id: 'screensaver', label: 'Screensaver' },
   { id: 'themes', label: 'Themes' },
   { id: 'about', label: 'About' },
+  { id: 'accessibility', label: 'Accessibility' },
 ]
 
 const currentTab = ref(0)
@@ -56,15 +58,17 @@ const DeviceTab = defineAsyncComponent(() => import('../components/settings/Devi
 const PreferencesTab = defineAsyncComponent(() => import('../components/settings/PreferencesTab.vue'))
 const OptionsTab = defineAsyncComponent(() => import('../components/settings/OptionsTab.vue'))
 const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
+const AITab = defineAsyncComponent(() => import('../components/settings/AITab.vue'))
 const ShotHistoryTab = defineAsyncComponent(() => import('../components/settings/ShotHistoryTab.vue'))
 const GatewayTab = defineAsyncComponent(() => import('../components/settings/GatewayTab.vue'))
 const ScreensaverTab = defineAsyncComponent(() => import('../components/settings/ScreensaverTab.vue'))
 const ThemesTab = defineAsyncComponent(() => import('../components/settings/ThemesTab.vue'))
 const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
+const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
 
 const tabComponents = [
-  DeviceTab, PreferencesTab, OptionsTab, VisualizerTab,
-  ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab, AboutTab,
+  DeviceTab, PreferencesTab, OptionsTab, VisualizerTab, AITab,
+  ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab, AboutTab, AccessibilityTab,
 ]
 </script>
 

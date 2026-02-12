@@ -14,6 +14,7 @@ import ShotComparisonPage from '../pages/ShotComparisonPage.vue'
 import ScreensaverPage from '../pages/ScreensaverPage.vue'
 import DescalingPage from '../pages/DescalingPage.vue'
 import VisualizerBrowserPage from '../pages/VisualizerBrowserPage.vue'
+import VisualizerMultiImportPage from '../pages/VisualizerMultiImportPage.vue'
 import BeanInfoPage from '../pages/BeanInfoPage.vue'
 
 const routes = [
@@ -32,6 +33,7 @@ const routes = [
   { path: '/screensaver', name: 'screensaver', component: ScreensaverPage },
   { path: '/descaling', name: 'descaling', component: DescalingPage },
   { path: '/visualizer-import', name: 'visualizer-import', component: VisualizerBrowserPage },
+  { path: '/visualizer-multi-import', name: 'visualizer-multi-import', component: VisualizerMultiImportPage },
   { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
 ]
 

@@ -9,6 +9,9 @@ const props = defineProps({
   doseIn: { type: Number, default: 18 },
   doseOut: { type: Number, default: 36 },
   scaleWeight: { type: Number, default: 0 },
+  grinderName: { type: String, default: '' },
+  grindSetting: { type: Number, default: 0 },
+  showExtendedFields: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -17,17 +20,23 @@ const emit = defineEmits([
   'update-temperature',
   'update-yield',
   'tare-scale',
+  'update-grinder',
+  'use-last-shot',
 ])
 
 const localTemp = ref(props.temperature)
 const localDoseIn = ref(props.doseIn)
 const localDoseOut = ref(props.doseOut)
+const localGrinderName = ref(props.grinderName)
+const localGrindSetting = ref(props.grindSetting)
 
 watch(() => props.visible, (val) => {
   if (val) {
     localTemp.value = props.temperature
     localDoseIn.value = props.doseIn
     localDoseOut.value = props.doseOut
+    localGrinderName.value = props.grinderName
+    localGrindSetting.value = props.grindSetting
   }
 })
 
@@ -36,6 +45,15 @@ const ratio = computed(() => {
     return (localDoseOut.value / localDoseIn.value).toFixed(1)
   }
   return '0.0'
+})
+
+const ratioDescription = computed(() => {
+  const r = parseFloat(ratio.value)
+  if (r <= 0) return ''
+  if (r < 1.5) return 'Ristretto'
+  if (r <= 2.5) return 'Normale'
+  if (r <= 3.5) return 'Lungo'
+  return 'Extra lungo'
 })
 
 function readScale() {
@@ -61,6 +79,27 @@ function onUpdateTemperature() {
 
 function onUpdateYield() {
   emit('update-yield', localDoseOut.value)
+}
+
+function onGrinderNameInput(e) {
+  localGrinderName.value = e.target.value
+  emitGrinderUpdate()
+}
+
+function onGrindSettingChange(val) {
+  localGrindSetting.value = val
+  emitGrinderUpdate()
+}
+
+function emitGrinderUpdate() {
+  emit('update-grinder', {
+    name: localGrinderName.value,
+    setting: localGrindSetting.value,
+  })
+}
+
+function onUseLastShot() {
+  emit('use-last-shot')
 }
 </script>
 
@@ -134,15 +173,55 @@ function onUpdateYield() {
             />
           </div>
 
-          <!-- Ratio display -->
-          <div class="brew-dialog__ratio">
-            1:{{ ratio }}
+          <!-- Prominent ratio display -->
+          <div class="brew-dialog__ratio-box">
+            <span class="brew-dialog__ratio-value">1:{{ ratio }}</span>
+            <span v-if="ratioDescription" class="brew-dialog__ratio-desc">{{ ratioDescription }}</span>
           </div>
+
+          <!-- Extended fields: Grinder (conditional) -->
+          <template v-if="showExtendedFields">
+            <div class="brew-dialog__divider" />
+
+            <!-- Grinder Name -->
+            <div class="brew-dialog__row">
+              <div class="brew-dialog__row-label">
+                <span class="brew-dialog__label">Grinder</span>
+              </div>
+              <input
+                type="text"
+                class="brew-dialog__text-input"
+                :value="localGrinderName"
+                placeholder="Grinder name"
+                @input="onGrinderNameInput"
+              />
+            </div>
+
+            <!-- Grind Setting -->
+            <div class="brew-dialog__row">
+              <div class="brew-dialog__row-label">
+                <span class="brew-dialog__label">Grind Setting</span>
+              </div>
+              <ValueInput
+                :model-value="localGrindSetting"
+                :min="0"
+                :max="100"
+                :step="0.5"
+                :decimals="1"
+                suffix=""
+                value-color="var(--color-text)"
+                @update:model-value="onGrindSettingChange"
+              />
+            </div>
+          </template>
         </div>
 
         <div class="brew-dialog__actions">
           <button class="brew-dialog__btn brew-dialog__btn--cancel" @click="onCancel">
             Cancel
+          </button>
+          <button class="brew-dialog__btn brew-dialog__btn--last-shot" @click="onUseLastShot">
+            Use Last Shot
           </button>
           <button class="brew-dialog__btn brew-dialog__btn--start" @click="onStart">
             Start Brewing
@@ -240,12 +319,54 @@ function onUpdateYield() {
   opacity: 0.7;
 }
 
-.brew-dialog__ratio {
-  text-align: center;
-  font-size: var(--font-title);
+.brew-dialog__ratio-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.brew-dialog__ratio-value {
+  font-size: 32px;
   font-weight: bold;
   color: var(--color-primary);
-  padding: 8px 0;
+}
+
+.brew-dialog__ratio-desc {
+  font-size: var(--font-label);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.brew-dialog__divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.brew-dialog__text-input {
+  width: 160px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-text-secondary);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-body);
+}
+
+.brew-dialog__text-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.brew-dialog__text-input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.5;
 }
 
 .brew-dialog__actions {
@@ -273,11 +394,20 @@ function onUpdateYield() {
   background: transparent;
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
+  flex: 0.7;
+}
+
+.brew-dialog__btn--last-shot {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  flex: 0.8;
 }
 
 .brew-dialog__btn--start {
   background: var(--color-primary);
   color: #fff;
+  flex: 1;
 }
 
 .brew-dialog-fade-enter-active,

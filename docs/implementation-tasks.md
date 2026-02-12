@@ -28,7 +28,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: M
 - **Blocked**: No
 
-### P0-3. Workflow Integration for Operation Pages `[~]`
+### P0-3. Workflow Integration for Operation Pages `[x]`
 - **Description**: Connect SteamPage, HotWaterPage, and FlushPage settings to the workflow API. When user changes steam duration/flow/temperature, send `PUT /api/v1/workflow` with updated `steamSettings`. Same for hot water (`hotWaterData`) and flush (`rinseData`). Load initial values from workflow on page mount. Currently pages use local `ref()` values that are not persisted or sent to the machine.
 - **QML Reference**: `MainController.applySteamSettings()`, `MainController.applyHotWaterSettings()`, `MainController.applyFlushSettings()`
 - **API**: `PUT /api/v1/workflow` (partial updates for `steamSettings`, `hotWaterData`, `rinseData`)
@@ -36,7 +36,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: S
 - **Blocked**: No
 
-### P0-4. Machine State Mapping Improvements `[~]`
+### P0-4. Machine State Mapping Improvements `[x]`
 - **Description**: Enhance `useMachine.js` to track derived states: `isReady` (idle or ready states), `isHeating`, `isFlowing`, `isConnected`. Map Streamline-Bridge states/substates to Decenza phases. Add `shotTime` computation from snapshot timestamps (currently done in `useShotData.elapsed()` but not reactive). Track `previousState` for transition detection.
 - **QML Reference**: `vendor/decenza/src/machine/machinestate.h` (Phase enum, isReady, isFlowing, isHeating)
 - **API**: `ws/v1/machine/snapshot` (state field)
@@ -128,7 +128,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: XL
 - **Blocked**: No
 
-### P1-6. BrewDialog Component `[~]`
+### P1-6. BrewDialog Component `[x]`
 - **Description**: Pre-brew settings dialog shown before starting espresso (configurable via settings). Allows adjusting temperature, dose, ratio, yield before brewing. "Read Scale" button reads current scale weight as dose. Grinder fields (conditional on extended metadata setting). "Update Profile Temperature" and "Update Profile Yield" buttons save back to workflow.
 - **QML Reference**: `vendor/decenza/qml/components/BrewDialog.qml` (657 lines)
 - **API**: `PUT /api/v1/workflow` (doseData, profile temperature), `GET scale weight` from scale composable
@@ -280,7 +280,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: XL
 - **Blocked**: Partially — filtering by profile/roaster/bean requires client-side filtering since Streamline-Bridge shots API doesn't support server-side filtering. See API gaps doc.
 
-### P3-2. HistoryShotGraph Enhancements `[~]`
+### P3-2. HistoryShotGraph Enhancements `[x]`
 - **Description**: Enhance the HistoryShotGraph component to support loading historical shot data from the Streamline-Bridge shots API. Parse `measurements` array into uPlot format. Add phase markers from frame transitions. Support resizable height with drag handle (min 100px, max 400px, persisted).
 - **QML Reference**: `vendor/decenza/qml/components/HistoryShotGraph.qml` (235 lines)
 - **API**: `GET /api/v1/shots/{id}` (measurements array)
@@ -396,7 +396,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: M
 - **Blocked**: No
 
-### P4-8. Settings: AI Tab `[ ]`
+### P4-8. Settings: AI Tab `[x]`
 - **Description**: AI provider configuration: provider selection buttons (OpenAI, Anthropic, Gemini, OpenRouter, Ollama), API key input, model selection for Ollama/OpenRouter, test connection, cost estimates. Conversation overlay for testing.
 - **QML Reference**: `vendor/decenza/qml/pages/settings/SettingsAITab.qml` (503 lines)
 - **API**: `POST /api/v1/store/decenza-js/ai` (settings), direct HTTP to AI provider APIs
@@ -404,7 +404,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: L
 - **Blocked**: No
 
-### P4-9. Settings: Accessibility Tab `[ ]`
+### P4-9. Settings: Accessibility Tab `[x]`
 - **Description**: Accessibility settings: enable/disable toggle, voice announcements via Web Speech API, frame tick sounds via Web Audio API, extraction announcement modes (timed/milestones), update interval.
 - **QML Reference**: `vendor/decenza/qml/pages/settings/SettingsAccessibilityTab.qml` (310 lines)
 - **API**: `POST /api/v1/store/decenza-js/accessibility`
@@ -472,7 +472,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: L
 - **Blocked**: Partially — need to verify that Streamline-Bridge supports descaling state transition and exposes descaling substates in snapshot.
 
-### P5-4. VisualizerBrowserPage `[~]`
+### P5-4. VisualizerBrowserPage `[x]`
 - **Description**: Profile import from visualizer.coffee via share codes. 4-character code input, import button navigates to multi-import view. Duplicate handling dialog (overwrite/save as new/cancel).
 - **QML Reference**: `vendor/decenza/qml/pages/VisualizerBrowserPage.qml` (449 lines)
 - **API**: Direct HTTP to visualizer.coffee API, `POST /api/v1/profiles` (save imported profile)
@@ -480,7 +480,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: M
 - **Blocked**: No
 
-### P5-5. VisualizerMultiImportPage `[ ]`
+### P5-5. VisualizerMultiImportPage `[x]`
 - **Description**: Batch import from visualizer.coffee. Split layout: profile list (45%) showing status icons + details panel (55%). Import individual or all profiles. Status icons: importable, already imported, invalid, built-in, downloaded.
 - **QML Reference**: `vendor/decenza/qml/pages/VisualizerMultiImportPage.qml` (906 lines)
 - **API**: Direct HTTP to visualizer.coffee, `POST /api/v1/profiles`

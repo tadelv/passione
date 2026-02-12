@@ -57,6 +57,12 @@ provide('targetSteamTemp', computed(() => shotSettings.targetSteamTemp.value ?? 
 provide('profileFrame', machine.profileFrame)
 provide('workflow', workflow)
 
+// Provide derived machine state flags
+provide('isReady', machine.isReady)
+provide('isHeating', machine.isHeating)
+provide('isFlowing', machine.isFlowing)
+provide('previousState', machine.previousState)
+
 // Provide composable instances for pages that need direct access
 provide('machine', machine)
 provide('scale', scale)

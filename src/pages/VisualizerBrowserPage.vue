@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, inject } from 'vue'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { createProfile } from '../api/rest.js'
+
+const toast = inject('toast')
 
 const shareCode = ref('')
 const loading = ref(false)
@@ -67,7 +69,22 @@ async function importProfile() {
 
     importedProfile.value = profile
   } catch (e) {
-    error.value = 'Network error. Check your connection and try again.'
+    // CORS or network failure — show a helpful toast and inline error
+    const isCors = e instanceof TypeError && (
+      e.message.includes('Failed to fetch') ||
+      e.message.includes('NetworkError') ||
+      e.message.includes('Load failed')
+    )
+    if (isCors) {
+      error.value = 'Cannot reach visualizer.coffee directly (CORS restriction). See instructions below.'
+      if (toast) {
+        toast.warning(
+          'Direct Visualizer import requires CORS proxy support. Use the share code on visualizer.coffee to download the profile JSON, then import via the Profiles page.'
+        )
+      }
+    } else {
+      error.value = 'Network error. Check your connection and try again.'
+    }
   }
   loading.value = false
 }
@@ -78,6 +95,7 @@ async function saveProfile(profile, overwrite = false) {
     await createProfile(profile)
     saveStatus.value = 'saved'
     shareCode.value = ''
+    if (toast) toast.success('Profile imported and saved successfully!')
   } catch (e) {
     const msg = e.message || ''
     // Check for duplicate / already exists
@@ -246,10 +264,23 @@ const frameCount = computed(() => {
         <div class="viz-import__instructions">
           <h4 class="viz-import__instructions-title">How to get a share code:</h4>
           <ol class="viz-import__steps">
-            <li>Open visualizer.coffee on your phone or computer</li>
+            <li>Open <strong>visualizer.coffee</strong> on your phone or computer</li>
             <li>Find a shot with a profile you want</li>
             <li>Tap "Share" and copy the 4-character code</li>
             <li>Enter the code above and tap Import</li>
+          </ol>
+        </div>
+
+        <div class="viz-import__instructions viz-import__instructions--note">
+          <h4 class="viz-import__instructions-title">Note: CORS limitations</h4>
+          <p class="viz-import__note-text">
+            Direct import from visualizer.coffee may be blocked by browser security (CORS).
+            If the import fails, you can manually download the profile:
+          </p>
+          <ol class="viz-import__steps">
+            <li>Visit <strong>visualizer.coffee</strong> and open the shared shot</li>
+            <li>Download the profile JSON from the shot page</li>
+            <li>Go to the <strong>Profiles</strong> page in this app and use the import function</li>
           </ol>
         </div>
       </div>
@@ -455,6 +486,18 @@ const frameCount = computed(() => {
   font-size: 13px;
   color: var(--color-text-secondary);
   line-height: 1.5;
+}
+
+.viz-import__instructions--note {
+  border: 1px solid var(--color-border);
+  margin-top: -8px;
+}
+
+.viz-import__note-text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 8px;
 }
 
 /* Profile preview */
