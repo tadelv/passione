@@ -46,6 +46,23 @@ const WIDGET_TYPES = [
   'empty',
 ]
 
+// Human-readable labels for widget types (used by LayoutTab)
+const WIDGET_LABELS = {
+  gauge: 'Temperature Gauge',
+  actionButtons: 'Action Buttons',
+  presetPills: 'Preset Pills',
+  shotPlan: 'Shot Plan',
+  profileName: 'Profile Name',
+  clock: 'Clock',
+  waterLevel: 'Water Level',
+  connectionStatus: 'Connection Status',
+  statusBar: 'Full Status Bar',
+  statusInfo: 'Status Info',
+  bottomBar: 'Bottom Bar',
+  navButtons: 'Navigation Buttons',
+  empty: 'Empty',
+}
+
 // All supported zone names
 const ZONE_NAMES = [
   'topBar',
@@ -57,6 +74,18 @@ const ZONE_NAMES = [
   'extraBottom',
   'extraOverlay',
 ]
+
+// Human-readable labels for zone names (used by LayoutTab)
+const ZONE_LABELS = {
+  topBar: 'Top Bar',
+  centerLeft: 'Center Left',
+  centerMain: 'Center Main',
+  centerRight: 'Center Right',
+  bottomBar: 'Bottom Bar',
+  extraTop: 'Extra Top',
+  extraBottom: 'Extra Bottom',
+  extraOverlay: 'Extra Overlay',
+}
 
 // ---- Singleton state -----------------------------------------------------
 
@@ -90,6 +119,11 @@ export function useLayout() {
         type: zoneConfig.type,
         ...(zoneConfig.config ? { config: zoneConfig.config } : {}),
       }
+    }
+
+    // Preserve optional statusBarConfig (controls StatusBar section visibility)
+    if (raw.statusBarConfig && typeof raw.statusBarConfig === 'object') {
+      validated.statusBarConfig = { ...raw.statusBarConfig }
     }
 
     // Must have at least one zone
@@ -201,7 +235,9 @@ export function useLayout() {
     resetLayout,
     getZone,
     WIDGET_TYPES,
+    WIDGET_LABELS,
     ZONE_NAMES,
+    ZONE_LABELS,
     DEFAULT_LAYOUT,
   }
 

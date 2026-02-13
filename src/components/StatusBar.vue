@@ -1,7 +1,9 @@
 <script setup>
+import { computed } from 'vue'
 import ConnectionIndicator from './ConnectionIndicator.vue'
+import { useLayout } from '../composables/useLayout.js'
 
-defineProps({
+const props = defineProps({
   machineState: { type: String, default: 'disconnected' },
   machineConnected: { type: Boolean, default: false },
   scaleConnected: { type: Boolean, default: false },
@@ -9,26 +11,64 @@ defineProps({
   targetTemperature: { type: Number, default: 0 },
   waterLevel: { type: Number, default: 0 },
   profileName: { type: String, default: '' },
+  /**
+   * Optional layout override. When provided, controls which sections
+   * of the status bar are visible. Accepts an object with boolean
+   * fields: { showConnection, showState, showProfile, showTemperature, showWaterLevel }.
+   * When omitted (or null), all sections are shown (default behaviour).
+   */
+  layoutOverride: { type: Object, default: null },
+})
+
+const { layout, loaded } = useLayout()
+
+/**
+ * Resolve effective display flags. Priority:
+ *  1. Explicit layoutOverride prop (from parent)
+ *  2. Layout config stored in KV store (statusBarConfig zone)
+ *  3. All sections visible (default)
+ */
+const displayFlags = computed(() => {
+  const defaults = {
+    showConnection: true,
+    showState: true,
+    showProfile: true,
+    showTemperature: true,
+    showWaterLevel: true,
+  }
+
+  // 1. Explicit prop override
+  if (props.layoutOverride) {
+    return { ...defaults, ...props.layoutOverride }
+  }
+
+  // 2. Layout KV config — check for a statusBarConfig in the layout
+  if (loaded.value && layout.value?.statusBarConfig) {
+    return { ...defaults, ...layout.value.statusBarConfig }
+  }
+
+  // 3. Defaults
+  return defaults
 })
 </script>
 
 <template>
   <header class="status-bar">
     <div class="status-bar__left">
-      <ConnectionIndicator :connected="machineConnected" />
-      <span class="status-bar__state">{{ machineState }}</span>
+      <ConnectionIndicator v-if="displayFlags.showConnection" :connected="machineConnected" />
+      <span v-if="displayFlags.showState" class="status-bar__state">{{ machineState }}</span>
     </div>
 
     <div class="status-bar__center">
-      <span v-if="profileName" class="status-bar__profile">{{ profileName }}</span>
+      <span v-if="displayFlags.showProfile && profileName" class="status-bar__profile">{{ profileName }}</span>
     </div>
 
     <div class="status-bar__right">
-      <span class="status-bar__temp">
+      <span v-if="displayFlags.showTemperature" class="status-bar__temp">
         {{ temperature.toFixed(1) }}
         <span class="status-bar__temp-target">/ {{ targetTemperature.toFixed(0) }} &deg;C</span>
       </span>
-      <span class="status-bar__water" :title="`Water level: ${waterLevel}%`">
+      <span v-if="displayFlags.showWaterLevel" class="status-bar__water" :title="`Water level: ${waterLevel}%`">
         {{ waterLevel }}%
       </span>
     </div>

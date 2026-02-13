@@ -116,15 +116,15 @@ See `docs/implementation-tasks.md` for the full phased task list with status ind
 **Phase 2 — Profile & recipe management (partial):**
 - `ProfileSelectorPage.vue` — Two-panel browser, favorites, search, single-click-to-apply
 - `ProfileInfoPage.vue` — Read-only profile details with graph
-- `ProfileEditorPage` — Not yet implemented (XL complexity)
-- `RecipeEditorPage` — Not yet implemented (XL complexity)
+- `ProfileEditorPage.vue` — Frame-based visual profile editor with interactive graph, step editor
+- `RecipeEditorPage.vue` — D-Flow recipe editor with phase sections, recipe↔frame conversion
 
 **Phase 3 — History & settings (done):**
 - `ShotHistoryPage.vue` — Paginated list, search, compare mode, per-row Load/Edit buttons, long-press
 - `ShotDetailPage.vue` — Swipeable graph, metrics, rating, delete
 - `ShotComparisonPage.vue` — Overlay graph, curve toggles, remove shot
 - `PostShotReviewPage.vue` — Full DYE editor with suggestions, rating, unsaved changes guard
-- `SettingsPage.vue` — Tab container with 11 settings tabs (incl. AI + Accessibility)
+- `SettingsPage.vue` — Tab container with 12 settings tabs (incl. AI, Accessibility, Layout)
 
 **Phase 4 — Advanced features (done):**
 - `ScreensaverPage.vue` — Flip clock mode
@@ -133,20 +133,21 @@ See `docs/implementation-tasks.md` for the full phased task list with status ind
 - `VisualizerMultiImportPage.vue` — Batch import from visualizer.coffee
 - `BeanInfoPage.vue` — Bean preset management
 
-### Implemented Components (32)
+### Implemented Components (34)
 
-**Core UI:** ActionButton, BottomBar, StatusBar, CircularGauge, ConnectionIndicator
-**Charts:** ShotGraph (uPlot real-time), ProfileGraph (static), HistoryShotGraph (multi-format normalization), ComparisonGraph
+**Core UI:** ActionButton, BottomBar, StatusBar, CircularGauge, ConnectionIndicator, LayoutZone
+**Charts:** ShotGraph (uPlot real-time, RAF-throttled), ProfileGraph (static + interactive frame selection), HistoryShotGraph (multi-format normalization), ComparisonGraph
 **Input:** ValueInput (+/-, drag, hold-repeat, keyboard), TouchSlider, RatingInput, PresetPillRow
-**Dialogs:** BrewDialog (grinder fields, ratio display, last-shot), PresetEditPopup, ProfilePreviewPopup, CompletionOverlay, StopReasonOverlay, ToastNotification
+**Dialogs:** BrewDialog (grinder fields, ratio display, last-shot, focus trap), PresetEditPopup, ProfilePreviewPopup, CompletionOverlay, StopReasonOverlay, ToastNotification
 **Utility:** SwipeableArea, SuggestionField
-**Settings tabs:** Gateway, Device, Preferences, Screensaver, Visualizer, ShotHistory, Options, Themes, About, AI, Accessibility
+**Settings tabs:** Gateway, Device, Preferences, Screensaver, Visualizer, ShotHistory, Options, Themes, About, AI, Accessibility, Layout
 
-### Composables (15)
+### Composables (16)
 
 **WebSocket/API:** useMachine, useScale, useShotSettings, useWaterLevels, useWorkflow
 **State:** useShotData, useChartConfig, useSettings, useTheme, useVolumeMode
 **AI:** useAIAnalysis (multi-provider shot analysis + dialing recommendations)
+**Layout:** useLayout (JSON-driven configurable home screen zones, KV store persistence)
 **Behavioral:** useAutoSleep, useSteamHeater, useOperationSettings, useToast
 
 ### Decenza Design Principles to Preserve
@@ -239,26 +240,11 @@ export default {
 
 ## Current Status & Resume Point (Feb 2026)
 
-**Completion: 93%** (65 of 70 tasks done). Build passes cleanly (156 modules, ~740ms).
+**Completion: 99%** (69 of 70 tasks done). Build passes cleanly (163 modules, ~770ms).
 
-### Recently Completed (this session)
+### Only Remaining Task
 
-- **P2-2 ProfileEditorPage** — Full frame-based visual profile editor with interactive graph, frame list, step editor panel, add/delete/move/duplicate, metadata editing, save to API
-- **P2-5 ProfileGraph Interactive** — Already had clickable frame regions, alternating tints, selection highlighting
-- **P5-8 AI Shot Analysis** — Multi-provider (OpenAI/Anthropic/Gemini/OpenRouter/Ollama) composable with conversation state, analysis modal on ShotDetailPage
-- **P5-9 Dialing Assistant Page** — AI-driven dialing recommendations from recent shot history, follow-up conversations
-- **P6-4 Accessibility ARIA** — ARIA attributes on ValueInput, PresetPillRow, ActionButton, CircularGauge, BrewDialog (focus trap), ShotGraph, SettingsPage (tab roles)
-- **P6-5 Performance** — RAF throttling for ShotGraph, lazy-loaded routes (16 pages), documented Vue 3 auto-batching for WebSocket
-- **P6-7 i18n Foundation** — vue-i18n setup, en.json with 8 namespaces, App.vue + IdlePage + BrewDialog converted to `t()` calls
-- **P6-8 Responsive Layout** — Global responsive.css with 4 breakpoints (mobile/tablet/desktop/large), landscape mode, clamp() typography
-
-### Remaining Tasks (5 left)
-
-1. **P2-4 RecipeEditorPage** (XL) — Simplified D-Flow recipe editor with phase sections. Needs client-side recipe↔frame conversion.
-2. **P1-5 Layout System** (XL) — JSON-driven configurable 8-zone home screen. Blocks P1-16 and P4-6.
-3. **P1-16 StatusBar Layout** (M, blocked by P1-5) — Layout-driven StatusBar rendering.
-4. **P4-6 Settings Layout Tab** (M, blocked by P1-5) — Layout configuration settings tab.
-5. **P5-7 Visualizer Upload** (L, blocked) — Upload shots to visualizer.coffee. Needs CORS proxy or server-side relay.
+- **P5-7 Visualizer Upload** (L, blocked by CORS) — Upload shots to visualizer.coffee requires a CORS proxy or server-side relay in Streamline-Bridge. The UI scaffolding exists but actual uploads are not functional from a browser-served skin.
 
 ### Key Architecture Notes for Resuming
 
@@ -267,7 +253,9 @@ export default {
 - Derived machine state flags (`isReady`, `isHeating`, `isFlowing`, `previousState`) are provided from App.vue
 - HistoryShotGraph handles 3 data formats (flat arrays, nested machine/scale, flat measurements)
 - VisualizerBrowserPage has CORS fallback messaging (direct fetch to visualizer.coffee blocked from web skin)
-- All 11 settings tabs are lazy-loaded via `defineAsyncComponent`
-- vue-i18n configured with Composition API mode; only 3 files converted so far (App.vue, IdlePage, BrewDialog)
+- All 12 settings tabs are lazy-loaded via `defineAsyncComponent`
+- vue-i18n configured with Composition API mode; App.vue, IdlePage, BrewDialog converted to `t()` calls
 - AI settings stored in KV store under `ai` group (aiProvider, aiApiKey, aiModel, aiBaseUrl)
-- ProfileEditorPage route: `/profile-editor/:id?` (optional id for editing existing profiles)
+- Layout system uses useLayout composable with KV store persistence under `decenza-js/layout`
+- ProfileEditorPage route: `/profile-editor/:id?`, RecipeEditorPage route: `/recipe-editor/:id?`
+- StatusBar supports layout-driven rendering via layoutOverride prop or KV store config

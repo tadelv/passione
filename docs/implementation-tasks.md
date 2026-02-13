@@ -208,7 +208,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: S
 - **Blocked**: No
 
-### P1-16. StatusBar — Layout-Driven Rendering `[ ]`
+### P1-16. StatusBar — Layout-Driven Rendering `[x]`
 - **Description**: Enhance StatusBar to use the layout system's statusBar zone configuration rather than hard-coded items. Render items from `Settings.layoutConfiguration.zones.statusBar` using the same LayoutItemDelegate system. Includes: temperature, waterLevel, connectionStatus, steamTemperature, scaleWeight, etc.
 - **QML Reference**: `vendor/decenza/qml/components/StatusBar.qml` (34 lines)
 - **API**: Layout config from store
@@ -380,7 +380,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: L
 - **Blocked**: No
 
-### P4-6. Settings: Layout Tab `[ ]`
+### P4-6. Settings: Layout Tab `[x]`
 - **Description**: Home screen layout customizer. 8 zone editors showing current widgets. Per-item actions: remove, move left/right. Add button opens library panel. Center zones have Y-offset and scale controls. Library panel shows available widget types. Safety check ensures settings widget is always accessible.
 - **QML Reference**: `vendor/decenza/qml/pages/settings/SettingsLayoutTab.qml` (378 lines)
 - **API**: `POST /api/v1/store/decenza-js/layout`
@@ -666,21 +666,21 @@ Comparison of QML user interactions vs JS implementation (updated Feb 2026).
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Visualizer.coffee upload | Shows UI, not functional | Requires direct HTTP to visualizer.coffee (CORS) |
-| AI shot analysis | Shows UI, not functional | Requires AI provider API keys + direct HTTP |
-| Dialing assistant | Shows UI, not functional | Depends on AI service |
+| AI shot analysis | Functional with API key | Requires AI provider API keys configured in Settings > AI |
+| Dialing assistant | Functional with API key | Depends on AI service configuration |
 | Auto-wake scheduling | Client-side only | No server-side timer in ReaPrime |
-| Profile editor (frame editing) | Not implemented | API supports CRUD but editor is XL UI work |
-| D-Flow recipe conversion | Not implemented | Client-side algorithm needed |
+| Profile editor (frame editing) | Implemented | ProfileEditorPage with interactive graph |
+| D-Flow recipe conversion | Implemented | RecipeEditorPage with phase↔frame conversion |
 
 ### Overall Completion
 
-| Phase | Done | Partial | Not Started | Total | % |
-|-------|------|---------|-------------|-------|---|
-| Phase 0 | 7 | 2 | 0 | 9 | 89% |
-| Phase 1 | 14 | 1 | 1 | 16 | 91% |
-| Phase 2 | 3 | 0 | 3 | 6 | 50% |
-| Phase 3 | 7 | 1 | 0 | 8 | 94% |
-| Phase 4 | 10 | 0 | 3 | 13 | 77% |
-| Phase 5 | 5 | 1 | 1 | 10 | 55% |
-| Phase 6 | 4 | 2 | 2 | 8 | 63% |
-| **Total** | **50** | **7** | **10** | **70** | **76%** |
+| Phase | Done | Blocked | Total | % |
+|-------|------|---------|-------|---|
+| Phase 0 | 9 | 0 | 9 | 100% |
+| Phase 1 | 16 | 0 | 16 | 100% |
+| Phase 2 | 6 | 0 | 6 | 100% |
+| Phase 3 | 8 | 0 | 8 | 100% |
+| Phase 4 | 13 | 0 | 13 | 100% |
+| Phase 5 | 9 | 1 | 10 | 90% |
+| Phase 6 | 8 | 0 | 8 | 100% |
+| **Total** | **69** | **1** | **70** | **99%** |

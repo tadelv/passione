@@ -97,7 +97,8 @@
     "screensaver": "Screensaver",
     "themes": "Themes",
     "about": "About",
-    "accessibility": "Accessibility"
+    "accessibility": "Accessibility",
+    "layout": "Layout"
   },
   "toast": {
     "machineConnected": "Machine connected",
