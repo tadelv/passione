@@ -2,16 +2,18 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import ActionButton from '../components/ActionButton.vue'
-import CircularGauge from '../components/CircularGauge.vue'
-import ConnectionIndicator from '../components/ConnectionIndicator.vue'
+import LayoutZone from '../components/LayoutZone.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import ProfilePreviewPopup from '../components/ProfilePreviewPopup.vue'
+import { useLayout } from '../composables/useLayout.js'
 import { setMachineState, getProfiles, updateWorkflow } from '../api/rest.js'
 
 const { t } = useI18n()
 
 const router = useRouter()
+
+// Layout system
+const { layout, loaded: layoutLoaded, load: loadLayout } = useLayout()
 
 // Injected from App.vue (populated by real composables)
 const machineState = inject('machineState', ref('idle'))
@@ -93,6 +95,7 @@ async function loadFavoriteProfiles() {
 
 onMounted(() => {
   loadFavoriteProfiles()
+  loadLayout()
 })
 
 function onEspressoPresetSelect(index) {
@@ -187,88 +190,109 @@ async function startFlush() {
   await setMachineState('flush').catch(() => {})
   router.push('/flush')
 }
+
+// ---- Layout zone helpers ----
+const zones = computed(() => layout.value.zones)
+
+function hasZone(name) {
+  return !!zones.value[name]
+}
 </script>
 
 <template>
   <div class="idle-page">
-    <!-- Top info section -->
-    <div class="idle-page__top">
+    <!-- Top section: topBar zone -->
+    <div v-if="hasZone('topBar')" class="idle-page__top">
       <div class="idle-page__top-left">
-        <CircularGauge
-          :value="temperature"
-          :min="0"
-          :max="110"
-          unit="&deg;C"
-          :label="t('common.group')"
-          color="var(--color-temperature)"
-          :size="120"
+        <LayoutZone
+          v-if="hasZone('centerLeft')"
+          :zone="zones.centerLeft"
+          :is-ready="isReady"
+          :shot-plan-text="shotPlanText"
+          :espresso-presets="espressoPresets"
+          :selected-espresso-preset="selectedEspressoPreset"
+          :steam-presets="steamPresets"
+          :selected-steam-preset="selectedSteamPreset"
+          :hot-water-presets="hotWaterPresets"
+          :selected-hot-water-preset="selectedHotWaterPreset"
+          :flush-presets="flushPresets"
+          :selected-flush-preset="selectedFlushPreset"
+          @start-espresso="startEspresso"
+          @start-steam="startSteam"
+          @start-hot-water="startHotWater"
+          @start-flush="startFlush"
+          @espresso-preset-select="onEspressoPresetSelect"
+          @espresso-preset-activate="onEspressoPresetActivate"
+          @espresso-preset-long-press="onEspressoPresetLongPress"
+          @steam-preset-select="onSteamPresetSelect"
+          @hot-water-preset-select="onHotWaterPresetSelect"
+          @flush-preset-select="onFlushPresetSelect"
         />
       </div>
       <div class="idle-page__top-right">
-        <div class="idle-page__connection">
-          <ConnectionIndicator
-            :connected="machineConnected"
-            :size="12"
-            :detail="machineConnected && scaleConnected ? t('idle.machineAndScale') : machineConnected ? t('idle.machine') : ''"
-          />
-          <span class="idle-page__connection-label">
-            {{ machineConnected ? t('common.online') : t('common.offline') }}
-          </span>
-        </div>
-        <div class="idle-page__water">
-          <div class="idle-page__water-bar">
-            <div
-              class="idle-page__water-fill"
-              :style="{ height: waterLevel + '%' }"
-            />
-          </div>
-          <span class="idle-page__water-label">{{ waterLevel }}%</span>
-        </div>
+        <LayoutZone
+          :zone="zones.topBar"
+          :is-ready="isReady"
+          :shot-plan-text="shotPlanText"
+        />
       </div>
     </div>
 
-    <!-- Center action buttons -->
+    <!-- Center section -->
     <div class="idle-page__center">
-      <div v-if="profileName" class="idle-page__profile" @click="router.push('/profiles')">
-        {{ profileName }}
-      </div>
+      <!-- Shot plan / profile zone (centerRight in default layout) -->
+      <LayoutZone
+        v-if="hasZone('centerRight')"
+        :zone="zones.centerRight"
+        :is-ready="isReady"
+        :shot-plan-text="shotPlanText"
+        :espresso-presets="espressoPresets"
+        :selected-espresso-preset="selectedEspressoPreset"
+        :steam-presets="steamPresets"
+        :selected-steam-preset="selectedSteamPreset"
+        :hot-water-presets="hotWaterPresets"
+        :selected-hot-water-preset="selectedHotWaterPreset"
+        :flush-presets="flushPresets"
+        :selected-flush-preset="selectedFlushPreset"
+        @start-espresso="startEspresso"
+        @start-steam="startSteam"
+        @start-hot-water="startHotWater"
+        @start-flush="startFlush"
+        @espresso-preset-select="onEspressoPresetSelect"
+        @espresso-preset-activate="onEspressoPresetActivate"
+        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @steam-preset-select="onSteamPresetSelect"
+        @hot-water-preset-select="onHotWaterPresetSelect"
+        @flush-preset-select="onFlushPresetSelect"
+      />
 
-      <!-- P1-4: Shot plan text -->
-      <div v-if="shotPlanText" class="idle-page__shot-plan" @click="router.push('/bean-info')">
-        {{ shotPlanText }}
-      </div>
+      <!-- Action buttons (centerMain zone) -->
+      <LayoutZone
+        v-if="hasZone('centerMain')"
+        :zone="zones.centerMain"
+        :is-ready="isReady"
+        :shot-plan-text="shotPlanText"
+        :espresso-presets="espressoPresets"
+        :selected-espresso-preset="selectedEspressoPreset"
+        :steam-presets="steamPresets"
+        :selected-steam-preset="selectedSteamPreset"
+        :hot-water-presets="hotWaterPresets"
+        :selected-hot-water-preset="selectedHotWaterPreset"
+        :flush-presets="flushPresets"
+        :selected-flush-preset="selectedFlushPreset"
+        @start-espresso="startEspresso"
+        @start-steam="startSteam"
+        @start-hot-water="startHotWater"
+        @start-flush="startFlush"
+        @espresso-preset-select="onEspressoPresetSelect"
+        @espresso-preset-activate="onEspressoPresetActivate"
+        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @steam-preset-select="onSteamPresetSelect"
+        @hot-water-preset-select="onHotWaterPresetSelect"
+        @flush-preset-select="onFlushPresetSelect"
+      />
 
-      <div class="idle-page__actions">
-        <ActionButton
-          icon="&#9749;"
-          :label="t('idle.espresso')"
-          :disabled="!isReady"
-          @click="startEspresso"
-        />
-        <ActionButton
-          icon="&#9752;"
-          :label="t('idle.steam')"
-          color="var(--color-accent)"
-          :disabled="!isReady"
-          @click="startSteam"
-        />
-        <ActionButton
-          icon="&#128167;"
-          :label="t('idle.hotWater')"
-          color="var(--color-flow)"
-          :disabled="!isReady"
-          @click="startHotWater"
-        />
-        <ActionButton
-          icon="&#127754;"
-          :label="t('idle.flush')"
-          color="var(--color-success)"
-          :disabled="!isReady"
-          @click="startFlush"
-        />
-      </div>
-
-      <!-- Espresso favorite presets (two-step: tap loads profile, double-tap starts) -->
+      <!-- Espresso favorite presets (always shown when available, part of center) -->
       <div v-if="espressoPresets.length" class="idle-page__preset-section">
         <span class="idle-page__preset-label">{{ t('idle.espresso') }}</span>
         <PresetPillRow
@@ -310,18 +334,82 @@ async function startFlush() {
         />
       </div>
 
-      <!-- Navigation links -->
-      <div class="idle-page__nav">
-        <button class="idle-page__nav-btn" @click="router.push('/bean-info')">
-          {{ t('idle.beans') }}
-        </button>
-        <button class="idle-page__nav-btn" @click="router.push('/history')">
-          {{ t('idle.history') }}
-        </button>
-        <button class="idle-page__nav-btn" @click="router.push('/settings')">
-          {{ t('idle.settings') }}
-        </button>
-      </div>
+      <!-- Bottom bar zone (rendered inside center for vertical flow) -->
+      <LayoutZone
+        v-if="hasZone('bottomBar')"
+        :zone="zones.bottomBar"
+        :is-ready="isReady"
+        :shot-plan-text="shotPlanText"
+        :espresso-presets="espressoPresets"
+        :selected-espresso-preset="selectedEspressoPreset"
+        :steam-presets="steamPresets"
+        :selected-steam-preset="selectedSteamPreset"
+        :hot-water-presets="hotWaterPresets"
+        :selected-hot-water-preset="selectedHotWaterPreset"
+        :flush-presets="flushPresets"
+        :selected-flush-preset="selectedFlushPreset"
+        @start-espresso="startEspresso"
+        @start-steam="startSteam"
+        @start-hot-water="startHotWater"
+        @start-flush="startFlush"
+        @espresso-preset-select="onEspressoPresetSelect"
+        @espresso-preset-activate="onEspressoPresetActivate"
+        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @steam-preset-select="onSteamPresetSelect"
+        @hot-water-preset-select="onHotWaterPresetSelect"
+        @flush-preset-select="onFlushPresetSelect"
+      />
+
+      <!-- Extra zones (optional, configurable) -->
+      <LayoutZone
+        v-if="hasZone('extraTop')"
+        :zone="zones.extraTop"
+        :is-ready="isReady"
+        :shot-plan-text="shotPlanText"
+        :espresso-presets="espressoPresets"
+        :selected-espresso-preset="selectedEspressoPreset"
+        :steam-presets="steamPresets"
+        :selected-steam-preset="selectedSteamPreset"
+        :hot-water-presets="hotWaterPresets"
+        :selected-hot-water-preset="selectedHotWaterPreset"
+        :flush-presets="flushPresets"
+        :selected-flush-preset="selectedFlushPreset"
+        @start-espresso="startEspresso"
+        @start-steam="startSteam"
+        @start-hot-water="startHotWater"
+        @start-flush="startFlush"
+        @espresso-preset-select="onEspressoPresetSelect"
+        @espresso-preset-activate="onEspressoPresetActivate"
+        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @steam-preset-select="onSteamPresetSelect"
+        @hot-water-preset-select="onHotWaterPresetSelect"
+        @flush-preset-select="onFlushPresetSelect"
+      />
+
+      <LayoutZone
+        v-if="hasZone('extraBottom')"
+        :zone="zones.extraBottom"
+        :is-ready="isReady"
+        :shot-plan-text="shotPlanText"
+        :espresso-presets="espressoPresets"
+        :selected-espresso-preset="selectedEspressoPreset"
+        :steam-presets="steamPresets"
+        :selected-steam-preset="selectedSteamPreset"
+        :hot-water-presets="hotWaterPresets"
+        :selected-hot-water-preset="selectedHotWaterPreset"
+        :flush-presets="flushPresets"
+        :selected-flush-preset="selectedFlushPreset"
+        @start-espresso="startEspresso"
+        @start-steam="startSteam"
+        @start-hot-water="startHotWater"
+        @start-flush="startFlush"
+        @espresso-preset-select="onEspressoPresetSelect"
+        @espresso-preset-activate="onEspressoPresetActivate"
+        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @steam-preset-select="onSteamPresetSelect"
+        @hot-water-preset-select="onHotWaterPresetSelect"
+        @flush-preset-select="onFlushPresetSelect"
+      />
     </div>
 
     <!-- Profile preview popup (on long-press of espresso preset) -->
@@ -360,59 +448,6 @@ async function startFlush() {
   gap: var(--spacing-medium);
 }
 
-.idle-page__connection {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.idle-page__connection-label {
-  font-size: var(--font-label);
-  font-weight: 600;
-}
-
-.idle-page__scale-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.idle-page__scale-label {
-  font-size: var(--font-label);
-  color: var(--color-text-secondary);
-}
-
-.idle-page__water {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.idle-page__water-bar {
-  width: 24px;
-  height: 48px;
-  border-radius: 4px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-.idle-page__water-fill {
-  width: 100%;
-  background: var(--color-flow);
-  border-radius: 0 0 3px 3px;
-  transition: height 0.3s ease;
-}
-
-.idle-page__water-label {
-  font-size: var(--font-caption);
-  color: var(--color-text-secondary);
-}
-
 .idle-page__center {
   flex: 1;
   display: flex;
@@ -420,42 +455,6 @@ async function startFlush() {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-large);
-}
-
-.idle-page__profile {
-  font-size: var(--font-title);
-  font-weight: bold;
-  color: var(--color-text);
-  text-align: center;
-  max-width: 80%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.idle-page__shot-plan {
-  font-size: var(--font-label);
-  color: var(--color-text-secondary);
-  text-align: center;
-  max-width: 90%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.idle-page__shot-plan:active {
-  opacity: 0.7;
-}
-
-.idle-page__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--spacing-medium);
 }
 
 .idle-page__preset-section {
@@ -473,24 +472,4 @@ async function startFlush() {
   letter-spacing: 0.5px;
 }
 
-.idle-page__nav {
-  display: flex;
-  gap: var(--spacing-medium);
-}
-
-.idle-page__nav-btn {
-  padding: 8px 24px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.idle-page__nav-btn:active {
-  opacity: 0.7;
-}
 </style>

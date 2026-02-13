@@ -120,7 +120,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: S
 - **Blocked**: No
 
-### P1-5. IdlePage — Configurable Layout System `[ ]`
+### P1-5. IdlePage — Configurable Layout System `[x]`
 - **Description**: Implement the JSON-driven layout system from Decenza. 8 configurable zones (topLeft, topRight, statusBar, centerTop, centerMiddle, centerStatus, bottomLeft, bottomRight) with per-zone items, Y-offsets, and scale multipliers. Build LayoutBarZone (horizontal) and LayoutCenterZone (center buttons) renderers. Use LayoutItemDelegate-style factory to render each item type.
 - **QML Reference**: `vendor/decenza/qml/components/layout/LayoutBarZone.qml`, `LayoutCenterZone.qml`, `LayoutItemDelegate.qml`
 - **API**: `GET/POST /api/v1/store/decenza-js/layout`
@@ -244,7 +244,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: S
 - **Blocked**: No
 
-### P2-4. RecipeEditorPage (D-Flow Editor) `[ ]`
+### P2-4. RecipeEditorPage (D-Flow Editor) `[x]`
 - **Description**: Simplified phase-based profile editor with recipe sections: Core (dose, stop-at, ratio, notes), Fill (temp, pressure, flow, exit pressure, timeout), Bloom (optional toggle, time), Infuse (pressure, time, by-weight option), Ramp (optional, time), Pour (temp, mode pressure/flow, value, limits), Decline (optional, target, duration). Recipe presets (Classic, Londinium, Turbo, Blooming, D-Flow). Graph-scroll sync. Switch to Advanced Editor with conversion confirmation.
 - **QML Reference**: `vendor/decenza/qml/pages/RecipeEditorPage.qml` (1137 lines)
 - **API**: `PUT /api/v1/workflow` (to upload recipe as profile + settings), `POST /api/v1/profiles` (save)
