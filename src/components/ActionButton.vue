@@ -1,9 +1,11 @@
 <script setup>
-defineProps({
+const props = defineProps({
   label: { type: String, default: '' },
   icon: { type: String, default: '' },
   color: { type: String, default: 'var(--color-primary)' },
   disabled: { type: Boolean, default: false },
+  /** P6-4: Override accessible label (defaults to label prop) */
+  ariaLabel: { type: String, default: null },
 })
 
 defineEmits(['click'])
@@ -15,6 +17,7 @@ defineEmits(['click'])
     :class="{ disabled }"
     :style="{ '--btn-color': color }"
     :disabled="disabled"
+    :aria-label="ariaLabel || label"
     @click="$emit('click')"
   >
     <span v-if="icon" class="action-button__icon">{{ icon }}</span>

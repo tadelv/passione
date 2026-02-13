@@ -97,6 +97,9 @@ export function useMachine() {
   })
 
   // ---- WebSocket handler ----------------------------------------------------
+  // P6-5: All ref assignments within onMessage are synchronous, so Vue 3's
+  // reactivity system batches them into a single watcher flush. No additional
+  // batching is needed.
 
   let ws = null
 

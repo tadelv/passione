@@ -75,12 +75,17 @@ const tabComponents = [
 <template>
   <div class="settings-page">
     <!-- Tab bar -->
-    <div class="settings-page__tab-bar" ref="tabBarRef">
+    <div class="settings-page__tab-bar" ref="tabBarRef" role="tablist" aria-label="Settings tabs">
       <button
         v-for="(tab, i) in TABS"
         :key="tab.id"
         class="settings-page__tab"
         :class="{ 'settings-page__tab--active': currentTab === i }"
+        role="tab"
+        :id="`settings-tab-${tab.id}`"
+        :aria-selected="currentTab === i"
+        :aria-controls="`settings-panel-${tab.id}`"
+        :tabindex="currentTab === i ? 0 : -1"
         @click="selectTab(i)"
       >
         {{ tab.label }}
@@ -88,7 +93,12 @@ const tabComponents = [
     </div>
 
     <!-- Tab content -->
-    <div class="settings-page__content">
+    <div
+      class="settings-page__content"
+      role="tabpanel"
+      :id="`settings-panel-${TABS[currentTab].id}`"
+      :aria-labelledby="`settings-tab-${TABS[currentTab].id}`"
+    >
       <KeepAlive>
         <component :is="tabComponents[currentTab]" :key="TABS[currentTab].id" />
       </KeepAlive>

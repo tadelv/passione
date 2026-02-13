@@ -48,8 +48,17 @@ const displayValue = computed(() => props.value.toFixed(1))
 </script>
 
 <template>
-  <div class="circular-gauge" :style="{ width: size + 'px' }">
-    <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
+  <div
+    class="circular-gauge"
+    :style="{ width: size + 'px' }"
+    role="meter"
+    :aria-valuenow="value"
+    :aria-valuemin="min"
+    :aria-valuemax="max"
+    :aria-label="label || 'Gauge'"
+    :aria-valuetext="`${displayValue} ${unit}`"
+  >
+    <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`" aria-hidden="true">
       <!-- Background arc -->
       <path
         :d="bgArc"

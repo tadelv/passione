@@ -8,6 +8,8 @@ const props = defineProps({
   selectedIndex: { type: Number, default: -1 },
   /** Enable long-press interaction */
   longPressEnabled: { type: Boolean, default: false },
+  /** P6-4: Accessible label for the preset list */
+  ariaLabel: { type: String, default: 'Presets' },
 })
 
 const emit = defineEmits([
@@ -77,14 +79,16 @@ function onClick(index) {
 </script>
 
 <template>
-  <div class="preset-pill-row" v-if="displayPresets.length > 0">
-    <div class="preset-pill-row__pills">
+  <div class="preset-pill-row" v-if="displayPresets.length > 0" :aria-label="ariaLabel">
+    <div class="preset-pill-row__pills" role="listbox" :aria-label="ariaLabel">
       <button
         v-for="preset in displayPresets"
         :key="preset.index"
         :ref="el => { if (el) pillRefs[preset.index] = el }"
         class="preset-pill-row__pill"
         :class="{ 'preset-pill-row__pill--selected': preset.index === selectedIndex }"
+        role="option"
+        :aria-selected="preset.index === selectedIndex"
         @click="onClick(preset.index)"
         @pointerdown.prevent="onPointerDown(preset.index, $event)"
         @pointerup="onPointerUp(preset.index)"

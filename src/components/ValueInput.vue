@@ -11,6 +11,8 @@ const props = defineProps({
   valueColor: { type: String, default: 'var(--color-text)' },
   /** Override default display text (e.g. for custom formatting) */
   displayText: { type: String, default: null },
+  /** P6-4: Accessible label for screen readers */
+  ariaLabel: { type: String, default: 'Value' },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -132,12 +134,15 @@ onUnmounted(stopHold)
     :aria-valuenow="internalValue"
     :aria-valuemin="min"
     :aria-valuemax="max"
+    :aria-label="ariaLabel"
+    :aria-valuetext="formattedText"
     @keydown="onKeyDown"
   >
     <button
       class="value-input__btn"
       tabindex="-1"
       :disabled="internalValue <= min"
+      aria-label="Decrease value"
       @click="adjust(-1)"
       @pointerdown.prevent="startHold(-1)"
       @pointerup="stopHold"
@@ -163,6 +168,7 @@ onUnmounted(stopHold)
       class="value-input__btn"
       tabindex="-1"
       :disabled="internalValue >= max"
+      aria-label="Increase value"
       @click="adjust(1)"
       @pointerdown.prevent="startHold(1)"
       @pointerup="stopHold"

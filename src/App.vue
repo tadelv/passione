@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, provide, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import StatusBar from './components/StatusBar.vue'
 import CompletionOverlay from './components/CompletionOverlay.vue'
 import StopReasonOverlay from './components/StopReasonOverlay.vue'
@@ -21,6 +22,7 @@ import { setMachineState } from './api/rest.js'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 // Connect to all WebSocket streams
 const machine = useMachine()
@@ -79,18 +81,18 @@ let scaleWasConnected = false
 
 watch(machine.isConnected, (connected) => {
   if (connected && machineWasConnected === false) {
-    toast.success('Machine connected')
+    toast.success(t('toast.machineConnected'))
   } else if (!connected && machineWasConnected === true) {
-    toast.warning('Machine connection lost')
+    toast.warning(t('toast.machineDisconnected'))
   }
   machineWasConnected = connected
 })
 
 watch(scale.isConnected, (connected) => {
   if (connected && scaleWasConnected === false) {
-    toast.info('Scale connected')
+    toast.info(t('toast.scaleConnected'))
   } else if (!connected && scaleWasConnected === true) {
-    toast.warning('Scale disconnected')
+    toast.warning(t('toast.scaleDisconnected'))
   }
   scaleWasConnected = connected
 })
@@ -178,11 +180,11 @@ watch(machine.state, (newState, oldState) => {
       // P0-6: Determine stop reason
       const currentWeight = scale.weight.value ?? 0
       if (userRequestedStop) {
-        stopReasonText.value = 'Stopped manually'
+        stopReasonText.value = t('operations.stoppedManually')
       } else if (lastTargetWeight > 0 && currentWeight >= lastTargetWeight * 0.95) {
-        stopReasonText.value = 'Target weight reached'
+        stopReasonText.value = t('operations.targetWeightReached')
       } else {
-        stopReasonText.value = 'Profile complete'
+        stopReasonText.value = t('operations.profileComplete')
       }
       stopReasonVisible.value = true
       userRequestedStop = false
@@ -191,11 +193,11 @@ watch(machine.state, (newState, oldState) => {
     } else {
       // P0-5: Show completion overlay for steam/hotwater/flush
       const messages = {
-        steam: 'Steam Complete',
-        hotWater: 'Hot Water Complete',
-        flush: 'Flush Complete',
+        steam: t('operations.steamComplete'),
+        hotWater: t('operations.hotWaterComplete'),
+        flush: t('operations.flushComplete'),
       }
-      completionMessage.value = messages[oldState] || 'Complete'
+      completionMessage.value = messages[oldState] || t('operations.complete')
 
       if (oldState === 'hotWater') {
         completionValue.value = (scale.weight.value ?? 0).toFixed(0) + 'g'

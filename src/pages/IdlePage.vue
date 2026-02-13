@@ -1,12 +1,15 @@
 <script setup>
 import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import ActionButton from '../components/ActionButton.vue'
 import CircularGauge from '../components/CircularGauge.vue'
 import ConnectionIndicator from '../components/ConnectionIndicator.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import ProfilePreviewPopup from '../components/ProfilePreviewPopup.vue'
 import { setMachineState, getProfiles, updateWorkflow } from '../api/rest.js'
+
+const { t } = useI18n()
 
 const router = useRouter()
 
@@ -196,7 +199,7 @@ async function startFlush() {
           :min="0"
           :max="110"
           unit="&deg;C"
-          label="Group"
+          :label="t('common.group')"
           color="var(--color-temperature)"
           :size="120"
         />
@@ -206,10 +209,10 @@ async function startFlush() {
           <ConnectionIndicator
             :connected="machineConnected"
             :size="12"
-            :detail="machineConnected && scaleConnected ? 'Machine + Scale' : machineConnected ? 'Machine' : ''"
+            :detail="machineConnected && scaleConnected ? t('idle.machineAndScale') : machineConnected ? t('idle.machine') : ''"
           />
           <span class="idle-page__connection-label">
-            {{ machineConnected ? 'Online' : 'Offline' }}
+            {{ machineConnected ? t('common.online') : t('common.offline') }}
           </span>
         </div>
         <div class="idle-page__water">
@@ -238,27 +241,27 @@ async function startFlush() {
       <div class="idle-page__actions">
         <ActionButton
           icon="&#9749;"
-          label="Espresso"
+          :label="t('idle.espresso')"
           :disabled="!isReady"
           @click="startEspresso"
         />
         <ActionButton
           icon="&#9752;"
-          label="Steam"
+          :label="t('idle.steam')"
           color="var(--color-accent)"
           :disabled="!isReady"
           @click="startSteam"
         />
         <ActionButton
           icon="&#128167;"
-          label="Hot Water"
+          :label="t('idle.hotWater')"
           color="var(--color-flow)"
           :disabled="!isReady"
           @click="startHotWater"
         />
         <ActionButton
           icon="&#127754;"
-          label="Flush"
+          :label="t('idle.flush')"
           color="var(--color-success)"
           :disabled="!isReady"
           @click="startFlush"
@@ -267,7 +270,7 @@ async function startFlush() {
 
       <!-- Espresso favorite presets (two-step: tap loads profile, double-tap starts) -->
       <div v-if="espressoPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">Espresso</span>
+        <span class="idle-page__preset-label">{{ t('idle.espresso') }}</span>
         <PresetPillRow
           :presets="espressoPresets"
           :selected-index="selectedEspressoPreset"
@@ -280,7 +283,7 @@ async function startFlush() {
 
       <!-- Quick-start presets -->
       <div v-if="steamPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">Steam</span>
+        <span class="idle-page__preset-label">{{ t('idle.steam') }}</span>
         <PresetPillRow
           :presets="steamPresets"
           :selected-index="selectedSteamPreset"
@@ -289,7 +292,7 @@ async function startFlush() {
         />
       </div>
       <div v-if="hotWaterPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">Hot Water</span>
+        <span class="idle-page__preset-label">{{ t('idle.hotWater') }}</span>
         <PresetPillRow
           :presets="hotWaterPresets"
           :selected-index="selectedHotWaterPreset"
@@ -298,7 +301,7 @@ async function startFlush() {
         />
       </div>
       <div v-if="flushPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">Flush</span>
+        <span class="idle-page__preset-label">{{ t('idle.flush') }}</span>
         <PresetPillRow
           :presets="flushPresets"
           :selected-index="selectedFlushPreset"
@@ -310,13 +313,13 @@ async function startFlush() {
       <!-- Navigation links -->
       <div class="idle-page__nav">
         <button class="idle-page__nav-btn" @click="router.push('/bean-info')">
-          Beans
+          {{ t('idle.beans') }}
         </button>
         <button class="idle-page__nav-btn" @click="router.push('/history')">
-          History
+          {{ t('idle.history') }}
         </button>
         <button class="idle-page__nav-btn" @click="router.push('/settings')">
-          Settings
+          {{ t('idle.settings') }}
         </button>
       </div>
     </div>

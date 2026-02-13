@@ -142,10 +142,11 @@ See `docs/implementation-tasks.md` for the full phased task list with status ind
 **Utility:** SwipeableArea, SuggestionField
 **Settings tabs:** Gateway, Device, Preferences, Screensaver, Visualizer, ShotHistory, Options, Themes, About, AI, Accessibility
 
-### Composables (14)
+### Composables (15)
 
 **WebSocket/API:** useMachine, useScale, useShotSettings, useWaterLevels, useWorkflow
 **State:** useShotData, useChartConfig, useSettings, useTheme, useVolumeMode
+**AI:** useAIAnalysis (multi-provider shot analysis + dialing recommendations)
 **Behavioral:** useAutoSleep, useSteamHeater, useOperationSettings, useToast
 
 ### Decenza Design Principles to Preserve
@@ -238,25 +239,26 @@ export default {
 
 ## Current Status & Resume Point (Feb 2026)
 
-**Completion: 83%** (58 of 70 tasks done). Build passes cleanly (144 modules, ~600ms).
+**Completion: 93%** (65 of 70 tasks done). Build passes cleanly (156 modules, ~740ms).
 
-### Remaining Tasks (priority order)
+### Recently Completed (this session)
 
-1. **P2-2 ProfileEditorPage** (XL) — Frame-based visual profile editor with interactive graph. Click frame regions to select, add/delete/move/duplicate frames, step editor panel with pump mode, targets, exit conditions. This is the largest remaining feature. Depends on P2-5 (interactive ProfileGraph).
-2. **P2-4 RecipeEditorPage** (XL) — Simplified D-Flow recipe editor with phase sections (Fill, Bloom, Infuse, Ramp, Pour, Decline). Recipe presets. Needs client-side recipe↔frame conversion. Can switch to ProfileEditorPage for advanced editing.
-3. **P2-5 ProfileGraph Interactive** (M) — Enhance ProfileGraph with clickable frame regions, alternating background tints, frame selection highlighting. Prerequisite for P2-2.
-4. **P1-5 Layout System** (XL) — JSON-driven configurable 8-zone home screen. LayoutBarZone + LayoutCenterZone renderers. Stored in KV store. Blocks P1-16 (StatusBar layout) and P4-6 (Layout settings tab).
-5. **P6-5 Performance** (M) — RAF throttling for charts, batch reactive updates for WebSocket, virtual scrolling for long lists, lazy-load routes (partially done).
-6. **P6-7 i18n** (M) — vue-i18n setup, extract all user-facing strings to locale files.
-7. **P5-7 Visualizer Upload** (L, blocked) — Upload shots to visualizer.coffee. Needs CORS proxy or server-side relay.
-8. **P5-8 AI Shot Analysis** (L, blocked) — Client-side AI integration for shot analysis with multiple providers. Depends on P4-8 (done).
-9. **P5-9 Dialing Assistant** (M, blocked) — AI-generated dialing recommendations page. Depends on P5-8.
+- **P2-2 ProfileEditorPage** — Full frame-based visual profile editor with interactive graph, frame list, step editor panel, add/delete/move/duplicate, metadata editing, save to API
+- **P2-5 ProfileGraph Interactive** — Already had clickable frame regions, alternating tints, selection highlighting
+- **P5-8 AI Shot Analysis** — Multi-provider (OpenAI/Anthropic/Gemini/OpenRouter/Ollama) composable with conversation state, analysis modal on ShotDetailPage
+- **P5-9 Dialing Assistant Page** — AI-driven dialing recommendations from recent shot history, follow-up conversations
+- **P6-4 Accessibility ARIA** — ARIA attributes on ValueInput, PresetPillRow, ActionButton, CircularGauge, BrewDialog (focus trap), ShotGraph, SettingsPage (tab roles)
+- **P6-5 Performance** — RAF throttling for ShotGraph, lazy-loaded routes (16 pages), documented Vue 3 auto-batching for WebSocket
+- **P6-7 i18n Foundation** — vue-i18n setup, en.json with 8 namespaces, App.vue + IdlePage + BrewDialog converted to `t()` calls
+- **P6-8 Responsive Layout** — Global responsive.css with 4 breakpoints (mobile/tablet/desktop/large), landscape mode, clamp() typography
 
-### Partial Tasks to Polish
+### Remaining Tasks (5 left)
 
-- **P6-4 Accessibility ARIA** — Add ARIA attributes to interactive elements, focus management
-- **P6-8 Responsive Layout** — Ensure all pages work across tablet/desktop/mobile
-- **P1-6 BrewDialog** — Done but could add extended metadata fields toggle in settings
+1. **P2-4 RecipeEditorPage** (XL) — Simplified D-Flow recipe editor with phase sections. Needs client-side recipe↔frame conversion.
+2. **P1-5 Layout System** (XL) — JSON-driven configurable 8-zone home screen. Blocks P1-16 and P4-6.
+3. **P1-16 StatusBar Layout** (M, blocked by P1-5) — Layout-driven StatusBar rendering.
+4. **P4-6 Settings Layout Tab** (M, blocked by P1-5) — Layout configuration settings tab.
+5. **P5-7 Visualizer Upload** (L, blocked) — Upload shots to visualizer.coffee. Needs CORS proxy or server-side relay.
 
 ### Key Architecture Notes for Resuming
 
@@ -266,3 +268,6 @@ export default {
 - HistoryShotGraph handles 3 data formats (flat arrays, nested machine/scale, flat measurements)
 - VisualizerBrowserPage has CORS fallback messaging (direct fetch to visualizer.coffee blocked from web skin)
 - All 11 settings tabs are lazy-loaded via `defineAsyncComponent`
+- vue-i18n configured with Composition API mode; only 3 files converted so far (App.vue, IdlePage, BrewDialog)
+- AI settings stored in KV store under `ai` group (aiProvider, aiApiKey, aiModel, aiBaseUrl)
+- ProfileEditorPage route: `/profile-editor/:id?` (optional id for editing existing profiles)

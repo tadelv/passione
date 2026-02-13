@@ -23,6 +23,21 @@ let chart = null
 let resizeObserver = null
 let resizeTimer = null
 
+// P6-5: RAF throttling — buffer data, only call setData once per animation frame
+let pendingData = null
+let rafId = null
+
+function scheduleRedraw() {
+  if (rafId !== null) return
+  rafId = requestAnimationFrame(() => {
+    rafId = null
+    if (chart && pendingData) {
+      chart.setData(pendingData)
+      pendingData = null
+    }
+  })
+}
+
 // P1-7: Store frame marker info for the draw hook
 const markersRef = computed(() => props.frameMarkers)
 
@@ -121,11 +136,13 @@ function handleResize() {
   }, 100)
 }
 
-// Watch for new data and push to uPlot
+// P6-5: Watch for new data and push to uPlot via RAF throttle.
+// At ~10Hz WebSocket rate, this coalesces updates to display refresh rate.
 watch(() => props.data, (newData) => {
   if (!chart) return
   if (newData && newData[0]?.length) {
-    chart.setData(newData)
+    pendingData = newData
+    scheduleRedraw()
   }
 })
 
@@ -146,6 +163,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearTimeout(resizeTimer)
+  // P6-5: Cancel pending RAF
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId)
+    rafId = null
+  }
+  pendingData = null
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
@@ -159,7 +182,7 @@ onUnmounted(() => {
 
 <template>
   <div class="shot-graph">
-    <div ref="chartEl" class="shot-graph__canvas"></div>
+    <div ref="chartEl" class="shot-graph__canvas" role="img" aria-label="Shot graph showing pressure, flow, temperature, and weight over time"></div>
 
     <!-- P1-9: Custom legend overlay in top-left corner -->
     <div v-if="showLegend" class="shot-graph__legend-overlay">

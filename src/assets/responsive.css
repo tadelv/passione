@@ -1,0 +1,413 @@
+/* ================================================
+   P6-8: Responsive Layout
+   Breakpoints:
+     Mobile:  max-width 480px
+     Tablet:  481px–960px  (reference target)
+     Desktop: 961px+
+   ================================================ */
+
+/* ---- Mobile: max-width 480px ---- */
+@media (max-width: 480px) {
+  :root {
+    --status-bar-height: 48px;
+    --bottom-bar-height: 48px;
+    --page-top-margin: 56px;
+    --font-heading: 22px;
+    --font-title: 18px;
+    --font-subtitle: 15px;
+    --font-body: 15px;
+    --font-label: 12px;
+    --font-caption: 10px;
+    --font-value: 32px;
+    --font-timer: 40px;
+    --gauge-size: 80px;
+    --margin-standard: 10px;
+    --spacing-large: 12px;
+    --spacing-medium: 10px;
+    --radius-button: 8px;
+    --radius-card: 10px;
+  }
+
+  /* ---- IdlePage: 2-column action button grid ---- */
+  .idle-page__actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  /* Smaller action buttons on mobile */
+  .action-button {
+    width: 100% !important;
+    height: 80px !important;
+    gap: 4px;
+  }
+
+  .action-button__icon {
+    font-size: 28px !important;
+  }
+
+  .action-button__label {
+    font-size: 13px !important;
+  }
+
+  /* IdlePage: tighter top area */
+  .idle-page__top {
+    padding-bottom: 4px;
+  }
+
+  .idle-page__center {
+    gap: 10px;
+  }
+
+  /* IdlePage: smaller nav buttons */
+  .idle-page__nav-btn {
+    padding: 6px 16px;
+    font-size: 12px;
+  }
+
+  /* IdlePage: profile name truncation */
+  .idle-page__profile {
+    font-size: 16px;
+    max-width: 95%;
+  }
+
+  /* ---- BrewDialog: full-width on mobile ---- */
+  .brew-dialog__card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    max-height: 100vh !important;
+    height: 100%;
+  }
+
+  .brew-dialog__ratio-value {
+    font-size: 24px;
+  }
+
+  .brew-dialog__actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .brew-dialog__btn {
+    height: 42px;
+    font-size: 14px;
+  }
+
+  .brew-dialog__text-input {
+    width: 120px;
+    height: 36px;
+  }
+
+  /* ---- BottomBar: compact on mobile ---- */
+  .bottom-bar {
+    height: var(--bottom-bar-height) !important;
+    padding: 0 8px 0 4px !important;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bottom-bar__title {
+    font-size: 16px;
+  }
+
+  .bottom-bar__back {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* ---- StatusBar: compact on mobile ---- */
+  .status-bar {
+    padding: 0 8px 0 4px;
+  }
+
+  .status-bar__profile {
+    max-width: 120px;
+    font-size: 12px;
+  }
+
+  /* ---- EspressoPage: compact info bar ---- */
+  .espresso-page__info-bar {
+    height: 72px;
+    padding: 0 8px;
+    gap: 8px;
+  }
+
+  .espresso-page__metric-value {
+    font-size: 20px;
+  }
+
+  .espresso-page__metric-value--timer {
+    font-size: 24px;
+  }
+
+  .espresso-page__back {
+    width: 40px;
+  }
+
+  /* ---- SettingsPage: scrollable tabs, smaller pills ---- */
+  .settings-page__tab-bar {
+    padding: 6px 8px;
+    gap: 2px;
+  }
+
+  .settings-page__tab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .settings-page__content {
+    padding: 10px;
+  }
+
+  /* ---- ShotGraph: minimum height ---- */
+  .shot-graph {
+    min-height: 180px;
+  }
+
+  .shot-graph__legend-overlay {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .shot-graph__legend-item {
+    font-size: 9px;
+    gap: 4px;
+  }
+
+  .shot-graph__dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* ---- ShotHistory: tighter rows ---- */
+  .shot-history__filter {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .shot-history__search {
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .shot-history__row {
+    padding: 8px 10px;
+  }
+
+  .shot-history__profile {
+    font-size: 14px;
+  }
+
+  .shot-history__action-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  /* ---- Toast: full-width on mobile ---- */
+  .toast-container {
+    right: 8px;
+    left: 8px;
+    max-width: none;
+  }
+}
+
+/* ---- Tablet: 481px–960px (reference target) ---- */
+@media (min-width: 481px) and (max-width: 960px) {
+  :root {
+    --font-heading: 28px;
+    --font-title: 22px;
+    --font-value: 40px;
+    --font-timer: 56px;
+    --gauge-size: 100px;
+  }
+
+  /* Action buttons slightly smaller on tablet */
+  .action-button {
+    width: 130px !important;
+    height: 100px !important;
+  }
+
+  .action-button__icon {
+    font-size: 36px !important;
+  }
+
+  /* BrewDialog: centered with max-width */
+  .brew-dialog__card {
+    width: 90% !important;
+    max-width: 400px !important;
+  }
+
+  /* EspressoPage info bar: slightly smaller */
+  .espresso-page__info-bar {
+    height: 88px;
+  }
+
+  .espresso-page__metric-value {
+    font-size: 24px;
+  }
+
+  .espresso-page__metric-value--timer {
+    font-size: 30px;
+  }
+}
+
+/* ---- Desktop: 961px+ ---- */
+@media (min-width: 961px) {
+  :root {
+    --margin-standard: 20px;
+    --spacing-large: 28px;
+  }
+
+  /* Action buttons at full reference size */
+  .action-button {
+    width: 150px;
+    height: 120px;
+  }
+
+  /* BrewDialog: centered dialog */
+  .brew-dialog__card {
+    width: 90%;
+    max-width: 420px;
+  }
+
+  /* ShotGraph: comfortable height */
+  .shot-graph {
+    min-height: 280px;
+  }
+
+  /* StatusBar: wider profile name allowed */
+  .status-bar__profile {
+    max-width: 300px;
+  }
+}
+
+/* ---- Large desktop: 1400px+ ---- */
+@media (min-width: 1400px) {
+  :root {
+    --margin-standard: 24px;
+    --spacing-large: 32px;
+    --font-heading: 36px;
+    --font-title: 28px;
+    --font-value: 54px;
+    --font-timer: 80px;
+    --gauge-size: 140px;
+  }
+
+  .action-button {
+    width: 170px !important;
+    height: 140px !important;
+  }
+
+  .action-button__icon {
+    font-size: 56px !important;
+  }
+
+  .status-bar__profile {
+    max-width: 400px;
+  }
+
+  .espresso-page__info-bar {
+    height: 120px;
+  }
+
+  .espresso-page__metric-value {
+    font-size: 32px;
+  }
+
+  .espresso-page__metric-value--timer {
+    font-size: 42px;
+  }
+}
+
+/* ================================================
+   Scalable typography using clamp() for smooth
+   scaling between breakpoints
+   ================================================ */
+
+/* These are applied globally and override the
+   static --font-* values with fluid alternatives
+   for elements that benefit from smooth scaling. */
+
+.idle-page__profile {
+  font-size: clamp(16px, 2.5vw, 24px);
+}
+
+.idle-page__shot-plan {
+  font-size: clamp(11px, 1.5vw, 14px);
+}
+
+.espresso-page__metric-value--timer {
+  font-size: clamp(24px, 4vw, 42px);
+}
+
+.brew-dialog__ratio-value {
+  font-size: clamp(24px, 4vw, 32px);
+}
+
+/* ================================================
+   Landscape-specific adjustments for mobile
+   ================================================ */
+
+@media (max-height: 480px) and (orientation: landscape) {
+  :root {
+    --status-bar-height: 40px;
+    --bottom-bar-height: 40px;
+  }
+
+  /* Reduce vertical padding in landscape mobile */
+  .idle-page {
+    padding: 6px 12px;
+  }
+
+  .idle-page__center {
+    gap: 6px;
+  }
+
+  .action-button {
+    height: 60px !important;
+    gap: 2px;
+  }
+
+  .action-button__icon {
+    font-size: 22px !important;
+  }
+
+  .action-button__label {
+    font-size: 11px !important;
+  }
+
+  /* EspressoPage: compact info bar in landscape */
+  .espresso-page__info-bar {
+    height: 56px;
+    gap: 6px;
+  }
+
+  .espresso-page__chart {
+    padding-top: 32px;
+  }
+
+  /* SettingsPage: smaller tabs */
+  .settings-page__tab {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  /* Compact brew dialog */
+  .brew-dialog__card {
+    max-height: 100vh !important;
+  }
+
+  .brew-dialog__body {
+    gap: 6px;
+    padding: 4px 12px 8px;
+  }
+
+  .brew-dialog__ratio-box {
+    padding: 6px 0;
+  }
+}

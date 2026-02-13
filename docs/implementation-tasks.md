@@ -228,7 +228,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: XL
 - **Blocked**: No
 
-### P2-2. ProfileEditorPage (Advanced Frame Editor) `[ ]`
+### P2-2. ProfileEditorPage (Advanced Frame Editor) `[x]`
 - **Description**: Frame-based profile editor with interactive ProfileGraph (left) and step editor panel (right). Click frame region on graph to select. Frame list with add/delete/move/duplicate. Step editor panel: name, pump mode (pressure/flow), target value, temperature, duration, transition type, exit conditions (pressure/flow/weight), limiters. Save/Save As/Discard buttons with unsaved changes tracking.
 - **QML Reference**: `vendor/decenza/qml/pages/ProfileEditorPage.qml` (2000+ lines)
 - **API**: `PUT /api/v1/profiles/{id}` (save), `POST /api/v1/profiles` (save as), `POST /api/v1/machine/profile` (upload to machine), `PUT /api/v1/workflow` (set as active)
@@ -252,7 +252,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: XL
 - **Blocked**: Partially — D-Flow recipe parameter ↔ frame conversion must be implemented client-side (no server API for this). Reference: `vendor/decenza/src/controllers/maincontroller.*` recipe methods.
 
-### P2-5. ProfileGraph — Interactive Frame Selection `[ ]`
+### P2-5. ProfileGraph — Interactive Frame Selection `[x]`
 - **Description**: Enhance ProfileGraph component with clickable frame regions. Alternating background tint per frame, click emits `frameSelected(index)`, selected frame highlighted with accent color. Frame boundaries as vertical overlays.
 - **QML Reference**: `vendor/decenza/qml/components/ProfileGraph.qml` (Frame Region Overlays section)
 - **API**: None (client-side UI)
@@ -504,7 +504,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: L
 - **Blocked**: No
 
-### P5-8. AI Shot Analysis Service `[!]`
+### P5-8. AI Shot Analysis Service `[x]`
 - **Description**: Client-side AI integration for shot analysis. Format shot data (pressure/flow/temp/weight arrays + metadata) as context. Support multiple providers (OpenAI, Anthropic, Gemini, OpenRouter, Ollama) with configured API keys. Conversation overlay with markdown rendering. System prompts vary by beverage type.
 - **QML Reference**: `vendor/decenza/qml/pages/ShotDetailPage.qml` (AI Conversation Overlay), `SettingsAITab.qml`
 - **API**: Direct HTTP to AI provider APIs, `POST /api/v1/store/decenza-js/ai`
@@ -512,7 +512,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: L
 - **Blocked**: No
 
-### P5-9. Dialing Assistant Page `[!]`
+### P5-9. Dialing Assistant Page `[x]`
 - **Description**: Display AI-generated dialing recommendations with follow-up conversation. Loading/error/success states. Scrollable markdown recommendation. Follow-up input. Copy to clipboard + done buttons.
 - **QML Reference**: `vendor/decenza/qml/pages/DialingAssistantPage.qml` (332 lines)
 - **API**: AI provider APIs
@@ -547,12 +547,12 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: S
 - **Blocked**: No
 
-### P6-4. Accessibility (ARIA) `[~]`
+### P6-4. Accessibility (ARIA) `[x]`
 - **Description**: Add proper ARIA attributes to all interactive elements. Ensure keyboard navigation works throughout. Screen reader announcements for state changes. Focus management on page transitions.
 - **Complexity**: M
 - **Blocked**: No
 
-### P6-5. Performance Optimization `[ ]`
+### P6-5. Performance Optimization `[x]`
 - **Description**: Profile chart rendering with `requestAnimationFrame` throttling. Optimize WebSocket message handling (batch reactive updates). Virtual scrolling for long lists (shot history, profile list). Lazy-load routes.
 - **Complexity**: M
 - **Blocked**: No
@@ -562,12 +562,12 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: M
 - **Blocked**: No
 
-### P6-7. i18n Foundation `[ ]`
+### P6-7. i18n Foundation `[x]`
 - **Description**: Set up vue-i18n with English as base language. Extract all user-facing strings to locale files. Support for future language additions.
 - **Complexity**: M
 - **Blocked**: No
 
-### P6-8. Responsive Layout for Different Screen Sizes `[~]`
+### P6-8. Responsive Layout for Different Screen Sizes `[x]`
 - **Description**: Ensure all pages work well on tablet (960x600 reference), desktop (1920x1080), and mobile portrait/landscape. Use CSS container queries or media queries. Scale-based sizing matching Decenza's `Theme.scaled()`.
 - **Complexity**: L
 - **Blocked**: No

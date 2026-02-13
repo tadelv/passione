@@ -1,6 +1,9 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ValueInput from './ValueInput.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -30,6 +33,9 @@ const localDoseOut = ref(props.doseOut)
 const localGrinderName = ref(props.grinderName)
 const localGrindSetting = ref(props.grindSetting)
 
+// P6-4: Ref for the dialog card (focus trap container)
+const cardRef = ref(null)
+
 watch(() => props.visible, (val) => {
   if (val) {
     localTemp.value = props.temperature
@@ -37,6 +43,15 @@ watch(() => props.visible, (val) => {
     localDoseOut.value = props.doseOut
     localGrinderName.value = props.grinderName
     localGrindSetting.value = props.grindSetting
+    // P6-4: Auto-focus first focusable element when dialog opens
+    nextTick(() => {
+      if (cardRef.value) {
+        const focusable = cardRef.value.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (focusable) focusable.focus()
+      }
+    })
   }
 })
 
@@ -50,10 +65,10 @@ const ratio = computed(() => {
 const ratioDescription = computed(() => {
   const r = parseFloat(ratio.value)
   if (r <= 0) return ''
-  if (r < 1.5) return 'Ristretto'
-  if (r <= 2.5) return 'Normale'
-  if (r <= 3.5) return 'Lungo'
-  return 'Extra lungo'
+  if (r < 1.5) return t('brew.ristretto')
+  if (r <= 2.5) return t('brew.normale')
+  if (r <= 3.5) return t('brew.lungo')
+  return t('brew.extraLungo')
 })
 
 function readScale() {
@@ -101,14 +116,50 @@ function emitGrinderUpdate() {
 function onUseLastShot() {
   emit('use-last-shot')
 }
+
+// P6-4: Focus trap — wrap Tab between first and last focusable elements
+function onDialogKeydown(e) {
+  if (e.key === 'Escape') {
+    onCancel()
+    return
+  }
+  if (e.key !== 'Tab') return
+  if (!cardRef.value) return
+
+  const focusables = cardRef.value.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )
+  if (focusables.length === 0) return
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    }
+  } else {
+    if (document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+}
 </script>
 
 <template>
   <Transition name="brew-dialog-fade">
-    <div v-if="visible" class="brew-dialog" @click.self="onCancel">
-      <div class="brew-dialog__card">
+    <div v-if="visible" class="brew-dialog" @click.self="onCancel" @keydown="onDialogKeydown">
+      <div
+        class="brew-dialog__card"
+        ref="cardRef"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="brew-dialog-title"
+      >
         <div class="brew-dialog__header">
-          <span class="brew-dialog__title">Brew</span>
+          <span class="brew-dialog__title" id="brew-dialog-title">{{ t('brew.title') }}</span>
           <span v-if="profileName" class="brew-dialog__profile">{{ profileName }}</span>
         </div>
 
@@ -116,9 +167,9 @@ function onUseLastShot() {
           <!-- Temperature -->
           <div class="brew-dialog__row">
             <div class="brew-dialog__row-label">
-              <span class="brew-dialog__label">Temperature</span>
+              <span class="brew-dialog__label">{{ t('brew.temperature') }}</span>
               <button class="brew-dialog__link" @click="onUpdateTemperature">
-                Update Profile
+                {{ t('brew.updateProfile') }}
               </button>
             </div>
             <ValueInput
@@ -129,6 +180,7 @@ function onUseLastShot() {
               :decimals="1"
               suffix="&deg;C"
               value-color="var(--color-temperature)"
+              aria-label="Temperature"
               @update:model-value="localTemp = $event"
             />
           </div>
@@ -136,9 +188,9 @@ function onUseLastShot() {
           <!-- Dose In -->
           <div class="brew-dialog__row">
             <div class="brew-dialog__row-label">
-              <span class="brew-dialog__label">Dose In</span>
+              <span class="brew-dialog__label">{{ t('brew.doseIn') }}</span>
               <button class="brew-dialog__link" @click="readScale">
-                Read Scale
+                {{ t('brew.readScale') }}
               </button>
             </div>
             <ValueInput
@@ -149,6 +201,7 @@ function onUseLastShot() {
               :decimals="1"
               suffix=" g"
               value-color="var(--color-text)"
+              aria-label="Dose in"
               @update:model-value="localDoseIn = $event"
             />
           </div>
@@ -156,9 +209,9 @@ function onUseLastShot() {
           <!-- Dose Out / Yield -->
           <div class="brew-dialog__row">
             <div class="brew-dialog__row-label">
-              <span class="brew-dialog__label">Yield</span>
+              <span class="brew-dialog__label">{{ t('brew.yield') }}</span>
               <button class="brew-dialog__link" @click="onUpdateYield">
-                Update Profile
+                {{ t('brew.updateProfile') }}
               </button>
             </div>
             <ValueInput
@@ -169,6 +222,7 @@ function onUseLastShot() {
               :decimals="1"
               suffix=" g"
               value-color="var(--color-text)"
+              aria-label="Yield"
               @update:model-value="localDoseOut = $event"
             />
           </div>
@@ -186,13 +240,13 @@ function onUseLastShot() {
             <!-- Grinder Name -->
             <div class="brew-dialog__row">
               <div class="brew-dialog__row-label">
-                <span class="brew-dialog__label">Grinder</span>
+                <span class="brew-dialog__label">{{ t('brew.grinder') }}</span>
               </div>
               <input
                 type="text"
                 class="brew-dialog__text-input"
                 :value="localGrinderName"
-                placeholder="Grinder name"
+                :placeholder="t('brew.grinderPlaceholder')"
                 @input="onGrinderNameInput"
               />
             </div>
@@ -200,7 +254,7 @@ function onUseLastShot() {
             <!-- Grind Setting -->
             <div class="brew-dialog__row">
               <div class="brew-dialog__row-label">
-                <span class="brew-dialog__label">Grind Setting</span>
+                <span class="brew-dialog__label">{{ t('brew.grindSetting') }}</span>
               </div>
               <ValueInput
                 :model-value="localGrindSetting"
@@ -210,6 +264,7 @@ function onUseLastShot() {
                 :decimals="1"
                 suffix=""
                 value-color="var(--color-text)"
+                aria-label="Grind setting"
                 @update:model-value="onGrindSettingChange"
               />
             </div>
@@ -218,13 +273,13 @@ function onUseLastShot() {
 
         <div class="brew-dialog__actions">
           <button class="brew-dialog__btn brew-dialog__btn--cancel" @click="onCancel">
-            Cancel
+            {{ t('common.cancel') }}
           </button>
           <button class="brew-dialog__btn brew-dialog__btn--last-shot" @click="onUseLastShot">
-            Use Last Shot
+            {{ t('brew.useLastShot') }}
           </button>
           <button class="brew-dialog__btn brew-dialog__btn--start" @click="onStart">
-            Start Brewing
+            {{ t('brew.startBrewing') }}
           </button>
         </div>
       </div>

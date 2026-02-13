@@ -108,26 +108,4 @@ html, body {
   overflow: hidden;
 }
 
-/* ---- Responsive: mobile portrait ---- */
-@media (max-width: 600px) {
-  :root {
-    --status-bar-height: 56px;
-    --bottom-bar-height: 56px;
-    --page-top-margin: 64px;
-    --font-heading: 24px;
-    --font-title: 20px;
-    --font-value: 36px;
-    --font-timer: 48px;
-    --gauge-size: 90px;
-    --margin-standard: 12px;
-    --spacing-large: 16px;
-  }
-}
-
-/* ---- Responsive: large desktop ---- */
-@media (min-width: 1400px) {
-  :root {
-    --margin-standard: 24px;
-    --spacing-large: 32px;
-  }
-}
+/* Responsive rules are in responsive.css (imported from main.js) */

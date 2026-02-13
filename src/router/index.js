@@ -1,21 +1,25 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import IdlePage from '../pages/IdlePage.vue'
-import EspressoPage from '../pages/EspressoPage.vue'
-import SteamPage from '../pages/SteamPage.vue'
-import HotWaterPage from '../pages/HotWaterPage.vue'
-import FlushPage from '../pages/FlushPage.vue'
-import ProfileSelectorPage from '../pages/ProfileSelectorPage.vue'
-import ProfileInfoPage from '../pages/ProfileInfoPage.vue'
-import SettingsPage from '../pages/SettingsPage.vue'
-import ShotHistoryPage from '../pages/ShotHistoryPage.vue'
-import ShotDetailPage from '../pages/ShotDetailPage.vue'
-import PostShotReviewPage from '../pages/PostShotReviewPage.vue'
-import ShotComparisonPage from '../pages/ShotComparisonPage.vue'
-import ScreensaverPage from '../pages/ScreensaverPage.vue'
-import DescalingPage from '../pages/DescalingPage.vue'
-import VisualizerBrowserPage from '../pages/VisualizerBrowserPage.vue'
-import VisualizerMultiImportPage from '../pages/VisualizerMultiImportPage.vue'
-import BeanInfoPage from '../pages/BeanInfoPage.vue'
+
+// P6-5: Lazy-load all pages except IdlePage (landing page) for code-splitting
+const EspressoPage = () => import('../pages/EspressoPage.vue')
+const SteamPage = () => import('../pages/SteamPage.vue')
+const HotWaterPage = () => import('../pages/HotWaterPage.vue')
+const FlushPage = () => import('../pages/FlushPage.vue')
+const ProfileSelectorPage = () => import('../pages/ProfileSelectorPage.vue')
+const ProfileInfoPage = () => import('../pages/ProfileInfoPage.vue')
+const SettingsPage = () => import('../pages/SettingsPage.vue')
+const ShotHistoryPage = () => import('../pages/ShotHistoryPage.vue')
+const ShotDetailPage = () => import('../pages/ShotDetailPage.vue')
+const PostShotReviewPage = () => import('../pages/PostShotReviewPage.vue')
+const ShotComparisonPage = () => import('../pages/ShotComparisonPage.vue')
+const ScreensaverPage = () => import('../pages/ScreensaverPage.vue')
+const DescalingPage = () => import('../pages/DescalingPage.vue')
+const VisualizerBrowserPage = () => import('../pages/VisualizerBrowserPage.vue')
+const VisualizerMultiImportPage = () => import('../pages/VisualizerMultiImportPage.vue')
+const BeanInfoPage = () => import('../pages/BeanInfoPage.vue')
+const DialingAssistantPage = () => import('../pages/DialingAssistantPage.vue')
+const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -25,6 +29,7 @@ const routes = [
   { path: '/flush', name: 'flush', component: FlushPage },
   { path: '/profiles', name: 'profiles', component: ProfileSelectorPage },
   { path: '/profile-info/:id', name: 'profile-info', component: ProfileInfoPage },
+  { path: '/profile-editor/:id?', name: 'profile-editor', component: ProfileEditorPage },
   { path: '/settings/:tab?', name: 'settings', component: SettingsPage },
   { path: '/history', name: 'history', component: ShotHistoryPage },
   { path: '/shot/:id', name: 'shot-detail', component: ShotDetailPage },
@@ -35,6 +40,7 @@ const routes = [
   { path: '/visualizer-import', name: 'visualizer-import', component: VisualizerBrowserPage },
   { path: '/visualizer-multi-import', name: 'visualizer-multi-import', component: VisualizerMultiImportPage },
   { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
+  { path: '/dialing-assistant', name: 'dialing-assistant', component: DialingAssistantPage },
 ]
 
 const router = createRouter({
