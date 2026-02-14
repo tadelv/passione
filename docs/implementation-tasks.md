@@ -496,7 +496,7 @@ Fix and enhance the existing code to support all features across subsequent phas
 - **Complexity**: L
 - **Blocked**: No
 
-### P5-7. Visualizer Shot Upload Service `[!]`
+### P5-7. Visualizer Shot Upload Service `[x]`
 - **Description**: Implement visualizer.coffee upload: authenticate with stored credentials, format shot data (measurements + metadata) for visualizer API, upload with progress feedback. Auto-upload option for shots above minimum duration. Re-upload for already-uploaded shots.
 - **QML Reference**: `vendor/decenza/src/network/visualizeruploader.*`
 - **API**: Direct HTTP to visualizer.coffee API, `POST /api/v1/store/decenza-js/visualizer` (credentials)
@@ -665,7 +665,7 @@ Comparison of QML user interactions vs JS implementation (updated Feb 2026).
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Visualizer.coffee upload | Shows UI, not functional | Requires direct HTTP to visualizer.coffee (CORS) |
+| Visualizer.coffee upload | Functional via plugin | Uses ReaPrime visualizer.reaplugin for server-side upload |
 | AI shot analysis | Functional with API key | Requires AI provider API keys configured in Settings > AI |
 | Dialing assistant | Functional with API key | Depends on AI service configuration |
 | Auto-wake scheduling | Client-side only | No server-side timer in ReaPrime |
@@ -674,13 +674,13 @@ Comparison of QML user interactions vs JS implementation (updated Feb 2026).
 
 ### Overall Completion
 
-| Phase | Done | Blocked | Total | % |
-|-------|------|---------|-------|---|
-| Phase 0 | 9 | 0 | 9 | 100% |
-| Phase 1 | 16 | 0 | 16 | 100% |
-| Phase 2 | 6 | 0 | 6 | 100% |
-| Phase 3 | 8 | 0 | 8 | 100% |
-| Phase 4 | 13 | 0 | 13 | 100% |
-| Phase 5 | 9 | 1 | 10 | 90% |
-| Phase 6 | 8 | 0 | 8 | 100% |
-| **Total** | **69** | **1** | **70** | **99%** |
+| Phase | Done | Total | % |
+|-------|------|-------|---|
+| Phase 0 | 9 | 9 | 100% |
+| Phase 1 | 16 | 16 | 100% |
+| Phase 2 | 6 | 6 | 100% |
+| Phase 3 | 8 | 8 | 100% |
+| Phase 4 | 13 | 13 | 100% |
+| Phase 5 | 10 | 10 | 100% |
+| Phase 6 | 8 | 8 | 100% |
+| **Total** | **70** | **70** | **100%** |

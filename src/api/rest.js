@@ -280,3 +280,31 @@ export function executeSensorCommand(id, commandId, params = {}) {
     { commandId, params }
   )
 }
+
+// ---------------------------------------------------------------------------
+// Plugins
+// ---------------------------------------------------------------------------
+
+export function getPlugins() {
+  return sendCommand('/api/v1/plugins')
+}
+
+export function getPluginSettings(pluginId) {
+  return sendCommand(`/api/v1/plugins/${encodeURIComponent(pluginId)}/settings`)
+}
+
+export function updatePluginSettings(pluginId, settings) {
+  return sendCommand(
+    `/api/v1/plugins/${encodeURIComponent(pluginId)}/settings`,
+    'POST',
+    settings
+  )
+}
+
+export function callPluginEndpoint(pluginId, endpoint, method = 'GET', body = null) {
+  return sendCommand(
+    `/api/v1/plugins/${encodeURIComponent(pluginId)}/${encodeURIComponent(endpoint)}`,
+    method,
+    body
+  )
+}

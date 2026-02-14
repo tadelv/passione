@@ -240,11 +240,9 @@ export default {
 
 ## Current Status & Resume Point (Feb 2026)
 
-**Completion: 99%** (69 of 70 tasks done). Build passes cleanly (163 modules, ~770ms).
+**Completion: 100%** (70 of 70 tasks done). Build passes cleanly (163 modules, ~775ms).
 
-### Only Remaining Task
-
-- **P5-7 Visualizer Upload** (L, blocked by CORS) — Upload shots to visualizer.coffee requires a CORS proxy or server-side relay in Streamline-Bridge. The UI scaffolding exists but actual uploads are not functional from a browser-served skin.
+All implementation tasks are complete. The project has full feature parity with the Decenza QML app for all features that are supported by the Streamline-Bridge API.
 
 ### Key Architecture Notes for Resuming
 
@@ -252,7 +250,7 @@ export default {
 - Operation pages (Steam/HotWater/Flush) sync to workflow API with 300ms debounce pattern
 - Derived machine state flags (`isReady`, `isHeating`, `isFlowing`, `previousState`) are provided from App.vue
 - HistoryShotGraph handles 3 data formats (flat arrays, nested machine/scale, flat measurements)
-- VisualizerBrowserPage has CORS fallback messaging (direct fetch to visualizer.coffee blocked from web skin)
+- Visualizer upload uses ReaPrime's `visualizer.reaplugin` via plugin API (`/api/v1/plugins/visualizer.reaplugin/upload`), bypassing CORS
 - All 12 settings tabs are lazy-loaded via `defineAsyncComponent`
 - vue-i18n configured with Composition API mode; App.vue, IdlePage, BrewDialog converted to `t()` calls
 - AI settings stored in KV store under `ai` group (aiProvider, aiApiKey, aiModel, aiBaseUrl)

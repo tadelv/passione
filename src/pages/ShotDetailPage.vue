@@ -1,11 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HistoryShotGraph from '../components/HistoryShotGraph.vue'
 import RatingInput from '../components/RatingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 import SwipeableArea from '../components/SwipeableArea.vue'
-import { getShot, getShotIds, updateShot, deleteShot } from '../api/rest.js'
+import { getShot, getShotIds, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
 import { useAIAnalysis } from '../composables/useAIAnalysis.js'
 
 const route = useRoute()
@@ -137,6 +137,28 @@ async function onDelete() {
 
 function cancelDelete() {
   confirmingDelete.value = false
+}
+
+// ---- Visualizer Upload ----
+const uploading = ref(false)
+const toast = inject('toast', null)
+
+async function uploadToVisualizer() {
+  if (!shotId.value || uploading.value) return
+  uploading.value = true
+  try {
+    const res = await callPluginEndpoint('visualizer.reaplugin', 'upload', 'POST', {
+      shotId: shotId.value,
+    })
+    if (res?.visualizer_id) {
+      if (toast) toast(`Uploaded to Visualizer (${res.visualizer_id})`)
+    } else {
+      if (toast) toast('Upload completed')
+    }
+  } catch (e) {
+    if (toast) toast(e.message || 'Upload failed')
+  }
+  uploading.value = false
 }
 
 // ---- AI Analysis ----
@@ -284,6 +306,14 @@ function onNewAnalysis() {
           @click="openAIAnalysis"
         >
           AI Analysis
+        </button>
+
+        <button
+          class="shot-detail__upload-btn"
+          :disabled="uploading"
+          @click="uploadToVisualizer"
+        >
+          {{ uploading ? 'Uploading...' : 'Upload to Visualizer' }}
         </button>
 
         <button
@@ -529,6 +559,27 @@ function onNewAnalysis() {
 }
 
 .shot-detail__ai-btn:active {
+  opacity: 0.7;
+}
+
+.shot-detail__upload-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 1px solid var(--color-success);
+  background: transparent;
+  color: var(--color-success);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-detail__upload-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.shot-detail__upload-btn:active {
   opacity: 0.7;
 }
 

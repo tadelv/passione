@@ -6,7 +6,7 @@ import RatingInput from '../components/RatingInput.vue'
 import ValueInput from '../components/ValueInput.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import BottomBar from '../components/BottomBar.vue'
-import { getShot, updateShot, getShotIds, getShots } from '../api/rest.js'
+import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +18,8 @@ const loading = ref(true)
 const saving = ref(false)
 const dirty = ref(false)
 const confirmLeave = ref(false)
+const uploading = ref(false)
+const toast = inject('toast', null)
 let pendingNavigation = null
 
 // Editable fields
@@ -151,6 +153,24 @@ async function loadShot(id) {
 // Track changes
 function markDirty() {
   dirty.value = true
+}
+
+async function uploadToVisualizer() {
+  if (!shotId.value || uploading.value) return
+  uploading.value = true
+  try {
+    const res = await callPluginEndpoint('visualizer.reaplugin', 'upload', 'POST', {
+      shotId: shotId.value,
+    })
+    if (res?.visualizer_id) {
+      if (toast) toast(`Uploaded to Visualizer (${res.visualizer_id})`)
+    } else {
+      if (toast) toast('Upload completed')
+    }
+  } catch (e) {
+    if (toast) toast(e.message || 'Upload failed')
+  }
+  uploading.value = false
 }
 
 async function save() {
@@ -407,7 +427,7 @@ function goBack() {
           />
         </div>
 
-        <!-- Save button -->
+        <!-- Save / Upload buttons -->
         <div class="review-page__save-row">
           <button
             class="review-page__save-btn"
@@ -415,6 +435,13 @@ function goBack() {
             @click="save"
           >
             {{ saving ? 'Saving...' : dirty ? 'Save' : 'Saved' }}
+          </button>
+          <button
+            class="review-page__upload-btn"
+            :disabled="uploading"
+            @click="uploadToVisualizer"
+          >
+            {{ uploading ? 'Uploading...' : 'Upload to Visualizer' }}
           </button>
         </div>
       </div>
@@ -593,6 +620,8 @@ function goBack() {
   padding: 8px 16px;
   display: flex;
   justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .review-page__save-btn {
@@ -614,6 +643,28 @@ function goBack() {
 }
 
 .review-page__save-btn:active:not(:disabled) {
+  filter: brightness(0.85);
+}
+
+.review-page__upload-btn {
+  min-width: 160px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--color-success);
+  background: transparent;
+  color: var(--color-success);
+  font-size: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.review-page__upload-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.review-page__upload-btn:active:not(:disabled) {
   filter: brightness(0.85);
 }
 
