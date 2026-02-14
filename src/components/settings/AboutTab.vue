@@ -4,13 +4,13 @@
 <template>
   <div class="about-tab">
     <div class="about-tab__card">
-      <h1 class="about-tab__title">Decenza</h1>
+      <h1 class="about-tab__title">Passione</h1>
       <p class="about-tab__version">Version 0.1.0</p>
 
       <div class="about-tab__divider" />
 
       <p class="about-tab__text">
-        Built by Michael Holm (Kulitorum) during Christmas 2025.
+        A work of passion, built by Michael Holm (Kulitorum) during Christmas 2025.
         A modern web interface for the DE1 espresso machine via Streamline-Bridge.
       </p>
 

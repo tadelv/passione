@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**decenza-js** is a web-based skin (UI) for the Streamline-Bridge (ReaPrime) espresso machine gateway. The goal is to port the Decenza DE1 QML/C++ desktop/mobile app into a single-page web application served as a static skin from Streamline-Bridge's WebUI skin server.
+**Passione** (formerly decenza-js) is a web-based skin (UI) for the Streamline-Bridge (ReaPrime) espresso machine gateway — a work of passion. The goal is to port the Decenza DE1 QML/C++ desktop/mobile app into a single-page web application served as a static skin from Streamline-Bridge's WebUI skin server.
 
 The app replaces Decenza's QML→C++ calls with REST/WebSocket calls to the Streamline-Bridge API (port 8080), while preserving Decenza's GUI functionality and flexibility.
 
@@ -201,9 +201,9 @@ npm run build        # Static output in dist/
 The `dist/` folder is a Streamline-Bridge skin. Include a `manifest.json`:
 ```json
 {
-  "id": "decenza-js",
-  "name": "Decenza",
-  "description": "Decenza DE1 web interface",
+  "id": "passione",
+  "name": "Passione",
+  "description": "A work of passion — a modern web interface for the DE1 espresso machine via Streamline-Bridge",
   "version": "0.1.0"
 }
 ```
@@ -213,7 +213,7 @@ Install via Streamline-Bridge API:
 # From GitHub branch
 curl -X POST http://localhost:8080/api/v1/webui/skins/install/github-branch \
   -H "Content-Type: application/json" \
-  -d '{"repo": "owner/decenza-js", "branch": "main"}'
+  -d '{"repo": "owner/passione", "branch": "main"}'
 
 # Or copy dist/ to Streamline-Bridge's web-ui/ directory
 ```
