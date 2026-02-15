@@ -27,7 +27,8 @@
     "heating": "Heating",
     "sleeping": "Sleeping",
     "machineAndScale": "Machine + Scale",
-    "machine": "Machine"
+    "machine": "Machine",
+    "sleep": "Sleep"
   },
   "brew": {
     "title": "Brew",

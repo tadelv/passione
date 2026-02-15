@@ -89,8 +89,9 @@ async function onBrewDialogUpdateTemperature(temp) {
     if (workflow?.profile) {
       const profile = { ...workflow.profile }
       // Update the target temperature in profile frames
-      if (profile.frames && profile.frames.length > 0) {
-        profile.frames = profile.frames.map(f => ({
+      const frameKey = profile.frames ? 'frames' : profile.steps ? 'steps' : null
+      if (frameKey && profile[frameKey].length > 0) {
+        profile[frameKey] = profile[frameKey].map(f => ({
           ...f,
           temperature: temp,
         }))

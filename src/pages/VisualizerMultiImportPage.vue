@@ -398,7 +398,7 @@ function reset() {
               <div class="viz-multi__detail-row">
                 <span class="viz-multi__detail-label">Frames</span>
                 <span class="viz-multi__detail-value">
-                  {{ selectedProfile.profile.frames?.length ?? 0 }}
+                  {{ selectedProfile.profile.frames?.length ?? selectedProfile.profile.steps?.length ?? 0 }}
                 </span>
               </div>
               <div v-if="selectedProfile.profile.notes" class="viz-multi__detail-row viz-multi__detail-row--notes">

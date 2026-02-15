@@ -45,6 +45,59 @@ function openComparison() {
   }
 }
 
+/**
+ * Normalize a shot record from API format to flat fields for display.
+ * ReaPrime returns nested fields (workflow.doseData, metadata, shotNotes)
+ * but the UI expects flat access patterns.
+ */
+function normalizeShot(shot) {
+  if (!shot) return shot
+  const w = shot.workflow ?? {}
+  const dd = w.doseData ?? {}
+  const meta = shot.metadata ?? {}
+
+  // Flatten profile name
+  if (!shot.profileName) {
+    shot.profileName = w.profile?.title ?? w.name ?? null
+  }
+  // Flatten dose/output
+  if (shot.dose == null && shot.doseIn == null) {
+    shot.doseIn = dd.doseIn ?? dd.dose ?? null
+  }
+  if (shot.output == null && shot.doseOut == null) {
+    shot.doseOut = dd.doseOut ?? dd.targetWeight ?? null
+  }
+  // Flatten rating
+  if (shot.enjoyment == null && shot.rating == null) {
+    shot.rating = meta.rating ?? null
+  }
+  // Flatten notes
+  if (shot.notes == null && shot.shotNotes != null) {
+    shot.notes = shot.shotNotes
+  }
+  // Flatten barista
+  if (shot.barista == null && meta.barista != null) {
+    shot.barista = meta.barista
+  }
+  // Flatten profile object for Load button
+  if (!shot.profile && w.profile) {
+    shot.profile = w.profile
+  }
+  // Calculate duration from measurements if missing
+  if (shot.duration == null && shot.measurements?.length >= 2) {
+    const first = shot.measurements[0]
+    const last = shot.measurements[shot.measurements.length - 1]
+    const getTs = (m) => {
+      if (m.elapsed != null) return m.elapsed
+      const ts = m.machine?.timestamp ?? m.timestamp
+      return ts ? new Date(ts).getTime() / 1000 : 0
+    }
+    const d = getTs(last) - getTs(first)
+    if (d > 0) shot.duration = d
+  }
+  return shot
+}
+
 // Load all shot IDs first, then load pages
 async function loadShotIds() {
   initialLoading.value = true
@@ -71,7 +124,7 @@ async function loadMore() {
   try {
     const result = await getShots(pageIds)
     const shots = Array.isArray(result) ? result : (result?.shots ?? [])
-    loadedShots.value = [...loadedShots.value, ...shots]
+    loadedShots.value = [...loadedShots.value, ...shots.map(normalizeShot)]
     loadedCount.value += pageIds.length
   } catch {
     // ignore
@@ -92,8 +145,9 @@ const displayedShots = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return loadedShots.value.filter(shot => {
     const fields = [
-      shot.profileName, shot.profile?.title, shot.beanBrand,
-      shot.beanType, shot.roaster, shot.barista, shot.notes,
+      shot.profileName, shot.profile?.title, shot.workflow?.profile?.title,
+      shot.beanBrand, shot.beanType, shot.roaster, shot.barista,
+      shot.notes, shot.shotNotes, shot.workflow?.name,
     ]
     return fields.some(f => f && String(f).toLowerCase().includes(q))
   })
@@ -252,9 +306,11 @@ onMounted(loadShotIds)
         class="shot-history__row"
         :class="{ 'shot-history__row--selected': compareMode && selectedIds.has(shot.id || shot.shotId) }"
         @click="onRowClick(shot)"
-        @pointerdown.prevent="onRowPointerDown(shot)"
+        @pointerdown="onRowPointerDown(shot)"
         @pointerup="onRowPointerUp()"
         @pointerleave="onRowPointerLeave()"
+        @pointercancel="onRowPointerLeave()"
+        @contextmenu.prevent
       >
         <div v-if="compareMode" class="shot-history__checkbox" :class="{ checked: selectedIds.has(shot.id || shot.shotId) }">
           <svg v-if="selectedIds.has(shot.id || shot.shotId)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">

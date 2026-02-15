@@ -269,8 +269,24 @@ function onKeyDown(e) {
   }
 }
 
+// ---- Fullscreen on first interaction ----
+function requestFullscreen() {
+  const el = document.documentElement
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen
+  if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+    req.call(el).catch(() => {})
+  }
+  // Remove listeners after first attempt
+  document.removeEventListener('click', requestFullscreen)
+  document.removeEventListener('touchstart', requestFullscreen)
+}
+
 onMounted(async () => {
   document.addEventListener('keydown', onKeyDown)
+
+  // Request fullscreen on first user interaction
+  document.addEventListener('click', requestFullscreen, { once: true })
+  document.addEventListener('touchstart', requestFullscreen, { once: true })
 
   // Load persisted settings, then sync operation defaults from workflow
   await settings.load()
@@ -331,7 +347,9 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Page fade transition for user-initiated navigation */

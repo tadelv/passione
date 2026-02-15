@@ -170,7 +170,7 @@ const profileNotes = computed(() => {
 })
 
 const frameCount = computed(() => {
-  return importedProfile.value?.frames?.length ?? 0
+  return importedProfile.value?.frames?.length ?? importedProfile.value?.steps?.length ?? 0
 })
 </script>
 

@@ -431,7 +431,7 @@ function hasZone(name) {
 .idle-page {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100%;
   padding: var(--margin-standard);
 }
 
@@ -460,6 +460,7 @@ function hasZone(name) {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-large);
+  min-height: 0;
 }
 
 .idle-page__preset-section {

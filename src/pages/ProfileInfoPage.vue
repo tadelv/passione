@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
-import { getProfile } from '../api/rest.js'
+import { getProfile, getProfiles } from '../api/rest.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -48,9 +48,20 @@ async function fetchProfile() {
   loading.value = true
   try {
     const data = await getProfile(id)
-    record.value = data
-  } catch (e) {
-    console.warn('[ProfileInfoPage] Failed to load profile:', e.message)
+    // API may return a record {id, profile} or the profile directly
+    record.value = data?.profile ? data : { id, profile: data }
+  } catch {
+    // Fallback: fetch all profiles and find by ID
+    try {
+      const all = await getProfiles()
+      const list = Array.isArray(all) ? all : []
+      const match = list.find(r => r.id === id)
+      if (match) {
+        record.value = match
+      }
+    } catch {
+      // both methods failed
+    }
   } finally {
     loading.value = false
   }

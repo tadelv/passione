@@ -15,6 +15,7 @@ import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import StatusBar from './StatusBar.vue'
 import BottomBar from './BottomBar.vue'
+import { setMachineState } from '../api/rest.js'
 
 const props = defineProps({
   /** Zone configuration: { type: string, config?: object } */
@@ -301,6 +302,9 @@ const zoneConfig = computed(() => props.zone.config ?? {})
         <button class="layout-zone__nav-btn" @click="router.push('/settings')">
           {{ t('idle.settings') }}
         </button>
+        <button class="layout-zone__nav-btn layout-zone__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">
+          {{ t('idle.sleep') }}
+        </button>
       </div>
     </template>
 
@@ -481,6 +485,11 @@ const zoneConfig = computed(() => props.zone.config ?? {})
 
 .layout-zone__nav-btn:active {
   opacity: 0.7;
+}
+
+.layout-zone__nav-btn--sleep {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* ---- Empty ---- */

@@ -79,7 +79,51 @@ const mockWaterLevels = {
   warningThresholdPercentage: 10,
 }
 
-const mockProfiles = []
+const mockProfiles = [
+  {
+    id: 'profile-test1234567890abcdef',
+    profile: {
+      version: '2',
+      title: 'Classic Blooming',
+      author: 'Test Author',
+      notes: 'A test profile',
+      beverage_type: 'espresso',
+      target_weight: 36,
+      target_volume: 0,
+      steps: [
+        { name: 'Fill', pump: 'pressure', pressure: 6.0, flow: 0, temperature: 93.0, seconds: 8, transition: 'fast' },
+        { name: 'Bloom', pump: 'pressure', pressure: 0, flow: 0, temperature: 93.0, seconds: 15, transition: 'fast' },
+        { name: 'Pour', pump: 'flow', pressure: 0, flow: 2.5, temperature: 93.0, seconds: 40, transition: 'smooth' },
+      ],
+    },
+    visibility: 'visible',
+    isDefault: true,
+  },
+]
+
+const mockShotIds = ['shot-2026-02-13-100000', 'shot-2026-02-13-090000']
+const mockShotsData = {
+  'shot-2026-02-13-100000': {
+    id: 'shot-2026-02-13-100000',
+    timestamp: '2026-02-13T10:00:00Z',
+    measurements: [
+      { machine: { timestamp: '2026-02-13T10:00:00.000Z', state: { state: 'espresso', substate: 'pouring' }, flow: 2.5, pressure: 9.1, mixTemperature: 93.0 }, scale: { weight: 0, weightFlow: 0 } },
+      { machine: { timestamp: '2026-02-13T10:00:30.000Z', state: { state: 'espresso', substate: 'pouring' }, flow: 2.0, pressure: 8.5, mixTemperature: 93.2 }, scale: { weight: 36, weightFlow: 1.8 } },
+    ],
+    workflow: { name: 'Morning Shot', profile: { title: 'Default Profile', author: 'Test' }, doseData: { doseIn: 18.0, doseOut: 36.0 } },
+    metadata: { rating: 80 },
+  },
+  'shot-2026-02-13-090000': {
+    id: 'shot-2026-02-13-090000',
+    timestamp: '2026-02-13T09:00:00Z',
+    measurements: [
+      { machine: { timestamp: '2026-02-13T09:00:00.000Z', state: { state: 'espresso', substate: 'pouring' }, flow: 2.3, pressure: 9.0, mixTemperature: 92.5 }, scale: { weight: 0, weightFlow: 0 } },
+      { machine: { timestamp: '2026-02-13T09:00:25.000Z', state: { state: 'espresso', substate: 'pouring' }, flow: 1.8, pressure: 8.0, mixTemperature: 92.8 }, scale: { weight: 34, weightFlow: 1.6 } },
+    ],
+    workflow: { name: 'Afternoon Shot', profile: { title: 'Blooming Espresso', author: 'Test' }, doseData: { doseIn: 18.0, doseOut: 34.0 } },
+    metadata: { rating: 75 },
+  },
+}
 
 const kvStore = {}
 
@@ -155,12 +199,12 @@ function handleApi(req, res) {
       if (body) {
         try { parsed = JSON.parse(body) } catch { /* ignore */ }
       }
-      resolve(routeApi(path, method, parsed, res))
+      resolve(routeApi(path, method, parsed, res, url))
     })
   })
 }
 
-function routeApi(path, method, body, res) {
+function routeApi(path, method, body, res, url) {
   const json = (data, status = 200) => {
     res.writeHead(status, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(data))
@@ -250,13 +294,25 @@ function routeApi(path, method, body, res) {
 
   // Shots
   if (path === '/api/v1/shots/ids' && method === 'GET') {
-    return json([])
+    return json(mockShotIds)
   }
   if (path === '/api/v1/shots/latest' && method === 'GET') {
-    return json({ error: 'No shots' }, 404)
+    const latest = mockShotsData[mockShotIds[0]]
+    return latest ? json(latest) : json({ error: 'No shots' }, 404)
+  }
+  if (path.match(/^\/api\/v1\/shots\/[^/]+$/) && method === 'GET') {
+    const shotId = decodeURIComponent(path.split('/').pop())
+    const shot = mockShotsData[shotId]
+    return shot ? json(shot) : json({ error: 'Not found' }, 404)
   }
   if (path === '/api/v1/shots' && method === 'GET') {
-    return json([])
+    // Batch fetch with ?ids= or return all
+    const idsParam = url?.searchParams?.get('ids')
+    if (idsParam) {
+      const ids = idsParam.split(',').map(decodeURIComponent)
+      return json(ids.map(id => mockShotsData[id]).filter(Boolean))
+    }
+    return json(Object.values(mockShotsData))
   }
 
   // KV Store -- handles /api/v1/store/{namespace}/{key}

@@ -175,9 +175,19 @@ export function getShotIds() {
   return sendCommand('/api/v1/shots/ids')
 }
 
-export function getShots(ids) {
+export async function getShots(ids) {
   if (ids && ids.length) {
-    return sendCommand(`/api/v1/shots?ids=${ids.map(encodeURIComponent).join(',')}`)
+    // Try batch endpoint first, fall back to individual fetches
+    try {
+      const result = await sendCommand(`/api/v1/shots?ids=${ids.map(encodeURIComponent).join(',')}`)
+      if (Array.isArray(result) && result.length > 0) return result
+    } catch { /* batch endpoint may not be available */ }
+
+    // Fallback: fetch individually
+    const results = await Promise.allSettled(ids.map(id => getShot(id)))
+    return results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value)
   }
   return sendCommand('/api/v1/shots')
 }

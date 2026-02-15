@@ -98,20 +98,23 @@ async function loadSuggestions() {
 }
 
 function populateFromShot(s) {
-  roaster.value = s.roaster ?? ''
-  beanBrand.value = s.beanBrand ?? ''
-  beanType.value = s.beanType ?? ''
-  roastDate.value = s.roastDate ?? ''
-  roastLevel.value = s.roastLevel ?? ''
-  grinderModel.value = s.grinderModel ?? s.grinder ?? ''
-  grinderSetting.value = s.grinderSetting != null ? String(s.grinderSetting) : ''
-  beverageType.value = s.beverageType ?? ''
-  barista.value = s.barista ?? ''
-  doseIn.value = s.dose ?? s.doseIn ?? 0
-  doseOut.value = s.output ?? s.doseOut ?? s.yield ?? 0
-  tds.value = s.tds ?? 0
-  rating.value = s.enjoyment ?? s.rating ?? 0
-  notes.value = s.notes ?? s.shotNotes ?? ''
+  const meta = s.metadata ?? {}
+  const w = s.workflow ?? {}
+  const dd = w.doseData ?? {}
+  roaster.value = meta.roaster ?? s.roaster ?? ''
+  beanBrand.value = meta.beanBrand ?? s.beanBrand ?? ''
+  beanType.value = meta.beanType ?? s.beanType ?? ''
+  roastDate.value = meta.roastDate ?? s.roastDate ?? ''
+  roastLevel.value = meta.roastLevel ?? s.roastLevel ?? ''
+  grinderModel.value = meta.grinderModel ?? s.grinderModel ?? s.grinder ?? ''
+  grinderSetting.value = meta.grinderSetting != null ? String(meta.grinderSetting) : (s.grinderSetting != null ? String(s.grinderSetting) : '')
+  beverageType.value = meta.beverageType ?? s.beverageType ?? ''
+  barista.value = meta.barista ?? s.barista ?? ''
+  doseIn.value = dd.doseIn ?? dd.dose ?? s.dose ?? s.doseIn ?? 0
+  doseOut.value = dd.doseOut ?? dd.targetWeight ?? s.output ?? s.doseOut ?? s.yield ?? 0
+  tds.value = meta.tds ?? s.tds ?? 0
+  rating.value = meta.rating ?? s.enjoyment ?? s.rating ?? 0
+  notes.value = s.shotNotes ?? s.notes ?? ''
 }
 
 function populateFromSticky() {
@@ -178,20 +181,26 @@ async function save() {
   saving.value = true
   try {
     await updateShot(shotId.value, {
-      roaster: roaster.value || undefined,
-      beanBrand: beanBrand.value || undefined,
-      beanType: beanType.value || undefined,
-      roastDate: roastDate.value || undefined,
-      roastLevel: roastLevel.value || undefined,
-      grinderModel: grinderModel.value || undefined,
-      grinderSetting: grinderSetting.value || undefined,
-      beverageType: beverageType.value || undefined,
-      barista: barista.value || undefined,
-      dose: doseIn.value || undefined,
-      output: doseOut.value || undefined,
-      tds: tds.value || undefined,
-      enjoyment: rating.value,
-      notes: notes.value || undefined,
+      shotNotes: notes.value || undefined,
+      metadata: {
+        rating: rating.value,
+        barista: barista.value || undefined,
+        roaster: roaster.value || undefined,
+        beanBrand: beanBrand.value || undefined,
+        beanType: beanType.value || undefined,
+        roastDate: roastDate.value || undefined,
+        roastLevel: roastLevel.value || undefined,
+        grinderModel: grinderModel.value || undefined,
+        grinderSetting: grinderSetting.value || undefined,
+        beverageType: beverageType.value || undefined,
+        tds: tds.value || undefined,
+      },
+      workflow: {
+        doseData: {
+          doseIn: doseIn.value || undefined,
+          doseOut: doseOut.value || undefined,
+        },
+      },
     })
     saveSticky()
     dirty.value = false

@@ -20,8 +20,9 @@ const emit = defineEmits([
 
 let longPressTimer = null
 let longPressTriggered = false
-let lastClickTime = 0
-let lastClickIndex = -1
+// Track which index we last emitted 'select' for, to handle
+// the Vue re-render race (props.selectedIndex may not have updated yet)
+let lastEmittedSelectIndex = -1
 
 const pillRefs = ref([])
 
@@ -56,24 +57,18 @@ function onPointerLeave() {
 function onClick(index) {
   if (longPressTriggered) return
 
-  const now = Date.now()
-  // Double-click detection: same index, within 400ms
-  if (index === lastClickIndex && now - lastClickTime < 400 && index === props.selectedIndex) {
+  // Check if this preset is already selected (either via props or our local tracking)
+  const isSelected = index === props.selectedIndex || index === lastEmittedSelectIndex
+
+  if (isSelected) {
+    // Tap on selected preset → activate (start operation)
+    lastEmittedSelectIndex = -1
     emit('activate', index)
-    lastClickTime = 0
-    lastClickIndex = -1
     return
   }
 
-  lastClickTime = now
-  lastClickIndex = index
-
-  if (index === props.selectedIndex) {
-    // Already selected - single click on selected does nothing special
-    // (double-click will activate on next fast click)
-    return
-  }
-
+  // First tap → select this preset
+  lastEmittedSelectIndex = index
   emit('select', index)
 }
 </script>
@@ -90,9 +85,11 @@ function onClick(index) {
         role="option"
         :aria-selected="preset.index === selectedIndex"
         @click="onClick(preset.index)"
-        @pointerdown.prevent="onPointerDown(preset.index, $event)"
+        @pointerdown="onPointerDown(preset.index, $event)"
         @pointerup="onPointerUp(preset.index)"
         @pointerleave="onPointerLeave()"
+        @pointercancel="onPointerLeave()"
+        @contextmenu.prevent
       >
         {{ preset.display }}
       </button>

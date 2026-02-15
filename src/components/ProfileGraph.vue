@@ -22,7 +22,7 @@ let chart = null
 let resizeObserver = null
 let resizeTimer = null
 
-const frames = computed(() => props.profile?.frames ?? [])
+const frames = computed(() => props.profile?.frames ?? props.profile?.steps ?? [])
 
 const chartData = computed(() => profileFramesToData(frames.value))
 

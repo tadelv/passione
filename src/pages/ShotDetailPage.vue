@@ -56,8 +56,30 @@ async function loadShot(id) {
   loading.value = true
   try {
     const result = await getShot(id)
+    // Normalize nested API fields to flat access
+    if (result) {
+      const w = result.workflow ?? {}
+      const dd = w.doseData ?? {}
+      const meta = result.metadata ?? {}
+      if (result.profileName == null) result.profileName = w.profile?.title ?? w.name ?? null
+      if (result.dose == null && result.doseIn == null) result.doseIn = dd.doseIn ?? dd.dose ?? null
+      if (result.output == null && result.doseOut == null) result.doseOut = dd.doseOut ?? dd.targetWeight ?? null
+      if (result.notes == null && result.shotNotes != null) result.notes = result.shotNotes
+      if (!result.profile && w.profile) result.profile = w.profile
+      if (result.duration == null && result.measurements?.length >= 2) {
+        const first = result.measurements[0]
+        const last = result.measurements[result.measurements.length - 1]
+        const getTs = (m) => {
+          if (m.elapsed != null) return m.elapsed
+          const ts = m.machine?.timestamp ?? m.timestamp
+          return ts ? new Date(ts).getTime() / 1000 : 0
+        }
+        const d = getTs(last) - getTs(first)
+        if (d > 0) result.duration = d
+      }
+    }
     shot.value = result
-    rating.value = result?.enjoyment ?? result?.rating ?? 0
+    rating.value = result?.metadata?.rating ?? result?.enjoyment ?? result?.rating ?? 0
   } catch {
     shot.value = null
   }
@@ -114,7 +136,7 @@ async function onRatingChange(val) {
   rating.value = val
   if (shotId.value) {
     try {
-      await updateShot(shotId.value, { enjoyment: val })
+      await updateShot(shotId.value, { metadata: { rating: val } })
     } catch {
       // ignore
     }

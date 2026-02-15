@@ -9,3 +9,8 @@ const app = createApp(App)
 app.use(router)
 app.use(i18n)
 app.mount('#app')
+
+// Expose router for E2E test navigation
+if (typeof window !== 'undefined') {
+  window.__vueRouter = router
+}

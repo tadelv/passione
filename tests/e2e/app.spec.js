@@ -244,6 +244,75 @@ test.describe('WebSocket connection', () => {
   })
 })
 
+test.describe('ShotHistoryPage', () => {
+  test('shows shots from API', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    // Navigate to history
+    const historyBtn = page.locator('.layout-zone__nav-btn', { hasText: 'History' })
+    await expect(historyBtn).toBeVisible()
+    await historyBtn.click()
+    await page.waitForTimeout(1500)
+
+    // Should show shot rows with profile names from mock data
+    const rows = page.locator('.shot-history__row')
+    await expect(rows).not.toHaveCount(0)
+
+    // Check first shot shows the profile name
+    const firstProfile = page.locator('.shot-history__profile').first()
+    await expect(firstProfile).toBeVisible()
+    await expect(firstProfile).not.toHaveText('Unknown Profile')
+  })
+
+  test('shows dose and duration from API data', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    const historyBtn = page.locator('.layout-zone__nav-btn', { hasText: 'History' })
+    await historyBtn.click()
+    await page.waitForTimeout(1500)
+
+    // Should show dose info (normalized from workflow.doseData)
+    const meta = page.locator('.shot-history__meta').first()
+    await expect(meta).toBeVisible()
+    await expect(meta).toContainText('18.0g')
+  })
+})
+
+test.describe('ProfileInfoPage', () => {
+  test('loads profile details by ID', async ({ page }) => {
+    await loadApp(page)
+    // Wait past the 300ms router debounce guard
+    await page.waitForTimeout(500)
+
+    // Navigate via Vue Router
+    await page.evaluate(() => {
+      window.__vueRouter.push('/profile-info/profile-test1234567890abcdef')
+    })
+    await page.waitForTimeout(2500)
+
+    // Should show the profile title (not "Profile not found")
+    const title = page.locator('.profile-info__title')
+    await expect(title).toBeVisible()
+    await expect(title).toHaveText('Classic Blooming')
+  })
+
+  test('shows profile graph', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    await page.evaluate(() => {
+      window.__vueRouter.push('/profile-info/profile-test1234567890abcdef')
+    })
+    await page.waitForTimeout(2500)
+
+    // Profile graph should render
+    const graph = page.locator('.profile-info__graph')
+    await expect(graph).toBeVisible()
+  })
+})
+
 test.describe('Pages load without errors', () => {
   const routes = [
     { path: '/#/', name: 'IdlePage' },
