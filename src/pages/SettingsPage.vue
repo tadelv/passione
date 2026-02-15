@@ -106,7 +106,7 @@ const tabComponents = [
       </KeepAlive>
     </div>
 
-    <BottomBar title="Settings" />
+    <BottomBar title="Settings" @back="router.push('/')" />
   </div>
 </template>
 

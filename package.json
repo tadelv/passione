@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "uplot": "^1.6.31",
@@ -15,7 +16,9 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@vitejs/plugin-vue": "^6.0.2",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "ws": "^8.19.0"
   }
 }

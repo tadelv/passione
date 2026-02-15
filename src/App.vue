@@ -6,6 +6,7 @@ import StatusBar from './components/StatusBar.vue'
 import CompletionOverlay from './components/CompletionOverlay.vue'
 import StopReasonOverlay from './components/StopReasonOverlay.vue'
 import ToastNotification from './components/ToastNotification.vue'
+import LogOverlay from './components/LogOverlay.vue'
 import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
 import { useWaterLevels } from './composables/useWaterLevels.js'
@@ -319,6 +320,9 @@ onUnmounted(() => {
     :toasts="toast.toasts.value"
     @dismiss="toast.dismiss"
   />
+
+  <!-- Floating log overlay (all pages) -->
+  <LogOverlay />
 </template>
 
 <style scoped>

@@ -107,7 +107,8 @@ function onEspressoPresetSelect(index) {
 }
 
 async function onEspressoPresetActivate() {
-  // Second tap on selected: start espresso
+  // Second tap on selected: start espresso (only when machine is ready)
+  if (!isReady.value) return
   await setMachineState('espresso').catch(() => {})
   router.push('/espresso')
 }
@@ -172,21 +173,25 @@ function onFlushPresetSelect(index) {
 }
 
 async function startEspresso() {
+  if (!isReady.value) return
   await setMachineState('espresso').catch(() => {})
   router.push('/espresso')
 }
 
 async function startSteam() {
+  if (!isReady.value) return
   await setMachineState('steam').catch(() => {})
   router.push('/steam')
 }
 
 async function startHotWater() {
+  if (!isReady.value) return
   await setMachineState('hotWater').catch(() => {})
   router.push('/hotwater')
 }
 
 async function startFlush() {
+  if (!isReady.value) return
   await setMachineState('flush').catch(() => {})
   router.push('/flush')
 }
@@ -312,7 +317,7 @@ function hasZone(name) {
           :presets="steamPresets"
           :selected-index="selectedSteamPreset"
           @select="onSteamPresetSelect"
-          @activate="() => setMachineState('steam').catch(() => {})"
+          @activate="startSteam"
         />
       </div>
       <div v-if="hotWaterPresets.length" class="idle-page__preset-section">
@@ -321,7 +326,7 @@ function hasZone(name) {
           :presets="hotWaterPresets"
           :selected-index="selectedHotWaterPreset"
           @select="onHotWaterPresetSelect"
-          @activate="() => setMachineState('hotWater').catch(() => {})"
+          @activate="startHotWater"
         />
       </div>
       <div v-if="flushPresets.length" class="idle-page__preset-section">
@@ -330,7 +335,7 @@ function hasZone(name) {
           :presets="flushPresets"
           :selected-index="selectedFlushPreset"
           @select="onFlushPresetSelect"
-          @activate="() => setMachineState('flush').catch(() => {})"
+          @activate="startFlush"
         />
       </div>
 
