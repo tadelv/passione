@@ -23,7 +23,7 @@ async function loadShots() {
     loading.value = false
     return
   }
-  const ids = idsParam.split(',').filter(Boolean).slice(0, 3)
+  const ids = idsParam.split(',').filter(Boolean).map(id => decodeURIComponent(id)).slice(0, 3)
   const results = await Promise.allSettled(ids.map(id => getShot(id)))
   shots.value = results
     .filter(r => r.status === 'fulfilled' && r.value)

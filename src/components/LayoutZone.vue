@@ -15,7 +15,7 @@ import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import StatusBar from './StatusBar.vue'
 import BottomBar from './BottomBar.vue'
-import { setMachineState } from '../api/rest.js'
+import { setMachineState, scanDevices } from '../api/rest.js'
 
 const props = defineProps({
   /** Zone configuration: { type: string, config?: object } */
@@ -96,6 +96,40 @@ function updateClock() {
 // Start clock if this zone needs it
 if (props.zone.type === 'clock') {
   startClock()
+}
+
+// Fullscreen toggle
+const isFullscreen = ref(!!document.fullscreenElement || !!document.webkitFullscreenElement)
+
+function toggleFullscreen() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen
+    if (exit) exit.call(document).catch(() => {})
+  } else {
+    const el = document.documentElement
+    const req = el.requestFullscreen || el.webkitRequestFullscreen
+    if (req) req.call(el).catch(() => {})
+  }
+}
+
+// Listen for fullscreen changes to keep ref in sync
+function onFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement || !!document.webkitFullscreenElement
+}
+document.addEventListener('fullscreenchange', onFullscreenChange)
+document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+
+// Scale info
+const scale = inject('scale', null)
+const scaleWeight = inject('weight', ref(0))
+const scanning = ref(false)
+
+async function startScan() {
+  scanning.value = true
+  try {
+    await scanDevices()
+  } catch { /* ignore */ }
+  setTimeout(() => { scanning.value = false }, 5000)
 }
 
 const zoneType = computed(() => props.zone.type)
@@ -260,7 +294,7 @@ const zoneConfig = computed(() => props.zone.config ?? {})
       />
     </template>
 
-    <!-- StatusInfo: connection + water level (default top bar in current IdlePage) -->
+    <!-- StatusInfo: connection + scale + water + fullscreen (default top bar) -->
     <template v-else-if="zoneType === 'statusInfo'">
       <div class="layout-zone__status-info">
         <div class="layout-zone__connection">
@@ -273,6 +307,19 @@ const zoneConfig = computed(() => props.zone.config ?? {})
             {{ machineConnected ? t('common.online') : t('common.offline') }}
           </span>
         </div>
+        <div class="layout-zone__scale">
+          <template v-if="scaleConnected">
+            <span class="layout-zone__scale-weight">{{ scaleWeight.toFixed(1) }}g</span>
+            <span v-if="scale?.batteryLevel?.value != null" class="layout-zone__scale-battery">{{ scale.batteryLevel.value }}%</span>
+            <button class="layout-zone__scale-tare" @click="scale?.tare().catch(() => {})">Tare</button>
+          </template>
+          <template v-else>
+            <span class="layout-zone__scale-disconnected">No scale</span>
+            <button class="layout-zone__scale-scan" :disabled="scanning" @click="startScan">
+              {{ scanning ? 'Scanning...' : 'Scan' }}
+            </button>
+          </template>
+        </div>
         <div class="layout-zone__water">
           <div class="layout-zone__water-bar">
             <div
@@ -282,6 +329,16 @@ const zoneConfig = computed(() => props.zone.config ?? {})
           </div>
           <span class="layout-zone__water-label">{{ waterLevel }}%</span>
         </div>
+        <button class="layout-zone__fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'">
+          <svg v-if="!isFullscreen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+            <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+        </button>
       </div>
     </template>
 
@@ -305,6 +362,37 @@ const zoneConfig = computed(() => props.zone.config ?? {})
         <button class="layout-zone__nav-btn layout-zone__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">
           {{ t('idle.sleep') }}
         </button>
+      </div>
+    </template>
+
+    <!-- Fullscreen toggle button -->
+    <template v-else-if="zoneType === 'fullscreen'">
+      <button class="layout-zone__fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'">
+        <svg v-if="!isFullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+          <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
+        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+          <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
+      </button>
+    </template>
+
+    <!-- Scale info: weight, battery, scan -->
+    <template v-else-if="zoneType === 'scaleInfo'">
+      <div class="layout-zone__scale">
+        <template v-if="scaleConnected">
+          <span class="layout-zone__scale-weight">{{ scaleWeight.toFixed(1) }}g</span>
+          <span v-if="scale?.batteryLevel?.value != null" class="layout-zone__scale-battery">{{ scale.batteryLevel.value }}%</span>
+          <button class="layout-zone__scale-tare" @click="scale?.tare().catch(() => {})">Tare</button>
+        </template>
+        <template v-else>
+          <span class="layout-zone__scale-disconnected">No scale</span>
+          <button class="layout-zone__scale-scan" :disabled="scanning" @click="startScan">
+            {{ scanning ? 'Scanning...' : 'Scan' }}
+          </button>
+        </template>
       </div>
     </template>
 
@@ -489,6 +577,72 @@ const zoneConfig = computed(() => props.zone.config ?? {})
 
 .layout-zone__nav-btn--sleep {
   border-color: var(--color-text-secondary);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Fullscreen toggle ---- */
+.layout-zone__fullscreen-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.layout-zone__fullscreen-btn:active {
+  opacity: 0.7;
+}
+
+/* ---- Scale info ---- */
+.layout-zone__scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layout-zone__scale-weight {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.layout-zone__scale-battery {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.layout-zone__scale-tare,
+.layout-zone__scale-scan {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.layout-zone__scale-tare:active,
+.layout-zone__scale-scan:active {
+  opacity: 0.7;
+}
+
+.layout-zone__scale-scan:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.layout-zone__scale-disconnected {
+  font-size: 13px;
   color: var(--color-text-secondary);
 }
 

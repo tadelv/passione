@@ -192,8 +192,12 @@ export async function getShots(ids) {
   return sendCommand('/api/v1/shots')
 }
 
-export function getShot(id) {
-  return sendCommand(`/api/v1/shots/${encodeURIComponent(id)}`)
+export async function getShot(id) {
+  // Use query-param endpoint — path-based /shots/{id} fails for timestamp IDs
+  // that contain colons (e.g. "2025-09-08T10:35:22.155387")
+  const result = await sendCommand(`/api/v1/shots?ids=${encodeURIComponent(id)}`)
+  const shots = Array.isArray(result) ? result : (result?.shots ?? [])
+  return shots[0] ?? null
 }
 
 export function getLatestShot() {

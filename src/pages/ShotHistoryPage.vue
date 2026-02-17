@@ -41,7 +41,7 @@ function toggleSelect(shot) {
 function openComparison() {
   const ids = [...selectedIds.value]
   if (ids.length >= 2) {
-    router.push({ path: '/shot-comparison', query: { ids: ids.join(',') } })
+    router.push({ path: '/shot-comparison', query: { ids: ids.map(encodeURIComponent).join(',') } })
   }
 }
 

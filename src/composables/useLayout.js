@@ -43,6 +43,8 @@ const WIDGET_TYPES = [
   'statusInfo',
   'bottomBar',
   'navButtons',
+  'fullscreen',
+  'scaleInfo',
   'empty',
 ]
 
@@ -60,6 +62,8 @@ const WIDGET_LABELS = {
   statusInfo: 'Status Info',
   bottomBar: 'Bottom Bar',
   navButtons: 'Navigation Buttons',
+  fullscreen: 'Fullscreen Toggle',
+  scaleInfo: 'Scale Info',
   empty: 'Empty',
 }
 
