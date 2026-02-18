@@ -127,7 +127,7 @@ const scanning = ref(false)
 async function startScan() {
   scanning.value = true
   try {
-    await scanDevices()
+    await scanDevices({connect: true})
   } catch { /* ignore */ }
   setTimeout(() => { scanning.value = false }, 5000)
 }

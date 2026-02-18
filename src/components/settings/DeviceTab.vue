@@ -21,7 +21,7 @@ async function loadDevices() {
 async function startScan() {
   scanning.value = true
   try {
-    await scanDevices()
+    await scanDevices({connect: true})
     // Refresh device list after scan
     await loadDevices()
   } catch {
