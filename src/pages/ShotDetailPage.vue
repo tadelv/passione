@@ -61,9 +61,19 @@ async function loadShot(id) {
       const w = result.workflow ?? {}
       const dd = w.doseData ?? {}
       const meta = result.metadata ?? {}
-      if (result.profileName == null) result.profileName = w.profile?.title ?? w.name ?? null
-      if (result.dose == null && result.doseIn == null) result.doseIn = dd.doseIn ?? dd.dose ?? null
-      if (result.output == null && result.doseOut == null) result.doseOut = dd.doseOut ?? dd.targetWeight ?? null
+      const coffee = w.coffeeData ?? {}
+      const grinder = w.grinderData ?? {}
+
+      if (!result.profileName) result.profileName = w.profile?.title ?? w.name ?? null
+      if (result.doseIn == null) result.doseIn = dd.doseIn ?? null
+      if (result.doseOut == null) result.doseOut = dd.doseOut ?? null
+      if (!result.coffeeName) result.coffeeName = coffee.name ?? null
+      if (!result.roaster) result.roaster = coffee.roaster ?? null
+      if (!result.grinderSetting) result.grinderSetting = grinder.setting ?? null
+      if (!result.grinderModel) result.grinderModel = grinder.model ?? null
+      if (!result.grinderManufacturer) result.grinderManufacturer = grinder.manufacturer ?? null
+      if (result.rating == null) result.rating = meta.rating ?? null
+      if (result.barista == null) result.barista = meta.barista ?? null
       if (result.notes == null && result.shotNotes != null) result.notes = result.shotNotes
       if (!result.profile && w.profile) result.profile = w.profile
       if (result.duration == null && result.measurements?.length >= 2) {
@@ -79,7 +89,7 @@ async function loadShot(id) {
       }
     }
     shot.value = result
-    rating.value = result?.metadata?.rating ?? result?.enjoyment ?? result?.rating ?? 0
+    rating.value = result?.rating ?? result?.metadata?.rating ?? 0
   } catch {
     shot.value = null
   }
@@ -102,18 +112,18 @@ const duration = computed(() => {
 })
 
 const dose = computed(() => {
-  const v = shot.value?.dose ?? shot.value?.doseIn
+  const v = shot.value?.doseIn
   return v != null ? Number(v).toFixed(1) + 'g' : '--'
 })
 
 const output = computed(() => {
-  const v = shot.value?.output ?? shot.value?.doseOut ?? shot.value?.yield
+  const v = shot.value?.doseOut
   return v != null ? Number(v).toFixed(1) + 'g' : '--'
 })
 
 const ratio = computed(() => {
-  const d = shot.value?.dose ?? shot.value?.doseIn
-  const o = shot.value?.output ?? shot.value?.doseOut ?? shot.value?.yield
+  const d = shot.value?.doseIn
+  const o = shot.value?.doseOut
   if (d && o && d > 0) return `1:${(o / d).toFixed(1)}`
   return '--'
 })
@@ -291,17 +301,17 @@ function onNewAnalysis() {
           <span class="shot-detail__card-value">{{ shotDate }}</span>
         </div>
 
-        <div v-if="shot.beanBrand || shot.beanType" class="shot-detail__card">
-          <span class="shot-detail__card-label">Bean</span>
+        <div v-if="shot.coffeeName || shot.roaster" class="shot-detail__card">
+          <span class="shot-detail__card-label">Coffee</span>
           <span class="shot-detail__card-value">
-            {{ [shot.beanBrand, shot.beanType].filter(Boolean).join(' ') }}
+            {{ [shot.roaster, shot.coffeeName].filter(Boolean).join(' — ') }}
           </span>
         </div>
 
-        <div v-if="shot.grinderModel || shot.grinder" class="shot-detail__card">
+        <div v-if="shot.grinderModel || shot.grinderManufacturer" class="shot-detail__card">
           <span class="shot-detail__card-label">Grinder</span>
           <span class="shot-detail__card-value">
-            {{ shot.grinderModel || shot.grinder }}
+            {{ [shot.grinderManufacturer, shot.grinderModel].filter(Boolean).join(' ') }}
             <template v-if="shot.grinderSetting"> @ {{ shot.grinderSetting }}</template>
           </span>
         </div>

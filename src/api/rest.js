@@ -171,15 +171,15 @@ export function connectDevice(deviceId) {
 // Shots (history)
 // ---------------------------------------------------------------------------
 
-export function getShotIds() {
-  return sendCommand('/api/v1/shots/ids')
+export function getShotIds(order = 'desc') {
+  return sendCommand(`/api/v1/shots/ids?order=${order}`)
 }
 
 export async function getShots(ids) {
   if (ids && ids.length) {
     // Try batch endpoint first, fall back to individual fetches
     try {
-      const result = await sendCommand(`/api/v1/shots?ids=${ids.map(encodeURIComponent).join(',')}`)
+      const result = await sendCommand(`/api/v1/shots?ids=${ids.map(encodeURIComponent).join(',')}&order=desc`)
       if (Array.isArray(result) && result.length > 0) return result
     } catch { /* batch endpoint may not be available */ }
 

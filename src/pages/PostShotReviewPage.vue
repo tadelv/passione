@@ -76,12 +76,25 @@ async function loadSuggestions() {
     }
 
     for (const s of shots) {
-      if (s.roaster) sets.roaster.add(s.roaster)
-      if (s.beanBrand) sets.beanBrand.add(s.beanBrand)
-      if (s.beanType) sets.beanType.add(s.beanType)
-      if (s.grinderModel || s.grinder) sets.grinderModel.add(s.grinderModel || s.grinder)
-      if (s.grinderSetting != null) sets.grinderSetting.add(String(s.grinderSetting))
-      if (s.barista) sets.barista.add(s.barista)
+      const meta = s.metadata ?? {}
+      const coffee = s.workflow?.coffeeData ?? {}
+      const grinder = s.workflow?.grinderData ?? {}
+
+      const roasterVal = meta.roaster ?? coffee.roaster
+      if (roasterVal) sets.roaster.add(roasterVal)
+
+      if (meta.beanBrand) sets.beanBrand.add(meta.beanBrand)
+
+      const beanVal = meta.beanType ?? coffee.name
+      if (beanVal) sets.beanType.add(beanVal)
+
+      const grinderVal = meta.grinderModel ?? ([grinder.manufacturer, grinder.model].filter(Boolean).join(' ') || null)
+      if (grinderVal) sets.grinderModel.add(grinderVal)
+
+      const settingVal = meta.grinderSetting ?? grinder.setting
+      if (settingVal != null) sets.grinderSetting.add(String(settingVal))
+
+      if (meta.barista) sets.barista.add(meta.barista)
     }
 
     historySuggestions.value = {
@@ -101,20 +114,23 @@ function populateFromShot(s) {
   const meta = s.metadata ?? {}
   const w = s.workflow ?? {}
   const dd = w.doseData ?? {}
-  roaster.value = meta.roaster ?? s.roaster ?? ''
-  beanBrand.value = meta.beanBrand ?? s.beanBrand ?? ''
-  beanType.value = meta.beanType ?? s.beanType ?? ''
-  roastDate.value = meta.roastDate ?? s.roastDate ?? ''
-  roastLevel.value = meta.roastLevel ?? s.roastLevel ?? ''
-  grinderModel.value = meta.grinderModel ?? s.grinderModel ?? s.grinder ?? ''
-  grinderSetting.value = meta.grinderSetting != null ? String(meta.grinderSetting) : (s.grinderSetting != null ? String(s.grinderSetting) : '')
-  beverageType.value = meta.beverageType ?? s.beverageType ?? ''
-  barista.value = meta.barista ?? s.barista ?? ''
-  doseIn.value = dd.doseIn ?? dd.dose ?? s.dose ?? s.doseIn ?? 0
-  doseOut.value = dd.doseOut ?? dd.targetWeight ?? s.output ?? s.doseOut ?? s.yield ?? 0
-  tds.value = meta.tds ?? s.tds ?? 0
-  rating.value = meta.rating ?? s.enjoyment ?? s.rating ?? 0
-  notes.value = s.shotNotes ?? s.notes ?? ''
+  const coffee = w.coffeeData ?? {}
+  const grinder = w.grinderData ?? {}
+
+  roaster.value = meta.roaster ?? coffee.roaster ?? ''
+  beanBrand.value = meta.beanBrand ?? ''
+  beanType.value = meta.beanType ?? coffee.name ?? ''
+  roastDate.value = meta.roastDate ?? ''
+  roastLevel.value = meta.roastLevel ?? ''
+  grinderModel.value = meta.grinderModel ?? ([grinder.manufacturer, grinder.model].filter(Boolean).join(' ') || '')
+  grinderSetting.value = meta.grinderSetting != null ? String(meta.grinderSetting) : (grinder.setting ?? '')
+  beverageType.value = meta.beverageType ?? ''
+  barista.value = meta.barista ?? ''
+  doseIn.value = dd.doseIn ?? 0
+  doseOut.value = dd.doseOut ?? 0
+  tds.value = meta.tds ?? 0
+  rating.value = meta.rating ?? 0
+  notes.value = s.shotNotes ?? ''
 }
 
 function populateFromSticky() {
@@ -185,13 +201,9 @@ async function save() {
       metadata: {
         rating: rating.value,
         barista: barista.value || undefined,
-        roaster: roaster.value || undefined,
         beanBrand: beanBrand.value || undefined,
-        beanType: beanType.value || undefined,
         roastDate: roastDate.value || undefined,
         roastLevel: roastLevel.value || undefined,
-        grinderModel: grinderModel.value || undefined,
-        grinderSetting: grinderSetting.value || undefined,
         beverageType: beverageType.value || undefined,
         tds: tds.value || undefined,
       },
@@ -200,12 +212,20 @@ async function save() {
           doseIn: doseIn.value || undefined,
           doseOut: doseOut.value || undefined,
         },
+        coffeeData: {
+          name: beanType.value || '',
+          roaster: roaster.value || undefined,
+        },
+        grinderData: {
+          model: grinderModel.value || undefined,
+          setting: grinderSetting.value || '',
+        },
       },
     })
     saveSticky()
     dirty.value = false
-  } catch {
-    // ignore
+  } catch (e) {
+    if (toast) toast(e.message || 'Failed to save')
   }
   saving.value = false
 }
@@ -247,7 +267,7 @@ async function saveAndLeave() {
 }
 
 const profileName = computed(() =>
-  shot.value?.profileName ?? shot.value?.profile?.title ?? 'Unknown Profile'
+  shot.value?.workflow?.profile?.title ?? shot.value?.workflow?.name ?? 'Unknown Profile'
 )
 
 const ROAST_LEVELS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark']

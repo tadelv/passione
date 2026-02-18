@@ -55,27 +55,43 @@ function normalizeShot(shot) {
   const w = shot.workflow ?? {}
   const dd = w.doseData ?? {}
   const meta = shot.metadata ?? {}
+  const coffee = w.coffeeData ?? {}
+  const grinder = w.grinderData ?? {}
 
   // Flatten profile name
   if (!shot.profileName) {
     shot.profileName = w.profile?.title ?? w.name ?? null
   }
-  // Flatten dose/output
-  if (shot.dose == null && shot.doseIn == null) {
-    shot.doseIn = dd.doseIn ?? dd.dose ?? null
+  // Flatten dose from workflow.doseData
+  if (shot.doseIn == null) {
+    shot.doseIn = dd.doseIn ?? null
   }
-  if (shot.output == null && shot.doseOut == null) {
-    shot.doseOut = dd.doseOut ?? dd.targetWeight ?? null
+  if (shot.doseOut == null) {
+    shot.doseOut = dd.doseOut ?? null
   }
-  // Flatten rating
-  if (shot.enjoyment == null && shot.rating == null) {
+  // Flatten coffee data from workflow.coffeeData
+  if (!shot.coffeeName) {
+    shot.coffeeName = coffee.name ?? null
+  }
+  if (!shot.roaster) {
+    shot.roaster = coffee.roaster ?? null
+  }
+  // Flatten grinder data from workflow.grinderData
+  if (!shot.grinderSetting) {
+    shot.grinderSetting = grinder.setting ?? null
+  }
+  if (!shot.grinderModel) {
+    shot.grinderModel = grinder.model ?? null
+  }
+  // Flatten rating from metadata
+  if (shot.rating == null) {
     shot.rating = meta.rating ?? null
   }
   // Flatten notes
   if (shot.notes == null && shot.shotNotes != null) {
     shot.notes = shot.shotNotes
   }
-  // Flatten barista
+  // Flatten barista from metadata
   if (shot.barista == null && meta.barista != null) {
     shot.barista = meta.barista
   }
@@ -145,9 +161,9 @@ const displayedShots = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return loadedShots.value.filter(shot => {
     const fields = [
-      shot.profileName, shot.profile?.title, shot.workflow?.profile?.title,
-      shot.beanBrand, shot.beanType, shot.roaster, shot.barista,
-      shot.notes, shot.shotNotes, shot.workflow?.name,
+      shot.profileName, shot.coffeeName, shot.roaster,
+      shot.grinderModel, shot.grinderSetting, shot.barista,
+      shot.notes,
     ]
     return fields.some(f => f && String(f).toLowerCase().includes(q))
   })
@@ -243,8 +259,8 @@ function formatDuration(seconds) {
 }
 
 function formatDoseYield(shot) {
-  const dose = shot.dose ?? shot.doseIn
-  const output = shot.output ?? shot.doseOut ?? shot.yield
+  const dose = shot.doseIn
+  const output = shot.doseOut
   if (dose && output) return `${Number(dose).toFixed(1)}g → ${Number(output).toFixed(1)}g`
   if (dose) return `${Number(dose).toFixed(1)}g in`
   if (output) return `${Number(output).toFixed(1)}g out`
