@@ -77,12 +77,12 @@ The core real-time data structure (~10Hz via WebSocket):
 - Shot history: paginated list, search, detail view, comparison overlay, post-shot review
 - Visualizer: share code import, batch import from visualizer.coffee
 - Layout customization: configurable home screen zones
+- Bean info: workflow editor for coffee/grinder/dose with presets
 - Screensaver, descaling wizard, settings (10 tabs)
 
 **Deferred to 2.0:**
 - AI shot analysis and dialing assistant
 - Internationalization (i18n/translations)
-- Bean info management
 
 ## Design Principles
 

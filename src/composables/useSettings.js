@@ -103,11 +103,6 @@ const DEFAULT_SETTINGS = {
   dyeGrinderModel: '',
   dyeGrinderSetting: '',
 
-  // AI
-  aiProvider: 'anthropic',
-  aiApiKey: '',
-  aiModel: '',
-  aiBaseUrl: '',
 }
 
 // ---- Composable -------------------------------------------------------------
@@ -218,9 +213,6 @@ export function useSettings() {
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',
       'dyeGrinderModel', 'dyeGrinderSetting',
-    ],
-    ai: [
-      'aiProvider', 'aiApiKey', 'aiModel', 'aiBaseUrl',
     ],
   }
 

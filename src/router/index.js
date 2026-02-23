@@ -18,7 +18,6 @@ const DescalingPage = () => import('../pages/DescalingPage.vue')
 const VisualizerBrowserPage = () => import('../pages/VisualizerBrowserPage.vue')
 const VisualizerMultiImportPage = () => import('../pages/VisualizerMultiImportPage.vue')
 const BeanInfoPage = () => import('../pages/BeanInfoPage.vue')
-const DialingAssistantPage = () => import('../pages/DialingAssistantPage.vue')
 const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 const RecipeEditorPage = () => import('../pages/RecipeEditorPage.vue')
 
@@ -41,7 +40,6 @@ const routes = [
   { path: '/visualizer-import', name: 'visualizer-import', component: VisualizerBrowserPage },
   { path: '/visualizer-multi-import', name: 'visualizer-multi-import', component: VisualizerMultiImportPage },
   { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
-  { path: '/dialing-assistant', name: 'dialing-assistant', component: DialingAssistantPage },
   { path: '/recipe-editor/:id?', name: 'recipe-editor', component: RecipeEditorPage },
 ]
 

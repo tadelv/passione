@@ -12,7 +12,6 @@ const TABS = [
   { id: 'options', label: 'Options' },
   { id: 'layout', label: 'Layout' },
   { id: 'visualizer', label: 'Visualizer' },
-  { id: 'ai', label: 'AI' },
   { id: 'history', label: 'History' },
   { id: 'gateway', label: 'Gateway' },
   { id: 'screensaver', label: 'Screensaver' },
@@ -60,7 +59,6 @@ const PreferencesTab = defineAsyncComponent(() => import('../components/settings
 const OptionsTab = defineAsyncComponent(() => import('../components/settings/OptionsTab.vue'))
 const LayoutTab = defineAsyncComponent(() => import('../components/settings/LayoutTab.vue'))
 const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
-const AITab = defineAsyncComponent(() => import('../components/settings/AITab.vue'))
 const ShotHistoryTab = defineAsyncComponent(() => import('../components/settings/ShotHistoryTab.vue'))
 const GatewayTab = defineAsyncComponent(() => import('../components/settings/GatewayTab.vue'))
 const ScreensaverTab = defineAsyncComponent(() => import('../components/settings/ScreensaverTab.vue'))
@@ -69,7 +67,7 @@ const AboutTab = defineAsyncComponent(() => import('../components/settings/About
 const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
 
 const tabComponents = [
-  DeviceTab, PreferencesTab, OptionsTab, LayoutTab, VisualizerTab, AITab,
+  DeviceTab, PreferencesTab, OptionsTab, LayoutTab, VisualizerTab,
   ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab, AboutTab, AccessibilityTab,
 ]
 </script>

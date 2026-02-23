@@ -25,6 +25,8 @@ const grinderSetting = ref('')
 const beverageType = ref('espresso')
 const doseIn = ref(18.0)
 const doseOut = ref(36.0)
+const ratioValue = ref(2.0)
+let _updating = false
 
 const ROAST_LEVELS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark']
 const BEVERAGE_TYPES = ['espresso', 'filter', 'pourover', 'tea', 'manual']
@@ -33,6 +35,7 @@ const BEVERAGE_TYPES = ['espresso', 'filter', 'pourover', 'tea', 'manual']
 function loadFromPreset(index) {
   const preset = beanPresets.value[index]
   if (!preset) return
+  _updating = true
   roaster.value = preset.roaster ?? ''
   beanBrand.value = preset.beanBrand ?? preset.brand ?? ''
   beanType.value = preset.beanType ?? preset.type ?? ''
@@ -43,6 +46,8 @@ function loadFromPreset(index) {
   beverageType.value = preset.beverageType ?? 'espresso'
   doseIn.value = preset.doseIn ?? 18.0
   doseOut.value = preset.doseOut ?? 36.0
+  ratioValue.value = doseIn.value > 0 ? +(doseOut.value / doseIn.value).toFixed(1) : 2.0
+  _updating = false
 }
 
 // Load on mount if a preset is selected
@@ -56,6 +61,7 @@ if (selectedIndex.value >= 0) {
   if (wd) {
     doseIn.value = wd.doseIn ?? wd.dose ?? 18.0
     doseOut.value = wd.doseOut ?? wd.targetWeight ?? 36.0
+    if (doseIn.value > 0) ratioValue.value = +(doseOut.value / doseIn.value).toFixed(1)
   }
   if (wg) {
     grinder.value = wg.grinder ?? wg.name ?? ''
@@ -122,24 +128,22 @@ async function saveToWorkflow() {
   try {
     await updateWorkflow({
       coffeeData: {
-        roaster: roaster.value,
-        beanBrand: beanBrand.value,
-        beanType: beanType.value,
-        roastDate: roastDate.value,
-        roastLevel: roastLevel.value,
+        name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || 'Unnamed',
+        roaster: roaster.value || null,
       },
       grinderData: {
-        grinder: grinder.value,
         setting: grinderSetting.value,
+        manufacturer: null,
+        model: grinder.value || null,
       },
       doseData: {
         doseIn: doseIn.value,
         doseOut: doseOut.value,
       },
     })
-    toast?.success('Bean info saved to workflow')
+    toast?.success('Saved to workflow')
   } catch {
-    toast?.error('Failed to save bean info')
+    toast?.error('Failed to save to workflow')
   }
 }
 
@@ -151,11 +155,32 @@ const grinderSuggestions = computed(() =>
   [...new Set(beanPresets.value.map(p => p.grinder).filter(Boolean))]
 )
 
-const ratio = computed(() => {
-  if (doseIn.value > 0 && doseOut.value > 0) {
-    return `1:${(doseOut.value / doseIn.value).toFixed(1)}`
+// ---- Linked ratio: changing any of doseIn/doseOut/ratio updates the others ----
+watch(doseIn, (val) => {
+  if (_updating) return
+  _updating = true
+  if (val > 0 && ratioValue.value > 0) {
+    doseOut.value = +(val * ratioValue.value).toFixed(1)
   }
-  return '--'
+  _updating = false
+})
+
+watch(doseOut, (val) => {
+  if (_updating) return
+  _updating = true
+  if (doseIn.value > 0 && val > 0) {
+    ratioValue.value = +(val / doseIn.value).toFixed(1)
+  }
+  _updating = false
+})
+
+watch(ratioValue, (val) => {
+  if (_updating) return
+  _updating = true
+  if (doseIn.value > 0 && val > 0) {
+    doseOut.value = +(doseIn.value * val).toFixed(1)
+  }
+  _updating = false
 })
 </script>
 
@@ -290,8 +315,15 @@ const ratio = computed(() => {
           />
         </div>
 
-        <div class="bean-info__ratio">
-          Ratio: {{ ratio }}
+        <div class="bean-info__field">
+          <label class="bean-info__label">Ratio (1:X)</label>
+          <ValueInput
+            v-model="ratioValue"
+            :min="0.5"
+            :max="10"
+            :step="0.1"
+            :decimals="1"
+          />
         </div>
       </div>
     </div>
@@ -404,13 +436,6 @@ const ratio = computed(() => {
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-}
-
-.bean-info__ratio {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-text);
-  padding: 8px 0;
 }
 
 .bean-info__save-btn {

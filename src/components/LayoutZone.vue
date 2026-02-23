@@ -455,10 +455,6 @@ const zoneConfig = computed(() => props.zone.config ?? {})
   font-weight: bold;
   color: var(--color-text);
   text-align: center;
-  max-width: 80%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -485,10 +481,6 @@ const zoneConfig = computed(() => props.zone.config ?? {})
   font-weight: bold;
   color: var(--color-text);
   text-align: center;
-  max-width: 80%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
