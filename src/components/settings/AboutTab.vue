@@ -5,12 +5,12 @@
   <div class="about-tab">
     <div class="about-tab__card">
       <h1 class="about-tab__title">Passione</h1>
-      <p class="about-tab__version">Version 0.1.0</p>
+      <p class="about-tab__version">Version 1.0.0</p>
 
       <div class="about-tab__divider" />
 
       <p class="about-tab__text">
-        A work of passion, built by Michael Holm (Kulitorum) during Christmas 2025.
+        Passione, based on Decenza, a work of passion.
         A modern web interface for the DE1 espresso machine via Streamline-Bridge.
       </p>
 
@@ -19,6 +19,7 @@
       <div class="about-tab__section">
         <p class="about-tab__text">
           If you find this app useful, donations are welcome but never expected.
+          Donations go to Michael Holm (Kulitorum), the original author of Decenza.
         </p>
         <p class="about-tab__text about-tab__text--small">
           paypal@kulitorum.com
@@ -28,7 +29,7 @@
       <div class="about-tab__divider" />
 
       <p class="about-tab__credits">
-        Thanks to the Decent community and the de1app developers for inspiration.
+        Thanks to Michael, the Decent community, and the de1app developers for inspiration.
       </p>
     </div>
   </div>
