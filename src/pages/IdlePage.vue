@@ -6,7 +6,7 @@ import LayoutZone from '../components/LayoutZone.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import ProfilePreviewPopup from '../components/ProfilePreviewPopup.vue'
 import { useLayout } from '../composables/useLayout.js'
-import { setMachineState, getProfiles, updateWorkflow } from '../api/rest.js'
+import { setMachineState, getProfiles } from '../api/rest.js'
 
 const { t } = useI18n()
 
@@ -25,6 +25,7 @@ const pressure = inject('pressure', ref(0))
 const waterLevel = inject('waterLevel', ref(0))
 const profileName = inject('profileName', ref(''))
 const workflow = inject('workflow', null)
+const updateWorkflow = inject('updateWorkflow')
 const settings = inject('settings', null)
 
 const isReady = computed(() =>

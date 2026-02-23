@@ -6,7 +6,7 @@ import ValueInput from '../components/ValueInput.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import { useSteamHeater } from '../composables/useSteamHeater.js'
-import { setMachineState, updateWorkflow } from '../api/rest.js'
+import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -15,6 +15,7 @@ const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const machine = inject('machine')
 const settings = inject('settings')
+const updateWorkflow = inject('updateWorkflow')
 
 // Steam heater control composable
 const steamHeater = useSteamHeater(machine, settings)

@@ -4,10 +4,10 @@ import PresetPillRow from '../components/PresetPillRow.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
 import BottomBar from '../components/BottomBar.vue'
-import { updateWorkflow } from '../api/rest.js'
 
 const settings = inject('settings', null)
 const workflow = inject('workflow', null)
+const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
 
 // ---- Bean presets ----

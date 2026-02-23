@@ -5,7 +5,7 @@ import BottomBar from '../components/BottomBar.vue'
 import ValueInput from '../components/ValueInput.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
-import { setMachineState, updateWorkflow } from '../api/rest.js'
+import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -13,6 +13,7 @@ const router = useRouter()
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
+const updateWorkflow = inject('updateWorkflow')
 
 const isFlushing = computed(() =>
   machineState.value === 'flush'

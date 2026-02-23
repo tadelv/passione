@@ -2,10 +2,11 @@
 import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { getShotIds, getShots, updateWorkflow } from '../api/rest.js'
+import { getShotIds, getShots } from '../api/rest.js'
 
 const router = useRouter()
 const toast = inject('toast', null)
+const updateWorkflow = inject('updateWorkflow')
 
 const PAGE_SIZE = 50
 const SEARCH_DEBOUNCE_MS = 300

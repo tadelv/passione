@@ -3,7 +3,7 @@ import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ShotGraph from '../components/ShotGraph.vue'
 import BrewDialog from '../components/BrewDialog.vue'
-import { setMachineState, updateWorkflow, tareScale, getLatestShot } from '../api/rest.js'
+import { setMachineState, tareScale, getLatestShot } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -19,6 +19,7 @@ const substate = inject('substate', ref(''))
 const profileFrame = inject('profileFrame', ref(0))
 const machine = inject('machine', null)
 const workflow = inject('workflow', null)
+const updateWorkflow = inject('updateWorkflow')
 const settings = inject('settings', null)
 const toast = inject('toast', null)
 const scale = inject('scale', null)

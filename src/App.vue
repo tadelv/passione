@@ -30,7 +30,7 @@ const machine = useMachine()
 const scale = useScale()
 const waterLevels = useWaterLevels()
 const shotSettings = useShotSettings()
-const { workflow } = useWorkflow()
+const { workflow, updateWorkflow } = useWorkflow()
 const shotData = useShotData()
 
 // Settings, theme, and cross-cutting composables
@@ -59,6 +59,7 @@ provide('steamTemperature', machine.steamTemperature)
 provide('targetSteamTemp', computed(() => shotSettings.targetSteamTemp.value ?? 160))
 provide('profileFrame', machine.profileFrame)
 provide('workflow', workflow)
+provide('updateWorkflow', updateWorkflow)
 
 // Provide derived machine state flags
 provide('isReady', machine.isReady)

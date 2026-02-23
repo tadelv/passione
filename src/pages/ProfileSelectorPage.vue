@@ -3,12 +3,13 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
-import { getProfiles, updateWorkflow } from '../api/rest.js'
+import { getProfiles } from '../api/rest.js'
 
 const router = useRouter()
 
 const settings = inject('settings')
 const workflow = inject('workflow')
+const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
 
 // All profiles from the server
