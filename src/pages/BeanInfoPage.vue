@@ -201,7 +201,14 @@ async function saveToWorkflow() {
         doseOut: doseOut.value,
       },
     })
-    toast?.success('Saved to workflow')
+    // Also save to combo if one is selected
+    if (settings && selectedIndex.value >= 0) {
+      const combos = [...workflowCombos.value]
+      const existing = combos[selectedIndex.value]
+      combos[selectedIndex.value] = { ...existing, ...comboValues() }
+      settings.settings.workflowCombos = combos
+    }
+    toast?.success('Applied & saved')
   } catch {
     toast?.error('Failed to save to workflow')
   }
