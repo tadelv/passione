@@ -47,10 +47,8 @@ const DEFAULT_SETTINGS = {
   selectedWaterVesselPreset: -1,
   flushPresets: [],
   selectedFlushPreset: -1,
-  beanPresets: [],
-  selectedBeanPreset: -1,
-  favoriteProfiles: [],
-  selectedFavoriteProfile: -1,
+  workflowCombos: [],
+  selectedWorkflowCombo: -1,
 
   // UI / layout
   waterLevelDisplayUnit: 'mm',  // 'mm' or 'ml'
@@ -182,11 +180,8 @@ export function useSettings() {
       'flushDuration', 'flushFlowRate',
       'flushPresets', 'selectedFlushPreset',
     ],
-    profiles: [
-      'favoriteProfiles', 'selectedFavoriteProfile',
-    ],
-    beans: [
-      'beanPresets', 'selectedBeanPreset',
+    combos: [
+      'workflowCombos', 'selectedWorkflowCombo',
     ],
     visualizer: [
       'visualizerUsername', 'visualizerPassword', 'visualizerAutoUpload',
