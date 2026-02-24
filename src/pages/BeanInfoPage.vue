@@ -265,6 +265,9 @@ watch(() => workflow?.profile, (newProfile) => {
       </button>
     </div>
 
+    <!-- Scrollable content area -->
+    <div class="bean-info__scroll">
+
     <!-- Profile section -->
     <div class="bean-info__profile-section">
       <h4 class="bean-info__section-title">Profile</h4>
@@ -456,6 +459,8 @@ watch(() => workflow?.profile, (newProfile) => {
       </div>
     </div>
 
+    </div><!-- end scroll -->
+
     <BottomBar title="Workflow Editor">
       <button class="bean-info__save-btn bean-info__save-btn--secondary" @click="saveToWorkflow">
         Apply
@@ -501,9 +506,15 @@ watch(() => workflow?.profile, (newProfile) => {
   opacity: 0.7;
 }
 
+.bean-info__scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
 .bean-info__profile-section {
   padding: 0 16px;
-  flex-shrink: 0;
 }
 
 .bean-info__profile-row {
@@ -539,13 +550,10 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__grid {
-  flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 24px;
   padding: 16px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   align-content: start;
 }
 
@@ -607,11 +615,10 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__operations {
-  padding: 0 16px;
+  padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .bean-info__op-section {
