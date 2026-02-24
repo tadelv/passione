@@ -172,7 +172,7 @@ watch([roaster, beanBrand, beanType, roastDate, roastLevel, grinder, grinderSett
 function saveAsNew() {
   if (!settings) return
   const vals = {
-    id: crypto.randomUUID(),
+    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || profileTitle.value || 'Unnamed',
     emoji: '',
     ...comboValues(),
