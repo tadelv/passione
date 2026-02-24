@@ -69,31 +69,6 @@ const filteredProfiles = computed(() =>
   allProfiles.value.filter(r => matchesSource(r) && matchesSearch(r))
 )
 
-// Favorites from settings
-const favoriteIds = computed(() => settings.settings.favoriteProfiles || [])
-
-const favoriteProfiles = computed(() => {
-  const ids = favoriteIds.value
-  if (!ids.length) return []
-  const map = new Map(allProfiles.value.map(r => [r.id, r]))
-  return ids.map(id => map.get(id)).filter(Boolean)
-})
-
-function isFavorite(id) {
-  return favoriteIds.value.includes(id)
-}
-
-function toggleFavorite(id) {
-  const list = [...favoriteIds.value]
-  const idx = list.indexOf(id)
-  if (idx >= 0) {
-    list.splice(idx, 1)
-  } else {
-    list.push(id)
-  }
-  settings.settings.favoriteProfiles = list
-}
-
 // Currently active profile id
 const activeProfileId = computed(() => {
   // The workflow profile may have an id or we compare titles
@@ -114,16 +89,6 @@ async function selectAndApplyProfile(record) {
   selectedRecord.value = record
   try {
     await updateWorkflow({ profile: record.profile })
-  } catch (e) {
-    console.warn('[ProfileSelectorPage] Failed to apply profile:', e.message)
-  }
-}
-
-// Apply profile to workflow (for favorites and buttons)
-async function applyProfile(record) {
-  try {
-    await updateWorkflow({ profile: record.profile })
-    selectedRecord.value = record
   } catch (e) {
     console.warn('[ProfileSelectorPage] Failed to apply profile:', e.message)
   }
@@ -201,14 +166,6 @@ onMounted(fetchProfiles)
               <span class="profile-selector__item-title">{{ record.profile?.title || 'Untitled' }}</span>
               <span class="profile-selector__item-author">{{ record.profile?.author || '' }}</span>
             </div>
-            <button
-              class="profile-selector__star"
-              :class="{ 'profile-selector__star--active': isFavorite(record.id) }"
-              @click.stop="toggleFavorite(record.id)"
-              aria-label="Toggle favorite"
-            >
-              {{ isFavorite(record.id) ? '\u2605' : '\u2606' }}
-            </button>
           </div>
 
           <div v-if="!filteredProfiles.length && !loading" class="profile-selector__empty">
@@ -217,22 +174,8 @@ onMounted(fetchProfiles)
         </div>
       </div>
 
-      <!-- RIGHT: Favorites + Preview -->
+      <!-- RIGHT: Preview -->
       <div class="profile-selector__right">
-        <!-- Favorites section -->
-        <div v-if="favoriteProfiles.length" class="profile-selector__favorites">
-          <div class="profile-selector__section-title">Favorites</div>
-          <div
-            v-for="record in favoriteProfiles"
-            :key="'fav-' + record.id"
-            class="profile-selector__item profile-selector__item--compact"
-            :class="{ 'profile-selector__item--active': record.id === activeProfileId }"
-            @click="applyProfile(record)"
-          >
-            <span class="profile-selector__item-title">{{ record.profile?.title || 'Untitled' }}</span>
-          </div>
-        </div>
-
         <!-- Preview -->
         <div v-if="selectedRecord" class="profile-selector__preview">
           <div class="profile-selector__section-title">{{ selectedRecord.profile?.title || 'Untitled' }}</div>
@@ -244,7 +187,7 @@ onMounted(fetchProfiles)
             <span v-if="selectedRecord.profile?.beverage_type">{{ selectedRecord.profile.beverage_type }}</span>
           </div>
           <div class="profile-selector__preview-actions">
-            <button class="profile-selector__btn profile-selector__btn--primary" @click="applyProfile(selectedRecord)">
+            <button class="profile-selector__btn profile-selector__btn--primary" @click="selectAndApplyProfile(selectedRecord)">
               Use Profile
             </button>
             <button class="profile-selector__btn" @click="viewProfileInfo(selectedRecord)">
@@ -374,10 +317,6 @@ onMounted(fetchProfiles)
   border-left: 3px solid var(--color-primary);
 }
 
-.profile-selector__item--compact {
-  padding: 8px 12px;
-}
-
 .profile-selector__badge {
   width: 24px;
   height: 24px;
@@ -425,20 +364,6 @@ onMounted(fetchProfiles)
   color: var(--color-text-secondary);
 }
 
-.profile-selector__star {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 4px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-selector__star--active {
-  color: var(--color-warning);
-}
-
 .profile-selector__empty {
   display: flex;
   align-items: center;
@@ -446,15 +371,6 @@ onMounted(fetchProfiles)
   flex: 1;
   color: var(--color-text-secondary);
   font-size: var(--font-body);
-}
-
-.profile-selector__favorites {
-  background: var(--color-surface);
-  border-radius: var(--radius-card);
-  padding: 12px;
-  max-height: 200px;
-  overflow-y: auto;
-  flex-shrink: 0;
 }
 
 .profile-selector__section-title {

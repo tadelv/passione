@@ -179,7 +179,7 @@ const zoneConfig = computed(() => props.zone.config ?? {})
       </div>
     </template>
 
-    <!-- Preset pills: all preset rows (espresso, steam, hotwater, flush) -->
+    <!-- Preset pills: all preset rows (workflow combos, steam, hotwater, flush) -->
     <template v-else-if="zoneType === 'presetPills'">
       <div class="layout-zone__presets">
         <div v-if="workflowCombos.length" class="layout-zone__preset-section">

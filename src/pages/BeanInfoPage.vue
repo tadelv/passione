@@ -130,9 +130,6 @@ function onPresetSelect(index) {
 // ---- Auto-save to selected combo ----
 function comboValues() {
   return {
-    id: crypto.randomUUID(),
-    name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || profileTitle.value || 'Unnamed',
-    emoji: '',
     profileId: profileId.value,
     profileTitle: profileTitle.value,
     roaster: roaster.value,
@@ -152,12 +149,15 @@ function comboValues() {
 
 let saveTimer = null
 function debouncedSaveToCombo() {
-  if (!settings || selectedIndex.value < 0) return
+  if (!settings || selectedIndex.value < 0 || _updating) return
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
     const combos = [...workflowCombos.value]
     const existing = combos[selectedIndex.value]
-    combos[selectedIndex.value] = { ...comboValues(), id: existing?.id ?? crypto.randomUUID() }
+    combos[selectedIndex.value] = {
+      ...existing,
+      ...comboValues(),
+    }
     settings.settings.workflowCombos = combos
   }, 500)
 }
@@ -171,7 +171,12 @@ watch([roaster, beanBrand, beanType, roastDate, roastLevel, grinder, grinderSett
 // ---- Save as new combo ----
 function saveAsNew() {
   if (!settings) return
-  const vals = comboValues()
+  const vals = {
+    id: crypto.randomUUID(),
+    name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || profileTitle.value || 'Unnamed',
+    emoji: '',
+    ...comboValues(),
+  }
   const combos = [...workflowCombos.value, vals]
   settings.settings.workflowCombos = combos
   settings.settings.selectedWorkflowCombo = combos.length - 1

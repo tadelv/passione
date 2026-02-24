@@ -375,6 +375,11 @@ function hasZone(name) {
           @long-press="onComboLongPress"
         />
       </div>
+      <div v-else class="idle-page__preset-section">
+        <button class="idle-page__new-combo-btn" @click="router.push('/bean-info')">
+          + New Combo
+        </button>
+      </div>
 
       <!-- Quick-start presets -->
       <div v-if="steamPresets.length" class="idle-page__preset-section">
@@ -545,6 +550,22 @@ function hasZone(name) {
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.idle-page__new-combo-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.idle-page__new-combo-btn:active {
+  opacity: 0.7;
 }
 
 </style>
