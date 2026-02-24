@@ -42,14 +42,16 @@ const shotPlanLines = computed(() => {
   const doseData = workflow.doseData
   const grinderData = workflow.grinderData
 
-  // Line 1: beans (roaster — brand/type, roast level)
+  // Line 1: beans (API fields: name, roaster)
   if (coffeeData) {
-    const beanParts = [coffeeData.roaster, coffeeData.beanBrand ?? coffeeData.brand, coffeeData.beanType ?? coffeeData.type].filter(Boolean)
-    if (beanParts.length) {
-      let beanLine = beanParts.join(' — ')
-      const roastLevel = coffeeData.roastLevel
-      if (roastLevel) beanLine += ` (${roastLevel})`
-      lines.push(beanLine)
+    const coffeeName = coffeeData.name
+    const roaster = coffeeData.roaster
+    if (roaster && coffeeName) {
+      lines.push(`${roaster} — ${coffeeName}`)
+    } else if (coffeeName) {
+      lines.push(coffeeName)
+    } else if (roaster) {
+      lines.push(roaster)
     }
   }
 
