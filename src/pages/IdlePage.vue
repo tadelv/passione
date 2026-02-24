@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LayoutZone from '../components/LayoutZone.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
-import ProfilePreviewPopup from '../components/ProfilePreviewPopup.vue'
+import PresetEditPopup from '../components/PresetEditPopup.vue'
 import { useLayout } from '../composables/useLayout.js'
 import { setMachineState, getProfiles } from '../api/rest.js'
 
@@ -27,6 +27,7 @@ const profileName = inject('profileName', ref(''))
 const workflow = inject('workflow', null)
 const updateWorkflow = inject('updateWorkflow')
 const settings = inject('settings', null)
+const toast = inject('toast', null)
 
 const isReady = computed(() =>
   machineState.value === 'idle' || machineState.value === 'ready'
@@ -88,72 +89,115 @@ const shotPlanLines = computed(() => {
 // Flat text fallback for components that use a single string
 const shotPlanText = computed(() => shotPlanLines.value.join(' | '))
 
-// ---- Espresso favorite presets (two-step: tap to load profile, tap again to start) ----
-const favoriteIds = computed(() => settings?.settings?.favoriteProfiles ?? [])
-const allProfiles = ref([])
-const espressoPresets = computed(() => {
-  const ids = favoriteIds.value
-  if (!ids.length || !allProfiles.value.length) return []
-  const map = new Map(allProfiles.value.map(r => [r.id, r]))
-  return ids.map(id => map.get(id)).filter(Boolean).map(r => ({
-    name: r.profile?.title ?? 'Untitled',
-    emoji: '',
-    _record: r,
-  }))
-})
-const selectedEspressoPreset = ref(-1)
-const previewProfile = ref(null)
-const previewVisible = ref(false)
+// ---- Workflow combos (single tap loads everything, action buttons start) ----
+const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
+const selectedWorkflowCombo = computed(() => settings?.settings?.selectedWorkflowCombo ?? -1)
 
-async function loadFavoriteProfiles() {
-  if (!favoriteIds.value.length) return
-  try {
-    const data = await getProfiles()
-    allProfiles.value = Array.isArray(data) ? data : []
-  } catch {
-    allProfiles.value = []
+// Long-press edit popup state
+const editPopupVisible = ref(false)
+const editPopupPreset = ref(null)
+const editPopupIndex = ref(-1)
+
+async function onComboSelect(index) {
+  if (!settings) return
+  settings.settings.selectedWorkflowCombo = index
+  const combo = workflowCombos.value[index]
+  if (!combo) return
+
+  // Build workflow update from non-null combo fields
+  const update = {}
+
+  // Profile
+  if (combo.profileId) {
+    try {
+      const records = await getProfiles()
+      const record = (Array.isArray(records) ? records : []).find(r => r.id === combo.profileId)
+      if (record?.profile) update.profile = record.profile
+    } catch { /* profile not found, skip */ }
   }
+
+  // Coffee data
+  const coffeeName = [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
+  if (coffeeName || combo.roaster) {
+    update.coffeeData = {
+      name: coffeeName || null,
+      roaster: combo.roaster || null,
+    }
+  }
+
+  // Dose data
+  if (combo.doseIn != null || combo.doseOut != null) {
+    update.doseData = {
+      doseIn: combo.doseIn ?? undefined,
+      doseOut: combo.doseOut ?? undefined,
+    }
+  }
+
+  // Grinder data
+  if (combo.grinder || combo.grinderSetting) {
+    update.grinderData = {
+      manufacturer: null,
+      model: combo.grinder || null,
+      setting: combo.grinderSetting ?? null,
+    }
+  }
+
+  if (Object.keys(update).length > 0) {
+    updateWorkflow(update).catch(() => {})
+  }
+
+  // Apply optional operation settings to local settings
+  if (combo.steamSettings) {
+    settings.settings.steamDuration = combo.steamSettings.duration ?? settings.settings.steamDuration
+    settings.settings.steamFlow = combo.steamSettings.flow ?? settings.settings.steamFlow
+    settings.settings.steamTemperature = combo.steamSettings.temperature ?? settings.settings.steamTemperature
+  }
+  if (combo.flushSettings) {
+    settings.settings.flushDuration = combo.flushSettings.duration ?? settings.settings.flushDuration
+    settings.settings.flushFlowRate = combo.flushSettings.flow ?? settings.settings.flushFlowRate
+  }
+  if (combo.hotWaterSettings) {
+    settings.settings.hotWaterVolume = combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume
+    settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature
+  }
+
+  toast?.success(`Loaded ${combo.name || 'combo'}`)
+}
+
+function onComboLongPress(index) {
+  const combo = workflowCombos.value[index]
+  if (!combo) return
+  editPopupPreset.value = combo
+  editPopupIndex.value = index
+  editPopupVisible.value = true
+}
+
+function onComboEditSave(updated) {
+  if (!settings || editPopupIndex.value < 0) return
+  const combos = [...workflowCombos.value]
+  combos[editPopupIndex.value] = { ...combos[editPopupIndex.value], name: updated.name, emoji: updated.emoji }
+  settings.settings.workflowCombos = combos
+  editPopupVisible.value = false
+}
+
+function onComboEditDelete() {
+  if (!settings || editPopupIndex.value < 0) return
+  const combos = [...workflowCombos.value]
+  combos.splice(editPopupIndex.value, 1)
+  settings.settings.workflowCombos = combos
+  if (selectedWorkflowCombo.value >= combos.length) {
+    settings.settings.selectedWorkflowCombo = combos.length - 1
+  }
+  editPopupVisible.value = false
+}
+
+function onComboEditCancel() {
+  editPopupVisible.value = false
 }
 
 onMounted(() => {
-  loadFavoriteProfiles()
   loadLayout()
 })
-
-function onEspressoPresetSelect(index) {
-  const preset = espressoPresets.value[index]
-  if (!preset) return
-  // First tap: load profile into workflow
-  selectedEspressoPreset.value = index
-  updateWorkflow({ profile: preset._record.profile }).catch(() => {})
-}
-
-async function onEspressoPresetActivate() {
-  // Second tap on selected: start espresso (only when machine is ready)
-  if (!isReady.value) return
-  await setMachineState('espresso').catch(() => {})
-  router.push('/espresso')
-}
-
-function onEspressoPresetLongPress(index) {
-  const preset = espressoPresets.value[index]
-  if (!preset?._record) return
-  previewProfile.value = preset._record.profile
-  previewVisible.value = true
-}
-
-function onPreviewClose() {
-  previewVisible.value = false
-}
-
-function onPreviewMoreInfo() {
-  const idx = selectedEspressoPreset.value
-  const preset = espressoPresets.value[idx]
-  previewVisible.value = false
-  if (preset?._record?.id) {
-    router.push(`/profile-info/${encodeURIComponent(preset._record.id)}`)
-  }
-}
 
 // ---- Quick-start presets on idle page ----
 const steamPresets = computed(() => settings?.settings?.steamPitcherPresets ?? [])
@@ -237,8 +281,8 @@ function hasZone(name) {
           :is-ready="isReady"
           :shot-plan-text="shotPlanText"
           :shot-plan-lines="shotPlanLines"
-          :espresso-presets="espressoPresets"
-          :selected-espresso-preset="selectedEspressoPreset"
+          :workflow-combos="workflowCombos"
+          :selected-workflow-combo="selectedWorkflowCombo"
           :steam-presets="steamPresets"
           :selected-steam-preset="selectedSteamPreset"
           :hot-water-presets="hotWaterPresets"
@@ -249,9 +293,8 @@ function hasZone(name) {
           @start-steam="startSteam"
           @start-hot-water="startHotWater"
           @start-flush="startFlush"
-          @espresso-preset-select="onEspressoPresetSelect"
-          @espresso-preset-activate="onEspressoPresetActivate"
-          @espresso-preset-long-press="onEspressoPresetLongPress"
+          @workflow-combo-select="onComboSelect"
+          @workflow-combo-long-press="onComboLongPress"
           @steam-preset-select="onSteamPresetSelect"
           @hot-water-preset-select="onHotWaterPresetSelect"
           @flush-preset-select="onFlushPresetSelect"
@@ -275,9 +318,9 @@ function hasZone(name) {
         :zone="zones.centerRight"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
-          :shot-plan-lines="shotPlanLines"
-        :espresso-presets="espressoPresets"
-        :selected-espresso-preset="selectedEspressoPreset"
+        :shot-plan-lines="shotPlanLines"
+        :workflow-combos="workflowCombos"
+        :selected-workflow-combo="selectedWorkflowCombo"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -288,9 +331,8 @@ function hasZone(name) {
         @start-steam="startSteam"
         @start-hot-water="startHotWater"
         @start-flush="startFlush"
-        @espresso-preset-select="onEspressoPresetSelect"
-        @espresso-preset-activate="onEspressoPresetActivate"
-        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @workflow-combo-select="onComboSelect"
+        @workflow-combo-long-press="onComboLongPress"
         @steam-preset-select="onSteamPresetSelect"
         @hot-water-preset-select="onHotWaterPresetSelect"
         @flush-preset-select="onFlushPresetSelect"
@@ -302,9 +344,9 @@ function hasZone(name) {
         :zone="zones.centerMain"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
-          :shot-plan-lines="shotPlanLines"
-        :espresso-presets="espressoPresets"
-        :selected-espresso-preset="selectedEspressoPreset"
+        :shot-plan-lines="shotPlanLines"
+        :workflow-combos="workflowCombos"
+        :selected-workflow-combo="selectedWorkflowCombo"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -315,24 +357,22 @@ function hasZone(name) {
         @start-steam="startSteam"
         @start-hot-water="startHotWater"
         @start-flush="startFlush"
-        @espresso-preset-select="onEspressoPresetSelect"
-        @espresso-preset-activate="onEspressoPresetActivate"
-        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @workflow-combo-select="onComboSelect"
+        @workflow-combo-long-press="onComboLongPress"
         @steam-preset-select="onSteamPresetSelect"
         @hot-water-preset-select="onHotWaterPresetSelect"
         @flush-preset-select="onFlushPresetSelect"
       />
 
-      <!-- Espresso favorite presets (always shown when available, part of center) -->
-      <div v-if="espressoPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">{{ t('idle.espresso') }}</span>
+      <!-- Workflow combo presets -->
+      <div v-if="workflowCombos.length" class="idle-page__preset-section">
+        <span class="idle-page__preset-label">Workflows</span>
         <PresetPillRow
-          :presets="espressoPresets"
-          :selected-index="selectedEspressoPreset"
+          :presets="workflowCombos"
+          :selected-index="selectedWorkflowCombo"
           :long-press-enabled="true"
-          @select="onEspressoPresetSelect"
-          @activate="onEspressoPresetActivate"
-          @long-press="onEspressoPresetLongPress"
+          @select="onComboSelect"
+          @long-press="onComboLongPress"
         />
       </div>
 
@@ -371,9 +411,9 @@ function hasZone(name) {
         :zone="zones.bottomBar"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
-          :shot-plan-lines="shotPlanLines"
-        :espresso-presets="espressoPresets"
-        :selected-espresso-preset="selectedEspressoPreset"
+        :shot-plan-lines="shotPlanLines"
+        :workflow-combos="workflowCombos"
+        :selected-workflow-combo="selectedWorkflowCombo"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -384,9 +424,8 @@ function hasZone(name) {
         @start-steam="startSteam"
         @start-hot-water="startHotWater"
         @start-flush="startFlush"
-        @espresso-preset-select="onEspressoPresetSelect"
-        @espresso-preset-activate="onEspressoPresetActivate"
-        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @workflow-combo-select="onComboSelect"
+        @workflow-combo-long-press="onComboLongPress"
         @steam-preset-select="onSteamPresetSelect"
         @hot-water-preset-select="onHotWaterPresetSelect"
         @flush-preset-select="onFlushPresetSelect"
@@ -398,9 +437,9 @@ function hasZone(name) {
         :zone="zones.extraTop"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
-          :shot-plan-lines="shotPlanLines"
-        :espresso-presets="espressoPresets"
-        :selected-espresso-preset="selectedEspressoPreset"
+        :shot-plan-lines="shotPlanLines"
+        :workflow-combos="workflowCombos"
+        :selected-workflow-combo="selectedWorkflowCombo"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -411,9 +450,8 @@ function hasZone(name) {
         @start-steam="startSteam"
         @start-hot-water="startHotWater"
         @start-flush="startFlush"
-        @espresso-preset-select="onEspressoPresetSelect"
-        @espresso-preset-activate="onEspressoPresetActivate"
-        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @workflow-combo-select="onComboSelect"
+        @workflow-combo-long-press="onComboLongPress"
         @steam-preset-select="onSteamPresetSelect"
         @hot-water-preset-select="onHotWaterPresetSelect"
         @flush-preset-select="onFlushPresetSelect"
@@ -424,9 +462,9 @@ function hasZone(name) {
         :zone="zones.extraBottom"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
-          :shot-plan-lines="shotPlanLines"
-        :espresso-presets="espressoPresets"
-        :selected-espresso-preset="selectedEspressoPreset"
+        :shot-plan-lines="shotPlanLines"
+        :workflow-combos="workflowCombos"
+        :selected-workflow-combo="selectedWorkflowCombo"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -437,21 +475,23 @@ function hasZone(name) {
         @start-steam="startSteam"
         @start-hot-water="startHotWater"
         @start-flush="startFlush"
-        @espresso-preset-select="onEspressoPresetSelect"
-        @espresso-preset-activate="onEspressoPresetActivate"
-        @espresso-preset-long-press="onEspressoPresetLongPress"
+        @workflow-combo-select="onComboSelect"
+        @workflow-combo-long-press="onComboLongPress"
         @steam-preset-select="onSteamPresetSelect"
         @hot-water-preset-select="onHotWaterPresetSelect"
         @flush-preset-select="onFlushPresetSelect"
       />
     </div>
 
-    <!-- Profile preview popup (on long-press of espresso preset) -->
-    <ProfilePreviewPopup
-      :visible="previewVisible"
-      :profile="previewProfile"
-      @close="onPreviewClose"
-      @more-info="onPreviewMoreInfo"
+    <!-- Combo quick edit popup (on long-press) -->
+    <PresetEditPopup
+      :visible="editPopupVisible"
+      :preset="editPopupPreset"
+      operation-type="combo"
+      :is-existing="true"
+      @save="onComboEditSave"
+      @delete="onComboEditDelete"
+      @cancel="onComboEditCancel"
     />
   </div>
 </template>

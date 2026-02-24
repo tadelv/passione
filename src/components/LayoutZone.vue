@@ -20,10 +20,10 @@ import { setMachineState } from '../api/rest.js'
 const props = defineProps({
   /** Zone configuration: { type: string, config?: object } */
   zone: { type: Object, required: true },
-  /** Espresso presets (passed from IdlePage) */
-  espressoPresets: { type: Array, default: () => [] },
-  /** Selected espresso preset index */
-  selectedEspressoPreset: { type: Number, default: -1 },
+  /** Workflow combos */
+  workflowCombos: { type: Array, default: () => [] },
+  /** Selected workflow combo index */
+  selectedWorkflowCombo: { type: Number, default: -1 },
   /** Steam presets */
   steamPresets: { type: Array, default: () => [] },
   /** Selected steam preset index */
@@ -49,9 +49,8 @@ const emit = defineEmits([
   'start-steam',
   'start-hot-water',
   'start-flush',
-  'espresso-preset-select',
-  'espresso-preset-activate',
-  'espresso-preset-long-press',
+  'workflow-combo-select',
+  'workflow-combo-long-press',
   'steam-preset-select',
   'hot-water-preset-select',
   'flush-preset-select',
@@ -183,15 +182,14 @@ const zoneConfig = computed(() => props.zone.config ?? {})
     <!-- Preset pills: all preset rows (espresso, steam, hotwater, flush) -->
     <template v-else-if="zoneType === 'presetPills'">
       <div class="layout-zone__presets">
-        <div v-if="espressoPresets.length" class="layout-zone__preset-section">
-          <span class="layout-zone__preset-label">{{ t('idle.espresso') }}</span>
+        <div v-if="workflowCombos.length" class="layout-zone__preset-section">
+          <span class="layout-zone__preset-label">Workflows</span>
           <PresetPillRow
-            :presets="espressoPresets"
-            :selected-index="selectedEspressoPreset"
+            :presets="workflowCombos"
+            :selected-index="selectedWorkflowCombo"
             :long-press-enabled="true"
-            @select="idx => emit('espresso-preset-select', idx)"
-            @activate="() => emit('espresso-preset-activate')"
-            @long-press="idx => emit('espresso-preset-long-press', idx)"
+            @select="idx => emit('workflow-combo-select', idx)"
+            @long-press="idx => emit('workflow-combo-long-press', idx)"
           />
         </div>
         <div v-if="steamPresets.length" class="layout-zone__preset-section">
