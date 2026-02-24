@@ -2,8 +2,18 @@
 import { inject, computed } from 'vue'
 import ValueInput from '../ValueInput.vue'
 
+const WATER_ML_PER_MM = 12.45
+
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
+
+const isML = computed(() => settings?.waterLevelDisplayUnit === 'ml')
+
+// Refill threshold: stored in mm, displayed in current unit
+const refillThresholdDisplay = computed({
+  get: () => isML.value ? Math.round(settings.waterRefillThreshold * WATER_ML_PER_MM) : settings.waterRefillThreshold,
+  set: (v) => { settings.waterRefillThreshold = isML.value ? Math.round(v / WATER_ML_PER_MM) : v },
+})
 
 const DAYS = [
   { key: 'mon', label: 'Mon' },
@@ -57,12 +67,12 @@ function setDayTime(dayKey, time) {
         <div class="options-tab__field">
           <label class="options-tab__label">Refill threshold</label>
           <ValueInput
-            :model-value="settings.waterRefillThreshold"
-            @update:model-value="v => settings.waterRefillThreshold = v"
+            :model-value="refillThresholdDisplay"
+            @update:model-value="v => refillThresholdDisplay = v"
             :min="0"
-            :max="50"
-            :step="5"
-            suffix="%"
+            :max="isML ? 1500 : 120"
+            :step="isML ? 50 : 5"
+            :suffix="isML ? ' ml' : ' mm'"
           />
           <span class="options-tab__hint">Warn when water drops below this level</span>
         </div>
