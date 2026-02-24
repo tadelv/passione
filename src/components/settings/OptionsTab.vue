@@ -1,6 +1,7 @@
 <script setup>
 import { inject, computed } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import { updateWaterLevelThreshold } from '../../api/rest.js'
 
 const WATER_ML_PER_MM = 12.45
 
@@ -9,10 +10,15 @@ const settings = settingsInstance?.settings
 
 const isML = computed(() => settings?.waterLevelDisplayUnit === 'ml')
 
-// Refill threshold: stored in mm, displayed in current unit
+// Refill threshold: stored in mm, displayed in current unit.
+// On change, also syncs to ReaPrime via REST API.
 const refillThresholdDisplay = computed({
   get: () => isML.value ? Math.round(settings.waterRefillThreshold * WATER_ML_PER_MM) : settings.waterRefillThreshold,
-  set: (v) => { settings.waterRefillThreshold = isML.value ? Math.round(v / WATER_ML_PER_MM) : v },
+  set: (v) => {
+    const mm = isML.value ? Math.round(v / WATER_ML_PER_MM) : v
+    settings.waterRefillThreshold = mm
+    updateWaterLevelThreshold(mm).catch(() => {})
+  },
 })
 
 const DAYS = [

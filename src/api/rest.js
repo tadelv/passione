@@ -228,9 +228,9 @@ export function deleteStoreValue(namespace, key) {
 // Water levels
 // ---------------------------------------------------------------------------
 
-export function updateWaterLevelThreshold(warningThresholdPercentage) {
+export function updateWaterLevelThreshold(refillLevel) {
   return sendCommand('/api/v1/machine/waterLevels', 'POST', {
-    warningThresholdPercentage
+    refillLevel
   })
 }
 
