@@ -186,7 +186,7 @@ function saveAsNew() {
 // ---- Save to workflow ----
 async function saveToWorkflow() {
   try {
-    await updateWorkflow({
+    const workflowUpdate = {
       coffeeData: {
         name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || 'Unnamed',
         roaster: roaster.value || null,
@@ -200,7 +200,27 @@ async function saveToWorkflow() {
         doseIn: doseIn.value,
         doseOut: doseOut.value,
       },
-    })
+    }
+    if (includeSteam.value) {
+      workflowUpdate.steamSettings = {
+        targetTemperature: steamTemperature.value,
+        duration: steamDuration.value,
+        flow: steamFlow.value,
+      }
+    }
+    if (includeFlush.value) {
+      workflowUpdate.rinseData = {
+        duration: flushDuration.value,
+        flow: flushFlowRate.value,
+      }
+    }
+    if (includeHotWater.value) {
+      workflowUpdate.hotWaterData = {
+        targetTemperature: hotWaterTemperature.value,
+        volume: hotWaterVolume.value,
+      }
+    }
+    await updateWorkflow(workflowUpdate)
     // Also save to combo if one is selected
     if (settings && selectedIndex.value >= 0) {
       const combos = [...workflowCombos.value]
@@ -468,9 +488,9 @@ watch(() => workflow?.profile, (newProfile) => {
 
     </div><!-- end scroll -->
 
-    <BottomBar title="Workflow Editor">
+    <BottomBar :title="selectedIndex >= 0 ? (workflowCombos[selectedIndex]?.name || 'Workflow Editor') : 'Workflow Editor'">
       <button class="bean-info__save-btn bean-info__save-btn--secondary" @click="saveToWorkflow">
-        Apply
+        {{ selectedIndex >= 0 ? 'Apply & Save' : 'Apply' }}
       </button>
       <button class="bean-info__save-btn" @click="saveAsNew">
         Save as New

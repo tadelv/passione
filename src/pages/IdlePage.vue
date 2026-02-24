@@ -142,23 +142,40 @@ async function onComboSelect(index) {
     }
   }
 
-  if (Object.keys(update).length > 0) {
-    updateWorkflow(update).catch(() => {})
-  }
-
-  // Apply optional operation settings to local settings
+  // Steam settings → workflow API + local settings
   if (combo.steamSettings) {
+    update.steamSettings = {
+      targetTemperature: combo.steamSettings.temperature,
+      duration: combo.steamSettings.duration,
+      flow: combo.steamSettings.flow,
+    }
     settings.settings.steamDuration = combo.steamSettings.duration ?? settings.settings.steamDuration
     settings.settings.steamFlow = combo.steamSettings.flow ?? settings.settings.steamFlow
     settings.settings.steamTemperature = combo.steamSettings.temperature ?? settings.settings.steamTemperature
   }
+
+  // Flush settings → workflow API (rinseData) + local settings
   if (combo.flushSettings) {
+    update.rinseData = {
+      duration: combo.flushSettings.duration,
+      flow: combo.flushSettings.flow,
+    }
     settings.settings.flushDuration = combo.flushSettings.duration ?? settings.settings.flushDuration
     settings.settings.flushFlowRate = combo.flushSettings.flow ?? settings.settings.flushFlowRate
   }
+
+  // Hot water settings → workflow API + local settings
   if (combo.hotWaterSettings) {
+    update.hotWaterData = {
+      targetTemperature: combo.hotWaterSettings.temperature,
+      volume: combo.hotWaterSettings.volume,
+    }
     settings.settings.hotWaterVolume = combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume
     settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature
+  }
+
+  if (Object.keys(update).length > 0) {
+    updateWorkflow(update).catch(() => {})
   }
 
   toast?.success(`Loaded ${combo.name || 'combo'}`)
