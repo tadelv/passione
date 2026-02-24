@@ -43,9 +43,9 @@ function setDayTime(dayKey, time) {
           <div class="options-tab__toggle-group">
             <button
               class="options-tab__seg"
-              :class="{ 'options-tab__seg--active': settings.waterLevelDisplayUnit === '%' }"
-              @click="settings.waterLevelDisplayUnit = '%'"
-            >%</button>
+              :class="{ 'options-tab__seg--active': settings.waterLevelDisplayUnit === 'mm' }"
+              @click="settings.waterLevelDisplayUnit = 'mm'"
+            >mm</button>
             <button
               class="options-tab__seg"
               :class="{ 'options-tab__seg--active': settings.waterLevelDisplayUnit === 'ml' }"
@@ -67,17 +67,7 @@ function setDayTime(dayKey, time) {
           <span class="options-tab__hint">Warn when water drops below this level</span>
         </div>
 
-        <div class="options-tab__field">
-          <label class="options-tab__label">Headless mode</label>
-          <button
-            class="options-tab__toggle"
-            :class="{ 'options-tab__toggle--on': settings.headlessMode }"
-            @click="settings.headlessMode = !settings.headlessMode"
-          >
-            {{ settings.headlessMode ? 'ON' : 'OFF' }}
-          </button>
-          <span class="options-tab__hint">Run without attached display</span>
-        </div>
+
       </div>
 
       <!-- Column 2: Auto-Wake Schedule -->

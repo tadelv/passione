@@ -66,6 +66,8 @@ const temperature = inject('temperature', ref(0))
 const targetTemperature = inject('targetTemperature', ref(0))
 const pressure = inject('pressure', ref(0))
 const waterLevel = inject('waterLevel', ref(0))
+const waterLevelDisplay = inject('waterLevelDisplay', ref(''))
+const waterLevelPercent = inject('waterLevelPercent', ref(0))
 const profileName = inject('profileName', ref(''))
 
 // Clock time (updated every second when clock widget is active)
@@ -252,10 +254,10 @@ const zoneConfig = computed(() => props.zone.config ?? {})
         <div class="layout-zone__water-bar">
           <div
             class="layout-zone__water-fill"
-            :style="{ height: waterLevel + '%' }"
+            :style="{ height: waterLevelPercent + '%' }"
           />
         </div>
-        <span class="layout-zone__water-label">{{ waterLevel }}%</span>
+        <span class="layout-zone__water-label">{{ waterLevelDisplay }}</span>
       </div>
     </template>
 
@@ -281,7 +283,6 @@ const zoneConfig = computed(() => props.zone.config ?? {})
         :scale-connected="scaleConnected"
         :temperature="temperature"
         :target-temperature="targetTemperature"
-        :water-level="waterLevel"
         :profile-name="profileName"
       />
     </template>
@@ -316,10 +317,10 @@ const zoneConfig = computed(() => props.zone.config ?? {})
           <div class="layout-zone__water-bar">
             <div
               class="layout-zone__water-fill"
-              :style="{ height: waterLevel + '%' }"
+              :style="{ height: waterLevelPercent + '%' }"
             />
           </div>
-          <span class="layout-zone__water-label">{{ waterLevel }}%</span>
+          <span class="layout-zone__water-label">{{ waterLevelDisplay }}</span>
         </div>
         <button class="layout-zone__fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'">
           <svg v-if="!isFullscreen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

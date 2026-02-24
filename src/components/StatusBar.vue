@@ -1,7 +1,9 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, inject, ref } from 'vue'
 import ConnectionIndicator from './ConnectionIndicator.vue'
 import { useLayout } from '../composables/useLayout.js'
+
+const waterLevelDisplay = inject('waterLevelDisplay', ref(''))
 
 const props = defineProps({
   machineState: { type: String, default: 'disconnected' },
@@ -9,7 +11,6 @@ const props = defineProps({
   scaleConnected: { type: Boolean, default: false },
   temperature: { type: Number, default: 0 },
   targetTemperature: { type: Number, default: 0 },
-  waterLevel: { type: Number, default: 0 },
   profileName: { type: String, default: '' },
   /**
    * Optional layout override. When provided, controls which sections
@@ -68,8 +69,8 @@ const displayFlags = computed(() => {
         {{ temperature.toFixed(1) }}
         <span class="status-bar__temp-target">/ {{ targetTemperature.toFixed(0) }} &deg;C</span>
       </span>
-      <span v-if="displayFlags.showWaterLevel" class="status-bar__water" :title="`Water level: ${waterLevel}%`">
-        {{ waterLevel }}%
+      <span v-if="displayFlags.showWaterLevel" class="status-bar__water" :title="`Water level: ${waterLevelDisplay}`">
+        {{ waterLevelDisplay }}
       </span>
     </div>
   </header>

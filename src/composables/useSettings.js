@@ -53,7 +53,7 @@ const DEFAULT_SETTINGS = {
   selectedFavoriteProfile: -1,
 
   // UI / layout
-  waterLevelDisplayUnit: '%',  // '%' or 'ml'
+  waterLevelDisplayUnit: 'mm',  // 'mm' or 'ml'
 
   // Visualizer
   visualizerUsername: '',
@@ -75,7 +75,6 @@ const DEFAULT_SETTINGS = {
 
   // Options
   waterRefillThreshold: 10,
-  headlessMode: false,
   autoWakeEnabled: false,
   autoWakeSchedule: {
     mon: { enabled: false, time: '07:00' },
@@ -201,7 +200,7 @@ export function useSettings() {
       'screensaverType', 'flipClock24h', 'flipClock3d',
     ],
     options: [
-      'waterRefillThreshold', 'headlessMode',
+      'waterRefillThreshold',
       'autoWakeEnabled', 'autoWakeSchedule', 'stayAwakeDuration',
     ],
     espresso: [

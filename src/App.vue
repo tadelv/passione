@@ -56,6 +56,22 @@ provide('targetWeight', computed(() => workflow.doseData?.doseOut ?? 36))
 provide('shotTime', machine.shotTime)
 provide('substate', machine.substate)
 provide('waterLevel', waterLevels.currentLevel)
+
+// Water level display: mm → ml conversion using DE1 tank cross-section (~150mm × 83mm)
+const WATER_ML_PER_MM = 12.45
+const WATER_TANK_MAX_MM = 120
+const waterLevelDisplay = computed(() => {
+  const mm = waterLevels.currentLevel.value
+  if (settings.settings.waterLevelDisplayUnit === 'ml') {
+    return Math.round(mm * WATER_ML_PER_MM) + ' ml'
+  }
+  return mm + ' mm'
+})
+const waterLevelPercent = computed(() => {
+  return Math.min(100, Math.round((waterLevels.currentLevel.value / WATER_TANK_MAX_MM) * 100))
+})
+provide('waterLevelDisplay', waterLevelDisplay)
+provide('waterLevelPercent', waterLevelPercent)
 provide('profileName', computed(() => workflow.profile?.title ?? ''))
 provide('steamTemperature', machine.steamTemperature)
 provide('targetSteamTemp', computed(() => shotSettings.targetSteamTemp.value ?? 160))
@@ -289,7 +305,6 @@ onUnmounted(() => {
     :scale-connected="scale.isConnected.value"
     :temperature="machine.mixTemperature.value"
     :target-temperature="machine.targetMixTemperature.value"
-    :water-level="waterLevels.currentLevel.value"
     :profile-name="workflow.profile?.title ?? ''"
   />
   <main class="app-main">
