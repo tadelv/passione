@@ -166,11 +166,22 @@ export function useMachine() {
     if (newState === oldState) return
 
     if (FLOWING_STATES.has(newState) && !FLOWING_STATES.has(oldState)) {
-      // Entering a flowing operation
-      _startShotTimer()
+      if (newState === 'espresso') {
+        // For espresso, reset but don't start — wait for preinfusion substate
+        _resetShotTimer()
+      } else {
+        _startShotTimer()
+      }
     } else if (!FLOWING_STATES.has(newState) && FLOWING_STATES.has(oldState)) {
       // Leaving a flowing operation — keep final time visible but stop ticking
       _stopShotTimer()
+    }
+  })
+
+  // For espresso, start the timer when preinfusion begins (not during preheat)
+  watch(substate, (newSubstate) => {
+    if (state.value === 'espresso' && newSubstate === 'preinfusion' && _shotStartTime.value === null) {
+      _startShotTimer()
     }
   })
 
@@ -199,6 +210,11 @@ export function useMachine() {
    */
   function requestState(newState) {
     return setMachineState(newState)
+  }
+
+  /** Skip to the next profile step during espresso. */
+  function skipStep() {
+    return setMachineState('skipStep')
   }
 
   onMounted(connect)
@@ -236,6 +252,7 @@ export function useMachine() {
     profileFrame,
     // actions
     requestState,
+    skipStep,
     connect,
     disconnect,
   }

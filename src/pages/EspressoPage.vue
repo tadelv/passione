@@ -252,6 +252,14 @@ const displayShotTime = computed(() => {
     : `${secs.toFixed(1)}s`
 })
 
+async function skipStep() {
+  try {
+    await machine?.skipStep()
+  } catch {
+    toast?.error('Failed to skip step')
+  }
+}
+
 async function stopAndGoBack() {
   try {
     await setMachineState('idle')
@@ -308,6 +316,14 @@ async function stopAndGoBack() {
       <button class="espresso-page__back" @click="stopAndGoBack" aria-label="Stop and go back">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="15 18 9 12 15 6" />
+        </svg>
+      </button>
+
+      <!-- Skip step button -->
+      <button class="espresso-page__skip" @click="skipStep" aria-label="Skip to next step">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5,4 15,12 5,20" />
+          <rect x="16" y="4" width="3" height="16" />
         </svg>
       </button>
 
@@ -435,6 +451,26 @@ async function stopAndGoBack() {
 
 .espresso-page__back:active {
   opacity: 0.7;
+}
+
+.espresso-page__skip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.espresso-page__skip:active {
+  opacity: 0.7;
+  background: var(--color-surface);
 }
 
 .espresso-page__metric {
