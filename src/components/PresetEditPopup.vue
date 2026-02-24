@@ -9,7 +9,7 @@ const props = defineProps({
   preset: { type: Object, default: null },
   /**
    * Operation type determines which fields to show.
-   * 'steam' | 'hotwater' | 'flush' | 'bean'
+   * 'steam' | 'hotwater' | 'flush' | 'bean' | 'combo'
    */
   operationType: { type: String, default: 'steam' },
   /** Whether this is an existing preset (shows delete button) */
