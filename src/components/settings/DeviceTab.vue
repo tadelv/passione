@@ -1,33 +1,30 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { inject } from 'vue'
 import ConnectionIndicator from '../ConnectionIndicator.vue'
-import { getDevices, scanDevices, tareScale } from '../../api/rest.js'
+import { tareScale } from '../../api/rest.js'
 
-const devices = ref([])
-const scanning = ref(false)
-const loading = ref(true)
+const devices = inject('devices')
 
-async function loadDevices() {
-  loading.value = true
-  try {
-    const result = await getDevices()
-    devices.value = Array.isArray(result) ? result : (result?.devices ?? [])
-  } catch {
-    devices.value = []
+function deviceStatus(device) {
+  switch (device.state) {
+    case 'connected': return 'Connected'
+    case 'connecting': return 'Connecting...'
+    case 'disconnecting': return 'Disconnecting...'
+    default: return 'Disconnected'
   }
-  loading.value = false
 }
 
-async function startScan() {
-  scanning.value = true
-  try {
-    await scanDevices({connect: true})
-    // Refresh device list after scan
-    await loadDevices()
-  } catch {
-    // ignore
+function deviceStatusColor(device) {
+  switch (device.state) {
+    case 'connected': return 'var(--color-success)'
+    case 'connecting':
+    case 'disconnecting': return 'var(--color-warning)'
+    default: return 'var(--color-error)'
   }
-  scanning.value = false
+}
+
+function onScan() {
+  devices.scan({ connect: true })
 }
 
 async function onTare() {
@@ -37,20 +34,6 @@ async function onTare() {
     // ignore
   }
 }
-
-onMounted(loadDevices)
-
-function deviceStatus(device) {
-  if (device.connected) return 'Connected'
-  if (device.available) return 'Available'
-  return 'Disconnected'
-}
-
-function deviceStatusColor(device) {
-  if (device.connected) return 'var(--color-success)'
-  if (device.available) return 'var(--color-warning)'
-  return 'var(--color-error)'
-}
 </script>
 
 <template>
@@ -59,30 +42,28 @@ function deviceStatusColor(device) {
       <h3 class="device-tab__title">Connected Devices</h3>
       <button
         class="device-tab__scan-btn"
-        :disabled="scanning"
-        @click="startScan"
+        :disabled="devices.scanning.value"
+        @click="onScan"
       >
-        {{ scanning ? 'Scanning...' : 'Scan' }}
+        {{ devices.scanning.value ? 'Scanning...' : 'Scan' }}
       </button>
     </div>
 
-    <div v-if="loading" class="device-tab__loading">Loading devices...</div>
-
-    <div v-else-if="devices.length === 0" class="device-tab__empty">
+    <div v-if="devices.devices.value.length === 0" class="device-tab__empty">
       No devices found. Tap Scan to search.
     </div>
 
     <div v-else class="device-tab__list">
       <div
-        v-for="device in devices"
-        :key="device.id || device.address || device.name"
+        v-for="device in devices.devices.value"
+        :key="device.id"
         class="device-tab__device"
       >
         <div class="device-tab__device-info">
-          <ConnectionIndicator :connected="!!device.connected" :size="10" />
+          <ConnectionIndicator :connected="device.state === 'connected'" :size="10" />
           <div class="device-tab__device-details">
             <span class="device-tab__device-name">{{ device.name || 'Unknown Device' }}</span>
-            <span class="device-tab__device-type">{{ device.type || device.deviceType || '' }}</span>
+            <span class="device-tab__device-type">{{ device.type }}</span>
           </div>
         </div>
         <span
@@ -140,7 +121,6 @@ function deviceStatusColor(device) {
   cursor: default;
 }
 
-.device-tab__loading,
 .device-tab__empty {
   padding: 24px;
   text-align: center;

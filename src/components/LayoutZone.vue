@@ -15,7 +15,7 @@ import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import StatusBar from './StatusBar.vue'
 import BottomBar from './BottomBar.vue'
-import { setMachineState, scanDevices } from '../api/rest.js'
+import { setMachineState } from '../api/rest.js'
 
 const props = defineProps({
   /** Zone configuration: { type: string, config?: object } */
@@ -122,15 +122,7 @@ document.addEventListener('webkitfullscreenchange', onFullscreenChange)
 // Scale info
 const scale = inject('scale', null)
 const scaleWeight = inject('weight', ref(0))
-const scanning = ref(false)
-
-async function startScan() {
-  scanning.value = true
-  try {
-    await scanDevices({connect: true})
-  } catch { /* ignore */ }
-  setTimeout(() => { scanning.value = false }, 5000)
-}
+const devices = inject('devices', null)
 
 const zoneType = computed(() => props.zone.type)
 const zoneConfig = computed(() => props.zone.config ?? {})
@@ -315,8 +307,8 @@ const zoneConfig = computed(() => props.zone.config ?? {})
           </template>
           <template v-else>
             <span class="layout-zone__scale-disconnected">No scale</span>
-            <button class="layout-zone__scale-scan" :disabled="scanning" @click="startScan">
-              {{ scanning ? 'Scanning...' : 'Scan' }}
+            <button class="layout-zone__scale-scan" :disabled="devices?.scanning.value" @click="devices?.scan({ connect: true })">
+              {{ devices?.scanning.value ? 'Scanning...' : 'Scan' }}
             </button>
           </template>
         </div>
@@ -463,10 +455,6 @@ const zoneConfig = computed(() => props.zone.config ?? {})
   font-size: var(--font-label);
   color: var(--color-text-secondary);
   text-align: center;
-  max-width: 90%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }

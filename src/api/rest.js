@@ -151,23 +151,6 @@ export function tareScale() {
 }
 
 // ---------------------------------------------------------------------------
-// Devices
-// ---------------------------------------------------------------------------
-
-export function getDevices() {
-  return sendCommand('/api/v1/devices')
-}
-
-export function scanDevices(params = {}) {
-  const qs = new URLSearchParams(params).toString()
-  return sendCommand(`/api/v1/devices/scan${qs ? '?' + qs : ''}`)
-}
-
-export function connectDevice(deviceId) {
-  return sendCommand(`/api/v1/devices/connect?deviceId=${encodeURIComponent(deviceId)}`, 'PUT')
-}
-
-// ---------------------------------------------------------------------------
 // Shots (history)
 // ---------------------------------------------------------------------------
 

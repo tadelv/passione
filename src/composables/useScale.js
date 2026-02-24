@@ -50,10 +50,17 @@ export function useScale() {
   function connect() {
     ws = new ReconnectingWebSocket(
       `${WS_URL}/ws/v1/scale/snapshot`,
-      onMessage
+      (data) => {
+        // Mark connected only when we actually receive scale data,
+        // not just when the WebSocket opens. This avoids false
+        // connect/disconnect notifications when no physical scale
+        // is paired with ReaPrime.
+        if (!isConnected.value) isConnected.value = true
+        onMessage(data)
+      }
     )
     ws.onConnectionChange = (connected) => {
-      isConnected.value = connected
+      if (!connected) isConnected.value = false
     }
     ws.connect()
   }

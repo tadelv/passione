@@ -47,6 +47,15 @@ export class ReconnectingWebSocket {
     this._openSocket()
   }
 
+  /** Send a JSON message to the server. Returns true if sent. */
+  send(data) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify(data))
+      return true
+    }
+    return false
+  }
+
   /** Permanently close — stops reconnection attempts. */
   close() {
     this._closed = true

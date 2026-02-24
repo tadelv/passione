@@ -9,6 +9,7 @@ import ToastNotification from './components/ToastNotification.vue'
 import LogOverlay from './components/LogOverlay.vue'
 import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
+import { useDevices } from './composables/useDevices.js'
 import { useWaterLevels } from './composables/useWaterLevels.js'
 import { useShotSettings } from './composables/useShotSettings.js'
 import { useWorkflow } from './composables/useWorkflow.js'
@@ -28,6 +29,7 @@ const { t } = useI18n()
 // Connect to all WebSocket streams
 const machine = useMachine()
 const scale = useScale()
+const devices = useDevices()
 const waterLevels = useWaterLevels()
 const shotSettings = useShotSettings()
 const { workflow, updateWorkflow } = useWorkflow()
@@ -43,8 +45,8 @@ const toast = useToast()
 
 // Provide reactive data for child components that use inject
 provide('machineState', machine.state)
-provide('machineConnected', machine.isConnected)
-provide('scaleConnected', scale.isConnected)
+provide('machineConnected', devices.machineConnected)
+provide('scaleConnected', devices.scaleConnected)
 provide('temperature', machine.mixTemperature)
 provide('targetTemperature', machine.targetMixTemperature)
 provide('pressure', machine.pressure)
@@ -70,6 +72,7 @@ provide('previousState', machine.previousState)
 // Provide composable instances for pages that need direct access
 provide('machine', machine)
 provide('scale', scale)
+provide('devices', devices)
 provide('shotData', shotData)
 provide('settings', settings)
 provide('theme', theme)
@@ -77,26 +80,22 @@ provide('volumeMode', volumeMode)
 provide('autoSleep', autoSleep)
 provide('toast', toast)
 
-// ---- Connection state toasts ----
-let machineWasConnected = false
-let scaleWasConnected = false
+// ---- Connection state toasts (driven by devices WebSocket API) ----
 
-watch(machine.isConnected, (connected) => {
-  if (connected && machineWasConnected === false) {
+watch(devices.machineConnected, (connected, wasConnected) => {
+  if (connected && !wasConnected) {
     toast.success(t('toast.machineConnected'))
-  } else if (!connected && machineWasConnected === true) {
+  } else if (!connected && wasConnected) {
     toast.warning(t('toast.machineDisconnected'))
   }
-  machineWasConnected = connected
 })
 
-watch(scale.isConnected, (connected) => {
-  if (connected && scaleWasConnected === false) {
+watch(devices.scaleConnected, (connected, wasConnected) => {
+  if (connected && !wasConnected) {
     toast.info(t('toast.scaleConnected'))
-  } else if (!connected && scaleWasConnected === true) {
+  } else if (!connected && wasConnected) {
     toast.warning(t('toast.scaleDisconnected'))
   }
-  scaleWasConnected = connected
 })
 
 // ---- Page transition control ----
