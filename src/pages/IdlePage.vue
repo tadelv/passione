@@ -33,39 +33,56 @@ const isReady = computed(() =>
 )
 
 // P1-4: Shot Plan Text — display brewing plan from workflow data
-const shotPlanText = computed(() => {
-  if (!workflow) return ''
+// P1-4: Shot plan — structured lines from workflow data
+const shotPlanLines = computed(() => {
+  if (!workflow) return []
 
+  const lines = []
+  const coffeeData = workflow.coffeeData
   const doseData = workflow.doseData
   const grinderData = workflow.grinderData
 
-  if (!doseData) return ''
-
-  const parts = []
-
-  const doseIn = doseData.doseIn ?? doseData.dose
-  const doseOut = doseData.doseOut ?? doseData.targetWeight
-  if (doseIn && doseOut) {
-    const ratio = doseOut / doseIn
-    parts.push(`${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`)
-  } else if (doseIn) {
-    parts.push(`${Number(doseIn).toFixed(1)}g in`)
-  } else if (doseOut) {
-    parts.push(`${Number(doseOut).toFixed(1)}g out`)
+  // Line 1: beans (roaster — brand/type, roast level)
+  if (coffeeData) {
+    const beanParts = [coffeeData.roaster, coffeeData.beanBrand ?? coffeeData.brand, coffeeData.beanType ?? coffeeData.type].filter(Boolean)
+    if (beanParts.length) {
+      let beanLine = beanParts.join(' — ')
+      const roastLevel = coffeeData.roastLevel
+      if (roastLevel) beanLine += ` (${roastLevel})`
+      lines.push(beanLine)
+    }
   }
 
+  // Line 2: dose / yield / ratio
+  if (doseData) {
+    const doseIn = doseData.doseIn ?? doseData.dose
+    const doseOut = doseData.doseOut ?? doseData.targetWeight
+    if (doseIn && doseOut) {
+      const ratio = doseOut / doseIn
+      lines.push(`${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`)
+    } else if (doseIn) {
+      lines.push(`${Number(doseIn).toFixed(1)}g in`)
+    } else if (doseOut) {
+      lines.push(`${Number(doseOut).toFixed(1)}g out`)
+    }
+  }
+
+  // Line 3: grinder
   if (grinderData) {
     const grinderName = grinderData.grinder || grinderData.name
     const grinderSetting = grinderData.setting ?? grinderData.grindSetting
     if (grinderName && grinderSetting != null) {
-      parts.push(`${grinderName} @ ${grinderSetting}`)
+      lines.push(`${grinderName} @ ${grinderSetting}`)
     } else if (grinderName) {
-      parts.push(grinderName)
+      lines.push(grinderName)
     }
   }
 
-  return parts.join(' | ')
+  return lines
 })
+
+// Flat text fallback for components that use a single string
+const shotPlanText = computed(() => shotPlanLines.value.join(' | '))
 
 // ---- Espresso favorite presets (two-step: tap to load profile, tap again to start) ----
 const favoriteIds = computed(() => settings?.settings?.favoriteProfiles ?? [])
@@ -215,6 +232,7 @@ function hasZone(name) {
           :zone="zones.centerLeft"
           :is-ready="isReady"
           :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
           :espresso-presets="espressoPresets"
           :selected-espresso-preset="selectedEspressoPreset"
           :steam-presets="steamPresets"
@@ -240,6 +258,7 @@ function hasZone(name) {
           :zone="zones.topBar"
           :is-ready="isReady"
           :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
         />
       </div>
     </div>
@@ -252,6 +271,7 @@ function hasZone(name) {
         :zone="zones.centerRight"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
         :espresso-presets="espressoPresets"
         :selected-espresso-preset="selectedEspressoPreset"
         :steam-presets="steamPresets"
@@ -278,6 +298,7 @@ function hasZone(name) {
         :zone="zones.centerMain"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
         :espresso-presets="espressoPresets"
         :selected-espresso-preset="selectedEspressoPreset"
         :steam-presets="steamPresets"
@@ -346,6 +367,7 @@ function hasZone(name) {
         :zone="zones.bottomBar"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
         :espresso-presets="espressoPresets"
         :selected-espresso-preset="selectedEspressoPreset"
         :steam-presets="steamPresets"
@@ -372,6 +394,7 @@ function hasZone(name) {
         :zone="zones.extraTop"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
         :espresso-presets="espressoPresets"
         :selected-espresso-preset="selectedEspressoPreset"
         :steam-presets="steamPresets"
@@ -397,6 +420,7 @@ function hasZone(name) {
         :zone="zones.extraBottom"
         :is-ready="isReady"
         :shot-plan-text="shotPlanText"
+          :shot-plan-lines="shotPlanLines"
         :espresso-presets="espressoPresets"
         :selected-espresso-preset="selectedEspressoPreset"
         :steam-presets="steamPresets"

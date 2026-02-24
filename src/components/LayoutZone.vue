@@ -36,8 +36,10 @@ const props = defineProps({
   flushPresets: { type: Array, default: () => [] },
   /** Selected flush preset index */
   selectedFlushPreset: { type: Number, default: -1 },
-  /** Shot plan text */
+  /** Shot plan text (single-line fallback) */
   shotPlanText: { type: String, default: '' },
+  /** Shot plan lines (structured multi-line) */
+  shotPlanLines: { type: Array, default: () => [] },
   /** Whether machine is ready for operations */
   isReady: { type: Boolean, default: false },
 })
@@ -222,14 +224,14 @@ const zoneConfig = computed(() => props.zone.config ?? {})
       </div>
     </template>
 
-    <!-- Shot plan: profile name + dose + yield text -->
+    <!-- Shot plan: profile name + beans + dose + grinder -->
     <template v-else-if="zoneType === 'shotPlan'">
-      <div class="layout-zone__shot-plan">
-        <div v-if="profileName" class="layout-zone__profile" @click="router.push('/profiles')">
+      <div class="layout-zone__shot-plan" @click="router.push('/bean-info')">
+        <div v-if="profileName" class="layout-zone__profile" @click.stop="router.push('/profiles')">
           {{ profileName }}
         </div>
-        <div v-if="shotPlanText" class="layout-zone__plan-text" @click="router.push('/bean-info')">
-          {{ shotPlanText }}
+        <div v-for="(line, i) in shotPlanLines" :key="i" class="layout-zone__plan-text">
+          {{ line }}
         </div>
       </div>
     </template>
