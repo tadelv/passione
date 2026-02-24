@@ -64,7 +64,7 @@ if (selectedIndex.value >= 0) {
     if (doseIn.value > 0) ratioValue.value = +(doseOut.value / doseIn.value).toFixed(1)
   }
   if (wg) {
-    grinder.value = wg.grinder ?? wg.name ?? ''
+    grinder.value = [wg.manufacturer, wg.model].filter(Boolean).join(' ') || (wg.grinder ?? wg.name ?? '')
     grinderSetting.value = wg.setting ?? wg.grindSetting ?? ''
   }
   if (wc) {

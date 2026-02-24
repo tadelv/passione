@@ -67,12 +67,14 @@ const shotPlanLines = computed(() => {
     }
   }
 
-  // Line 3: grinder
+  // Line 3: grinder (API fields: manufacturer, model, setting)
   if (grinderData) {
-    const grinderName = grinderData.grinder || grinderData.name
+    const grinderName = [grinderData.manufacturer, grinderData.model].filter(Boolean).join(' ') || grinderData.grinder || grinderData.name
     const grinderSetting = grinderData.setting ?? grinderData.grindSetting
     if (grinderName && grinderSetting != null) {
       lines.push(`${grinderName} @ ${grinderSetting}`)
+    } else if (grinderSetting != null) {
+      lines.push(`Grind: ${grinderSetting}`)
     } else if (grinderName) {
       lines.push(grinderName)
     }
