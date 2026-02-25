@@ -4,6 +4,7 @@ import { setMachineState } from '../api/rest.js'
 
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
+const display = inject('display', null)
 
 // Clock state
 const hours = ref('00')
@@ -55,10 +56,12 @@ function wake() {
 onMounted(() => {
   updateClock()
   clockTimer = setInterval(updateClock, 1000)
+  display?.dim()
 })
 
 onUnmounted(() => {
   clearInterval(clockTimer)
+  display?.restore()
 })
 </script>
 

@@ -74,16 +74,6 @@ const DEFAULT_SETTINGS = {
   // Options
   waterRefillThreshold: 10,
   autoWakeEnabled: false,
-  autoWakeSchedule: {
-    mon: { enabled: false, time: '07:00' },
-    tue: { enabled: false, time: '07:00' },
-    wed: { enabled: false, time: '07:00' },
-    thu: { enabled: false, time: '07:00' },
-    fri: { enabled: false, time: '07:00' },
-    sat: { enabled: false, time: '08:00' },
-    sun: { enabled: false, time: '08:00' },
-  },
-  stayAwakeDuration: 60,
 
   // Espresso / Brew Dialog
   showBrewDialog: false,
@@ -195,7 +185,7 @@ export function useSettings() {
     ],
     options: [
       'waterRefillThreshold',
-      'autoWakeEnabled', 'autoWakeSchedule', 'stayAwakeDuration',
+      'autoWakeEnabled',
     ],
     espresso: [
       'showBrewDialog',

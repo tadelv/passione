@@ -1,7 +1,14 @@
 <script setup>
-import { inject, computed } from 'vue'
+import { ref, inject, computed, onMounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
 import { updateWaterLevelThreshold } from '../../api/rest.js'
+import {
+  getPresenceSchedules,
+  getPresenceSettings,
+  updatePresenceSettings,
+  createPresenceSchedule,
+  updatePresenceSchedule,
+} from '../../api/rest.js'
 
 const WATER_ML_PER_MM = 12.45
 
@@ -21,30 +28,110 @@ const refillThresholdDisplay = computed({
   },
 })
 
+// ---- Auto-Wake Schedule (server-backed) ------------------------------------
+
 const DAYS = [
-  { key: 'mon', label: 'Mon' },
-  { key: 'tue', label: 'Tue' },
-  { key: 'wed', label: 'Wed' },
-  { key: 'thu', label: 'Thu' },
-  { key: 'fri', label: 'Fri' },
-  { key: 'sat', label: 'Sat' },
-  { key: 'sun', label: 'Sun' },
+  { key: 'mon', label: 'Mon', iso: 1 },
+  { key: 'tue', label: 'Tue', iso: 2 },
+  { key: 'wed', label: 'Wed', iso: 3 },
+  { key: 'thu', label: 'Thu', iso: 4 },
+  { key: 'fri', label: 'Fri', iso: 5 },
+  { key: 'sat', label: 'Sat', iso: 6 },
+  { key: 'sun', label: 'Sun', iso: 7 },
 ]
 
-function toggleDay(dayKey) {
-  const schedule = settings.autoWakeSchedule
-  schedule[dayKey] = {
-    ...schedule[dayKey],
-    enabled: !schedule[dayKey].enabled,
-  }
-  settings.autoWakeSchedule = { ...schedule }
+// Server schedule data: map from ISO weekday number → schedule object
+const schedules = ref({})
+const schedulesLoading = ref(true)
+
+function findScheduleForDay(isoDay) {
+  return Object.values(schedules.value).find(
+    s => Array.isArray(s.daysOfWeek) && s.daysOfWeek.includes(isoDay)
+  )
 }
 
-function setDayTime(dayKey, time) {
-  const schedule = settings.autoWakeSchedule
-  schedule[dayKey] = { ...schedule[dayKey], time }
-  settings.autoWakeSchedule = { ...schedule }
+async function loadSchedules() {
+  schedulesLoading.value = true
+  try {
+    const [scheduleData, presenceData] = await Promise.all([
+      getPresenceSchedules(),
+      getPresenceSettings(),
+    ])
+    // Index schedules by id
+    const byId = {}
+    const list = Array.isArray(scheduleData) ? scheduleData : (scheduleData?.schedules ?? [])
+    for (const s of list) {
+      if (s.id != null) byId[s.id] = s
+    }
+    schedules.value = byId
+
+    // Sync autoWakeEnabled from server
+    if (presenceData?.userPresenceEnabled != null) {
+      settings.autoWakeEnabled = presenceData.userPresenceEnabled
+    }
+  } catch {
+    // Server may not support schedules API yet
+  }
+  schedulesLoading.value = false
 }
+
+async function toggleDay(isoDay) {
+  const existing = findScheduleForDay(isoDay)
+  if (existing) {
+    // Toggle enabled
+    try {
+      const updated = await updatePresenceSchedule(existing.id, {
+        ...existing,
+        enabled: !existing.enabled,
+      })
+      schedules.value = { ...schedules.value, [existing.id]: updated ?? { ...existing, enabled: !existing.enabled } }
+    } catch { /* ignore */ }
+  } else {
+    // Create new schedule for this day
+    try {
+      const created = await createPresenceSchedule({
+        daysOfWeek: [isoDay],
+        time: '07:00',
+        enabled: true,
+      })
+      if (created?.id != null) {
+        schedules.value = { ...schedules.value, [created.id]: created }
+      }
+    } catch { /* ignore */ }
+  }
+}
+
+async function setDayTime(isoDay, time) {
+  const existing = findScheduleForDay(isoDay)
+  if (existing) {
+    try {
+      const updated = await updatePresenceSchedule(existing.id, {
+        ...existing,
+        time,
+      })
+      schedules.value = { ...schedules.value, [existing.id]: updated ?? { ...existing, time } }
+    } catch { /* ignore */ }
+  }
+}
+
+function isDayEnabled(isoDay) {
+  const s = findScheduleForDay(isoDay)
+  return s?.enabled ?? false
+}
+
+function getDayTime(isoDay) {
+  const s = findScheduleForDay(isoDay)
+  return s?.time ?? '07:00'
+}
+
+async function toggleAutoWake() {
+  settings.autoWakeEnabled = !settings.autoWakeEnabled
+  try {
+    await updatePresenceSettings({ userPresenceEnabled: settings.autoWakeEnabled })
+  } catch { /* ignore */ }
+}
+
+onMounted(loadSchedules)
 </script>
 
 <template>
@@ -95,13 +182,17 @@ function setDayTime(dayKey, time) {
           <button
             class="options-tab__toggle"
             :class="{ 'options-tab__toggle--on': settings.autoWakeEnabled }"
-            @click="settings.autoWakeEnabled = !settings.autoWakeEnabled"
+            @click="toggleAutoWake"
           >
             {{ settings.autoWakeEnabled ? 'ON' : 'OFF' }}
           </button>
         </div>
 
-        <div class="options-tab__schedule" v-if="settings.autoWakeEnabled">
+        <div v-if="schedulesLoading && settings.autoWakeEnabled" class="options-tab__hint">
+          Loading schedules...
+        </div>
+
+        <div class="options-tab__schedule" v-if="settings.autoWakeEnabled && !schedulesLoading">
           <div
             v-for="day in DAYS"
             :key="day.key"
@@ -109,31 +200,19 @@ function setDayTime(dayKey, time) {
           >
             <button
               class="options-tab__day-toggle"
-              :class="{ 'options-tab__day-toggle--on': settings.autoWakeSchedule[day.key]?.enabled }"
-              @click="toggleDay(day.key)"
+              :class="{ 'options-tab__day-toggle--on': isDayEnabled(day.iso) }"
+              @click="toggleDay(day.iso)"
             >
               {{ day.label }}
             </button>
             <input
               type="time"
               class="options-tab__time-input"
-              :value="settings.autoWakeSchedule[day.key]?.time || '07:00'"
-              :disabled="!settings.autoWakeSchedule[day.key]?.enabled"
-              @change="e => setDayTime(day.key, e.target.value)"
+              :value="getDayTime(day.iso)"
+              :disabled="!isDayEnabled(day.iso)"
+              @change="e => setDayTime(day.iso, e.target.value)"
             />
           </div>
-        </div>
-
-        <div class="options-tab__field" v-if="settings.autoWakeEnabled">
-          <label class="options-tab__label">Stay awake after auto-wake</label>
-          <ValueInput
-            :model-value="settings.stayAwakeDuration"
-            @update:model-value="v => settings.stayAwakeDuration = v"
-            :min="5"
-            :max="240"
-            :step="5"
-            suffix=" min"
-          />
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ const loading = ref(true)
 const saving = ref(false)
 
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error']
-const SCALE_POWER_MODES = ['auto', 'low', 'high']
+const SCALE_POWER_MODES = ['disabled', 'displayOff', 'disconnect']
 
 async function loadSettings() {
   loading.value = true

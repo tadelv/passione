@@ -17,6 +17,7 @@ import { useShotData } from './composables/useShotData.js'
 import { useSettings } from './composables/useSettings.js'
 import { useTheme } from './composables/useTheme.js'
 import { useAutoSleep } from './composables/useAutoSleep.js'
+import { useDisplay } from './composables/useDisplay.js'
 import { useVolumeMode } from './composables/useVolumeMode.js'
 import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
@@ -41,6 +42,7 @@ const theme = useTheme()
 const volumeMode = useVolumeMode(machine, scale, workflow)
 const operationSettings = useOperationSettings(settings, workflow)
 const autoSleep = useAutoSleep(machine, settings)
+const display = useDisplay()
 const toast = useToast()
 
 // Provide reactive data for child components that use inject
@@ -94,6 +96,7 @@ provide('settings', settings)
 provide('theme', theme)
 provide('volumeMode', volumeMode)
 provide('autoSleep', autoSleep)
+provide('display', display)
 provide('toast', toast)
 
 // ---- Connection state toasts (driven by devices WebSocket API) ----
@@ -169,6 +172,20 @@ const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush'])
 
 watch(machine.state, (newState, oldState) => {
   if (newState === oldState) return
+
+  // Display control: dim on sleep, restore on wake
+  if (newState === 'sleeping') {
+    display.dim()
+  } else if (oldState === 'sleeping') {
+    display.restore()
+  }
+
+  // Wake-lock: hold during active operations
+  if (OPERATION_STATES.has(newState)) {
+    display.requestWakeLock()
+  } else if (oldState && OPERATION_STATES.has(oldState)) {
+    display.releaseWakeLock()
+  }
 
   // Screensaver: navigate when sleeping, navigate away when waking
   if (newState === 'sleeping' && settings.settings.screensaverType !== 'disabled') {

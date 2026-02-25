@@ -259,6 +259,66 @@ export function updateReaSettings(data) {
 }
 
 // ---------------------------------------------------------------------------
+// Presence / heartbeat
+// ---------------------------------------------------------------------------
+
+export function sendHeartbeat() {
+  return sendCommand('/api/v1/machine/heartbeat', 'POST')
+}
+
+export function getPresenceSettings() {
+  return sendCommand('/api/v1/presence/settings')
+}
+
+export function updatePresenceSettings(data) {
+  return sendCommand('/api/v1/presence/settings', 'POST', data)
+}
+
+// ---------------------------------------------------------------------------
+// Wake schedules
+// ---------------------------------------------------------------------------
+
+export function getPresenceSchedules() {
+  return sendCommand('/api/v1/presence/schedules')
+}
+
+export function createPresenceSchedule(data) {
+  return sendCommand('/api/v1/presence/schedules', 'POST', data)
+}
+
+export function updatePresenceSchedule(id, data) {
+  return sendCommand(`/api/v1/presence/schedules/${encodeURIComponent(id)}`, 'PUT', data)
+}
+
+export function deletePresenceSchedule(id) {
+  return sendCommand(`/api/v1/presence/schedules/${encodeURIComponent(id)}`, 'DELETE')
+}
+
+// ---------------------------------------------------------------------------
+// Display
+// ---------------------------------------------------------------------------
+
+export function getDisplayState() {
+  return sendCommand('/api/v1/display')
+}
+
+export function dimDisplay() {
+  return sendCommand('/api/v1/display/dim', 'POST')
+}
+
+export function restoreDisplay() {
+  return sendCommand('/api/v1/display/restore', 'POST')
+}
+
+export function requestWakeLock() {
+  return sendCommand('/api/v1/display/wakelock', 'POST')
+}
+
+export function releaseWakeLock() {
+  return sendCommand('/api/v1/display/wakelock', 'DELETE')
+}
+
+// ---------------------------------------------------------------------------
 // Sensors
 // ---------------------------------------------------------------------------
 
