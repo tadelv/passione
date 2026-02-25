@@ -89,7 +89,6 @@ const DEFAULT_SETTINGS = {
   showBrewDialog: false,
 
   // Shot History
-  showLastShotOnIdle: false,
   autoFavorites: false,
 
   // DYE sticky metadata
@@ -202,7 +201,7 @@ export function useSettings() {
       'showBrewDialog',
     ],
     history: [
-      'showLastShotOnIdle', 'autoFavorites',
+      'autoFavorites',
     ],
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',

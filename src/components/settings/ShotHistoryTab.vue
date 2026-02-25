@@ -54,18 +54,6 @@ function goToHistory() {
         <h4 class="history-tab__section-title">Preferences</h4>
 
         <div class="history-tab__field">
-          <label class="history-tab__label">Show last shot on idle</label>
-          <button
-            class="history-tab__toggle"
-            :class="{ 'history-tab__toggle--on': settings.showLastShotOnIdle }"
-            @click="settings.showLastShotOnIdle = !settings.showLastShotOnIdle"
-          >
-            {{ settings.showLastShotOnIdle ? 'ON' : 'OFF' }}
-          </button>
-          <span class="history-tab__hint">Display summary of last shot on the idle page</span>
-        </div>
-
-        <div class="history-tab__field">
           <label class="history-tab__label">Auto-favorite shots</label>
           <button
             class="history-tab__toggle"
