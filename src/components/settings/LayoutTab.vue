@@ -1,132 +1,73 @@
 <script setup>
 /**
- * LayoutTab — Settings tab for configuring the IdlePage layout.
+ * LayoutTab — Settings tab for configuring the IdlePage layout (v2).
  *
- * Users can select which widget appears in each zone, toggle StatusBar
- * section visibility, preview the layout, and reset to defaults.
+ * Live miniature preview of the 6-zone grid at top; tap a zone to select it.
+ * Below the preview: editor panel for the selected zone.
+ *   - Edge zones (top/bottom): dropdown to pick one widget or "Empty"
+ *   - Stack zones (center): ordered list with move/remove + "Add widget"
+ * Changes auto-save with 500ms debounce.
  */
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useLayout } from '../../composables/useLayout.js'
 
 const {
   layout,
   loaded,
-  loading,
   load,
   setLayout,
   resetLayout,
   WIDGET_TYPES,
   WIDGET_LABELS,
+  WIDGET_ZONE_RULES,
   ZONE_NAMES,
   ZONE_LABELS,
+  STACK_ZONES,
   DEFAULT_LAYOUT,
 } = useLayout()
 
-// Local editing state (cloned from the live layout)
+// Local editing copy of the layout zones
 const editZones = reactive({})
-const editStatusBarConfig = reactive({
-  showConnection: true,
-  showState: true,
-  showProfile: true,
-  showTemperature: true,
-  showWaterLevel: true,
-})
-
-const dirty = ref(false)
+const selectedZone = ref('centerRight')
 const saving = ref(false)
 const saveMessage = ref('')
 
-// Human-readable labels for status bar toggle fields
-const STATUS_BAR_FIELDS = [
-  { key: 'showConnection', label: 'Connection indicator' },
-  { key: 'showState', label: 'Machine state' },
-  { key: 'showProfile', label: 'Profile name' },
-  { key: 'showTemperature', label: 'Temperature' },
-  { key: 'showWaterLevel', label: 'Water level' },
-]
+// Debounced save
+let saveTimeout = null
 
-/**
- * Sync local editing state from the live layout.
- */
 function syncFromLayout() {
-  // Clear and repopulate zones
-  for (const key of ZONE_NAMES) {
-    editZones[key] = layout.value.zones[key]?.type ?? 'empty'
+  for (const zoneName of ZONE_NAMES) {
+    editZones[zoneName] = [...(layout.value.zones[zoneName]?.widgets ?? [])]
   }
-
-  // StatusBar config
-  const sbc = layout.value.statusBarConfig ?? {}
-  editStatusBarConfig.showConnection = sbc.showConnection !== false
-  editStatusBarConfig.showState = sbc.showState !== false
-  editStatusBarConfig.showProfile = sbc.showProfile !== false
-  editStatusBarConfig.showTemperature = sbc.showTemperature !== false
-  editStatusBarConfig.showWaterLevel = sbc.showWaterLevel !== false
-
-  dirty.value = false
   saveMessage.value = ''
 }
 
-// Load layout if not already loaded
 onMounted(async () => {
-  if (!loaded.value) {
-    await load()
-  }
+  if (!loaded.value) await load()
   syncFromLayout()
 })
 
-// Resync if layout changes externally
 watch(layout, () => {
-  if (!dirty.value) {
-    syncFromLayout()
-  }
+  syncFromLayout()
 })
 
-function onZoneChange() {
-  dirty.value = true
-  saveMessage.value = ''
+function scheduleSave() {
+  clearTimeout(saveTimeout)
+  saveTimeout = setTimeout(doSave, 500)
 }
 
-function onStatusBarToggle() {
-  dirty.value = true
-  saveMessage.value = ''
-}
-
-/**
- * Build a layout object from the editing state and persist it.
- */
-async function save() {
+async function doSave() {
   saving.value = true
-  saveMessage.value = ''
-
-  const newLayout = {
-    version: 1,
-    zones: {},
-  }
-
+  const newLayout = { version: 2, zones: {} }
   for (const zoneName of ZONE_NAMES) {
-    const widgetType = editZones[zoneName]
-    if (widgetType && widgetType !== 'empty') {
-      newLayout.zones[zoneName] = { type: widgetType }
-    }
+    newLayout.zones[zoneName] = { widgets: [...(editZones[zoneName] ?? [])] }
   }
-
-  // Include statusBarConfig if any flag is non-default (false)
-  const sbc = { ...editStatusBarConfig }
-  const hasCustomStatusBar = Object.values(sbc).some(v => v === false)
-  if (hasCustomStatusBar) {
-    newLayout.statusBarConfig = sbc
-  }
-
   await setLayout(newLayout)
-  dirty.value = false
   saving.value = false
-  saveMessage.value = 'Layout saved'
-  setTimeout(() => { saveMessage.value = '' }, 2000)
+  saveMessage.value = 'Saved'
+  setTimeout(() => { saveMessage.value = '' }, 1500)
 }
 
-/**
- * Reset to the default layout and sync editing state.
- */
 async function onReset() {
   saving.value = true
   await resetLayout()
@@ -136,123 +77,184 @@ async function onReset() {
   setTimeout(() => { saveMessage.value = '' }, 2000)
 }
 
-// Computed preview grid — maps zone positions to visual grid areas
-const previewZones = computed(() => {
-  const result = []
-  for (const zoneName of ZONE_NAMES) {
-    const widgetType = editZones[zoneName]
-    if (widgetType && widgetType !== 'empty') {
-      result.push({
-        name: zoneName,
-        label: ZONE_LABELS[zoneName],
-        widget: WIDGET_LABELS[widgetType] || widgetType,
-      })
-    }
-  }
-  return result
+// ---- Zone editing ----
+
+const isStackZone = computed(() => STACK_ZONES.has(selectedZone.value))
+
+// Widgets available for the selected zone based on WIDGET_ZONE_RULES
+const availableWidgets = computed(() => {
+  const zone = selectedZone.value
+  const isCenter = STACK_ZONES.has(zone)
+  const isEdge = !isCenter
+
+  return WIDGET_TYPES.filter(wt => {
+    const rule = WIDGET_ZONE_RULES[wt]
+    if (rule === 'any') return true
+    if (rule === 'center' && isCenter) return true
+    if (rule === 'edge' && isEdge) return true
+    return false
+  })
+})
+
+// For top/bottom (single widget) zones
+const singleWidgetValue = computed({
+  get() {
+    const widgets = editZones[selectedZone.value] ?? []
+    return widgets[0] ?? ''
+  },
+  set(val) {
+    editZones[selectedZone.value] = val ? [val] : []
+    scheduleSave()
+  },
+})
+
+// For center (stack) zones
+function moveWidget(index, direction) {
+  const widgets = editZones[selectedZone.value]
+  if (!widgets) return
+  const newIndex = index + direction
+  if (newIndex < 0 || newIndex >= widgets.length) return
+  const temp = widgets[index]
+  widgets[index] = widgets[newIndex]
+  widgets[newIndex] = temp
+  // Trigger reactivity
+  editZones[selectedZone.value] = [...widgets]
+  scheduleSave()
+}
+
+function removeWidget(index) {
+  const widgets = editZones[selectedZone.value]
+  if (!widgets) return
+  widgets.splice(index, 1)
+  editZones[selectedZone.value] = [...widgets]
+  scheduleSave()
+}
+
+const addWidgetType = ref('')
+
+function addWidget() {
+  if (!addWidgetType.value) return
+  const widgets = editZones[selectedZone.value] ?? []
+  widgets.push(addWidgetType.value)
+  editZones[selectedZone.value] = [...widgets]
+  addWidgetType.value = ''
+  scheduleSave()
+}
+
+// Widgets not yet added to the selected center zone
+const unusedCenterWidgets = computed(() => {
+  const current = new Set(editZones[selectedZone.value] ?? [])
+  return availableWidgets.value.filter(wt => !current.has(wt))
 })
 </script>
 
 <template>
   <div class="layout-tab" v-if="loaded">
     <p class="layout-tab__description">
-      Configure which widgets appear in each zone of the home screen. Changes
-      are saved to the gateway and apply immediately.
+      Tap a zone in the preview to configure it. Changes are saved automatically.
     </p>
 
-    <div class="layout-tab__main">
-      <!-- Zone configuration panel -->
-      <div class="layout-tab__zones">
-        <h4 class="layout-tab__section-title">Zone Widgets</h4>
-
-        <div
-          v-for="zoneName in ZONE_NAMES"
-          :key="zoneName"
-          class="layout-tab__zone-row"
-        >
-          <label class="layout-tab__zone-label" :for="`zone-${zoneName}`">
-            {{ ZONE_LABELS[zoneName] }}
-          </label>
-          <select
-            :id="`zone-${zoneName}`"
-            class="layout-tab__select"
-            v-model="editZones[zoneName]"
-            @change="onZoneChange"
-          >
-            <option
-              v-for="wt in WIDGET_TYPES"
-              :key="wt"
-              :value="wt"
-            >
-              {{ WIDGET_LABELS[wt] || wt }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Status bar configuration -->
-      <div class="layout-tab__status-bar-config">
-        <h4 class="layout-tab__section-title">Status Bar Sections</h4>
-        <p class="layout-tab__hint">
-          Control which sections are visible in the global status bar at the top of every page.
-        </p>
-
-        <div
-          v-for="field in STATUS_BAR_FIELDS"
-          :key="field.key"
-          class="layout-tab__toggle-row"
-        >
-          <label class="layout-tab__toggle-label" :for="`sb-${field.key}`">
-            {{ field.label }}
-          </label>
-          <button
-            :id="`sb-${field.key}`"
-            class="layout-tab__toggle"
-            :class="{ 'layout-tab__toggle--on': editStatusBarConfig[field.key] }"
-            @click="editStatusBarConfig[field.key] = !editStatusBarConfig[field.key]; onStatusBarToggle()"
-          >
-            {{ editStatusBarConfig[field.key] ? 'ON' : 'OFF' }}
-          </button>
-        </div>
+    <!-- Live preview grid -->
+    <div class="layout-tab__preview">
+      <div
+        v-for="zoneName in ZONE_NAMES"
+        :key="zoneName"
+        class="layout-tab__preview-zone"
+        :class="[
+          `layout-tab__preview-zone--${zoneName}`,
+          { 'layout-tab__preview-zone--selected': selectedZone === zoneName },
+          { 'layout-tab__preview-zone--empty': !(editZones[zoneName]?.length) },
+        ]"
+        @click="selectedZone = zoneName"
+      >
+        <span class="layout-tab__preview-zone-name">{{ ZONE_LABELS[zoneName] }}</span>
+        <template v-if="editZones[zoneName]?.length">
+          <span
+            v-for="wt in editZones[zoneName]"
+            :key="wt"
+            class="layout-tab__preview-zone-widget"
+          >{{ WIDGET_LABELS[wt] || wt }}</span>
+        </template>
+        <span v-else class="layout-tab__preview-zone-widget layout-tab__preview-zone-widget--empty">Empty</span>
       </div>
     </div>
 
-    <!-- Preview -->
-    <div class="layout-tab__preview-section">
-      <h4 class="layout-tab__section-title">Layout Preview</h4>
-      <div class="layout-tab__preview">
-        <div
-          v-for="zone in previewZones"
-          :key="zone.name"
-          class="layout-tab__preview-zone"
-          :class="`layout-tab__preview-zone--${zone.name}`"
+    <!-- Zone editor -->
+    <div class="layout-tab__editor">
+      <h4 class="layout-tab__section-title">{{ ZONE_LABELS[selectedZone] }}</h4>
+
+      <!-- Single widget zones (top/bottom) -->
+      <template v-if="!isStackZone">
+        <select
+          class="layout-tab__select"
+          v-model="singleWidgetValue"
         >
-          <span class="layout-tab__preview-zone-name">{{ zone.label }}</span>
-          <span class="layout-tab__preview-zone-widget">{{ zone.widget }}</span>
+          <option value="">Empty</option>
+          <option
+            v-for="wt in availableWidgets"
+            :key="wt"
+            :value="wt"
+          >{{ WIDGET_LABELS[wt] || wt }}</option>
+        </select>
+      </template>
+
+      <!-- Widget stack zones (center) -->
+      <template v-else>
+        <div v-if="editZones[selectedZone]?.length" class="layout-tab__widget-list">
+          <div
+            v-for="(wt, idx) in editZones[selectedZone]"
+            :key="idx"
+            class="layout-tab__widget-row"
+          >
+            <span class="layout-tab__widget-name">{{ WIDGET_LABELS[wt] || wt }}</span>
+            <div class="layout-tab__widget-actions">
+              <button
+                class="layout-tab__widget-btn"
+                :disabled="idx === 0"
+                @click="moveWidget(idx, -1)"
+                title="Move up"
+              >&uarr;</button>
+              <button
+                class="layout-tab__widget-btn"
+                :disabled="idx === editZones[selectedZone].length - 1"
+                @click="moveWidget(idx, 1)"
+                title="Move down"
+              >&darr;</button>
+              <button
+                class="layout-tab__widget-btn layout-tab__widget-btn--remove"
+                @click="removeWidget(idx)"
+                title="Remove"
+              >&times;</button>
+            </div>
+          </div>
         </div>
-        <div v-if="!previewZones.length" class="layout-tab__preview-empty">
-          All zones empty
+        <p v-else class="layout-tab__empty-hint">No widgets in this zone.</p>
+
+        <div v-if="unusedCenterWidgets.length" class="layout-tab__add-row">
+          <select class="layout-tab__select" v-model="addWidgetType">
+            <option value="" disabled>Add widget...</option>
+            <option v-for="wt in unusedCenterWidgets" :key="wt" :value="wt">
+              {{ WIDGET_LABELS[wt] || wt }}
+            </option>
+          </select>
+          <button
+            class="layout-tab__add-btn"
+            :disabled="!addWidgetType"
+            @click="addWidget"
+          >Add</button>
         </div>
-      </div>
+      </template>
     </div>
 
     <!-- Actions -->
     <div class="layout-tab__actions">
       <button
-        class="layout-tab__save-btn"
-        :disabled="!dirty || saving"
-        @click="save"
-      >
-        {{ saving ? 'Saving...' : 'Save Layout' }}
-      </button>
-      <button
         class="layout-tab__reset-btn"
         :disabled="saving"
         @click="onReset"
-      >
-        Reset to Default
-      </button>
+      >Reset to Default</button>
       <span v-if="saveMessage" class="layout-tab__save-message">{{ saveMessage }}</span>
+      <span v-if="saving" class="layout-tab__save-message">Saving...</span>
     </div>
   </div>
   <div v-else class="layout-tab__loading">Loading layout...</div>
@@ -272,141 +274,21 @@ const previewZones = computed(() => {
   margin: 0;
 }
 
-.layout-tab__main {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-}
-
-@media (max-width: 700px) {
-  .layout-tab__main {
-    grid-template-columns: 1fr;
-  }
-}
-
-.layout-tab__section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
-  margin: 0 0 12px 0;
-}
-
-.layout-tab__hint {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  opacity: 0.7;
-  margin: 0 0 12px 0;
-  line-height: 1.4;
-}
-
-/* ---- Zone rows ---- */
-.layout-tab__zones {
-  display: flex;
-  flex-direction: column;
-}
-
-.layout-tab__zone-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.layout-tab__zone-row:last-child {
-  border-bottom: none;
-}
-
-.layout-tab__zone-label {
-  font-size: 14px;
-  color: var(--color-text);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.layout-tab__select {
-  min-width: 160px;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 13px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* ---- Status bar toggles ---- */
-.layout-tab__status-bar-config {
-  display: flex;
-  flex-direction: column;
-}
-
-.layout-tab__toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.layout-tab__toggle-row:last-child {
-  border-bottom: none;
-}
-
-.layout-tab__toggle-label {
-  font-size: 14px;
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.layout-tab__toggle {
-  width: 64px;
-  height: 32px;
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.layout-tab__toggle--on {
-  background: var(--color-success);
-  color: #fff;
-  border-color: var(--color-success);
-}
-
-/* ---- Preview ---- */
-.layout-tab__preview-section {
-  display: flex;
-  flex-direction: column;
-}
-
+/* ---- Preview grid ---- */
 .layout-tab__preview {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: auto auto auto auto;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr auto;
   grid-template-areas:
-    "topBar topBar topBar"
-    "extraTop extraTop extraTop"
-    "centerLeft centerMain centerRight"
-    "extraBottom extraBottom extraBottom"
-    "bottomBar bottomBar bottomBar";
+    "topLeft     topRight"
+    "centerLeft  centerRight"
+    "bottomLeft  bottomRight";
   gap: 6px;
   padding: 16px;
   background: var(--color-background);
   border-radius: 12px;
   border: 1px solid var(--color-border);
-  min-height: 180px;
+  min-height: 200px;
 }
 
 .layout-tab__preview-zone {
@@ -418,18 +300,30 @@ const previewZones = computed(() => {
   padding: 10px 8px;
   border-radius: 8px;
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 2px solid transparent;
   min-height: 40px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
 }
 
-.layout-tab__preview-zone--topBar       { grid-area: topBar; }
-.layout-tab__preview-zone--centerLeft   { grid-area: centerLeft; }
-.layout-tab__preview-zone--centerMain   { grid-area: centerMain; }
-.layout-tab__preview-zone--centerRight  { grid-area: centerRight; }
-.layout-tab__preview-zone--bottomBar    { grid-area: bottomBar; }
-.layout-tab__preview-zone--extraTop     { grid-area: extraTop; }
-.layout-tab__preview-zone--extraBottom  { grid-area: extraBottom; }
-.layout-tab__preview-zone--extraOverlay { grid-area: topBar; opacity: 0.6; }
+.layout-tab__preview-zone:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.layout-tab__preview-zone--selected {
+  border-color: var(--color-primary);
+}
+
+.layout-tab__preview-zone--empty {
+  opacity: 0.5;
+}
+
+.layout-tab__preview-zone--topLeft       { grid-area: topLeft; }
+.layout-tab__preview-zone--topRight      { grid-area: topRight; }
+.layout-tab__preview-zone--centerLeft    { grid-area: centerLeft; }
+.layout-tab__preview-zone--centerRight   { grid-area: centerRight; }
+.layout-tab__preview-zone--bottomLeft    { grid-area: bottomLeft; }
+.layout-tab__preview-zone--bottomRight   { grid-area: bottomRight; }
 
 .layout-tab__preview-zone-name {
   font-size: 10px;
@@ -446,44 +340,134 @@ const previewZones = computed(() => {
   text-align: center;
 }
 
-.layout-tab__preview-empty {
-  grid-column: 1 / -1;
-  grid-row: 1 / -1;
+.layout-tab__preview-zone-widget--empty {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* ---- Zone editor ---- */
+.layout-tab__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.layout-tab__section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin: 0;
+}
+
+.layout-tab__select {
+  min-width: 160px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.layout-tab__widget-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layout-tab__widget-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.layout-tab__widget-name {
+  font-size: 14px;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.layout-tab__widget-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.layout-tab__widget-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ---- Action buttons ---- */
+.layout-tab__widget-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.layout-tab__widget-btn:not(:disabled):active {
+  opacity: 0.7;
+}
+
+.layout-tab__widget-btn--remove {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.layout-tab__empty-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
+.layout-tab__add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.layout-tab__add-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.layout-tab__add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Actions ---- */
 .layout-tab__actions {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.layout-tab__save-btn {
-  padding: 10px 24px;
-  border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease;
-}
-
-.layout-tab__save-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.layout-tab__save-btn:not(:disabled):active {
-  transform: scale(0.96);
 }
 
 .layout-tab__reset-btn {
