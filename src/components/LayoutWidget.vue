@@ -57,7 +57,6 @@ const { t } = useI18n()
 const router = useRouter()
 
 // Injected from App.vue
-const machineState = inject('machineState', ref('idle'))
 const machineConnected = inject('machineConnected', ref(false))
 const scaleConnected = inject('scaleConnected', ref(false))
 const temperature = inject('temperature', ref(0))
@@ -116,8 +115,10 @@ function onFullscreenChange() {
 }
 
 onMounted(() => {
-  document.addEventListener('fullscreenchange', onFullscreenChange)
-  document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+  if (props.type === 'fullscreen' || props.type === 'statusInfo') {
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
+  }
 })
 
 onUnmounted(() => {
