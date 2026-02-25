@@ -2,8 +2,9 @@
  * Composable for managing the configurable home screen layout.
  *
  * Layout configuration is stored in the Streamline-Bridge KV store
- * under the namespace "decenza-js" with key "layout". The layout
- * defines up to 8 named zones, each rendering a specific widget type.
+ * under the namespace "decenza-js" with key "layout". The v2 layout
+ * defines 6 named zones. Center zones support ordered widget stacks
+ * (multiple widgets), while edge zones hold at most one widget.
  *
  * API:
  *   GET  /api/v1/store/decenza-js/layout
@@ -16,82 +17,99 @@ import { getStoreValue, setStoreValue } from '../api/rest'
 const NAMESPACE = 'decenza-js'
 const STORE_KEY = 'layout'
 
-// ---- Default layout (matches current IdlePage appearance) ----------------
+// ---- Zone & widget definitions (v2) ----------------------------------------
 
-const DEFAULT_LAYOUT = {
-  version: 1,
-  zones: {
-    topBar: { type: 'statusInfo' },
-    centerLeft: { type: 'gauge', config: { showLabel: true } },
-    centerMain: { type: 'actionButtons' },
-    centerRight: { type: 'shotPlan' },
-    bottomBar: { type: 'navButtons' },
-  },
+const ZONE_NAMES = [
+  'topLeft',
+  'topRight',
+  'centerLeft',
+  'centerRight',
+  'bottomLeft',
+  'bottomRight',
+]
+
+const ZONE_LABELS = {
+  topLeft: 'Top Left',
+  topRight: 'Top Right',
+  centerLeft: 'Center Left',
+  centerRight: 'Center Right',
+  bottomLeft: 'Bottom Left',
+  bottomRight: 'Bottom Right',
 }
 
-// All supported widget types
+// Zones that accept ordered widget stacks (multiple widgets)
+const STACK_ZONES = new Set(['centerLeft', 'centerRight'])
+
 const WIDGET_TYPES = [
   'gauge',
   'actionButtons',
-  'presetPills',
   'shotPlan',
-  'profileName',
+  'lastShot',
+  'workflowPresets',
+  'steamPresets',
+  'hotWaterPresets',
+  'flushPresets',
   'clock',
   'waterLevel',
-  'connectionStatus',
-  'statusBar',
   'statusInfo',
-  'bottomBar',
   'navButtons',
-  'fullscreen',
+  'connectionStatus',
   'scaleInfo',
-  'empty',
+  'fullscreen',
 ]
 
-// Human-readable labels for widget types (used by LayoutTab)
 const WIDGET_LABELS = {
   gauge: 'Temperature Gauge',
   actionButtons: 'Action Buttons',
-  presetPills: 'Preset Pills',
   shotPlan: 'Shot Plan',
-  profileName: 'Profile Name',
+  lastShot: 'Last Shot',
+  workflowPresets: 'Workflow Presets',
+  steamPresets: 'Steam Presets',
+  hotWaterPresets: 'Hot Water Presets',
+  flushPresets: 'Flush Presets',
   clock: 'Clock',
   waterLevel: 'Water Level',
-  connectionStatus: 'Connection Status',
-  statusBar: 'Full Status Bar',
   statusInfo: 'Status Info',
-  bottomBar: 'Bottom Bar',
   navButtons: 'Navigation Buttons',
-  fullscreen: 'Fullscreen Toggle',
+  connectionStatus: 'Connection Status',
   scaleInfo: 'Scale Info',
-  empty: 'Empty',
+  fullscreen: 'Fullscreen Toggle',
 }
 
-// All supported zone names
-const ZONE_NAMES = [
-  'topBar',
-  'centerLeft',
-  'centerMain',
-  'centerRight',
-  'bottomBar',
-  'extraTop',
-  'extraBottom',
-  'extraOverlay',
-]
-
-// Human-readable labels for zone names (used by LayoutTab)
-const ZONE_LABELS = {
-  topBar: 'Top Bar',
-  centerLeft: 'Center Left',
-  centerMain: 'Center Main',
-  centerRight: 'Center Right',
-  bottomBar: 'Bottom Bar',
-  extraTop: 'Extra Top',
-  extraBottom: 'Extra Bottom',
-  extraOverlay: 'Extra Overlay',
+// Which zones each widget type is allowed in
+const WIDGET_ZONE_RULES = {
+  gauge: 'center',
+  actionButtons: 'center',
+  shotPlan: 'center',
+  lastShot: 'center',
+  workflowPresets: 'center',
+  steamPresets: 'center',
+  hotWaterPresets: 'center',
+  flushPresets: 'center',
+  clock: 'any',
+  waterLevel: 'any',
+  statusInfo: 'edge',
+  navButtons: 'edge',
+  connectionStatus: 'edge',
+  scaleInfo: 'edge',
+  fullscreen: 'edge',
 }
 
-// ---- Singleton state -----------------------------------------------------
+// ---- Default layout (v2) ----------------------------------------------------
+
+const DEFAULT_LAYOUT = {
+  version: 2,
+  zones: {
+    topLeft:     { widgets: ['statusInfo'] },
+    topRight:    { widgets: [] },
+    centerLeft:  { widgets: ['gauge'] },
+    centerRight: { widgets: ['actionButtons', 'shotPlan', 'workflowPresets'] },
+    bottomLeft:  { widgets: ['navButtons'] },
+    bottomRight: { widgets: [] },
+  },
+}
+
+// ---- Singleton state --------------------------------------------------------
 
 let _instance = null
 
@@ -103,35 +121,29 @@ export function useLayout() {
   const loading = ref(false)
 
   /**
-   * Validate a layout object. Returns a sanitised copy or null if invalid.
+   * Validate a layout object. Returns a sanitised v2 copy or null if invalid.
+   * Rejects v1 layouts (returns null so defaults apply).
    */
   function validateLayout(raw) {
     if (!raw || typeof raw !== 'object') return null
     if (!raw.zones || typeof raw.zones !== 'object') return null
+    if (raw.version !== 2) return null
 
-    const validated = {
-      version: raw.version ?? 1,
-      zones: {},
-    }
+    const validated = { version: 2, zones: {} }
 
-    for (const [zoneName, zoneConfig] of Object.entries(raw.zones)) {
-      if (!ZONE_NAMES.includes(zoneName)) continue
-      if (!zoneConfig || typeof zoneConfig !== 'object') continue
-      if (!WIDGET_TYPES.includes(zoneConfig.type)) continue
-
-      validated.zones[zoneName] = {
-        type: zoneConfig.type,
-        ...(zoneConfig.config ? { config: zoneConfig.config } : {}),
+    for (const zoneName of ZONE_NAMES) {
+      const zoneConfig = raw.zones[zoneName]
+      if (!zoneConfig || !Array.isArray(zoneConfig.widgets)) {
+        validated.zones[zoneName] = { widgets: [] }
+        continue
+      }
+      const widgets = zoneConfig.widgets.filter(w => WIDGET_TYPES.includes(w))
+      if (!STACK_ZONES.has(zoneName)) {
+        validated.zones[zoneName] = { widgets: widgets.slice(0, 1) }
+      } else {
+        validated.zones[zoneName] = { widgets }
       }
     }
-
-    // Preserve optional statusBarConfig (controls StatusBar section visibility)
-    if (raw.statusBarConfig && typeof raw.statusBarConfig === 'object') {
-      validated.statusBarConfig = { ...raw.statusBarConfig }
-    }
-
-    // Must have at least one zone
-    if (Object.keys(validated.zones).length === 0) return null
 
     return validated
   }
@@ -171,35 +183,28 @@ export function useLayout() {
   }
 
   /**
-   * Update a single zone and persist.
+   * Set the widgets for a specific zone and persist.
+   * Non-stack zones are limited to a single widget.
    */
-  async function setZone(zoneName, zoneConfig) {
+  async function setZoneWidgets(zoneName, widgets) {
     if (!ZONE_NAMES.includes(zoneName)) return
-    if (!zoneConfig || !WIDGET_TYPES.includes(zoneConfig.type)) return
-
+    const filtered = widgets.filter(w => WIDGET_TYPES.includes(w))
+    const limited = STACK_ZONES.has(zoneName) ? filtered : filtered.slice(0, 1)
     layout.value = {
       ...layout.value,
       zones: {
         ...layout.value.zones,
-        [zoneName]: {
-          type: zoneConfig.type,
-          ...(zoneConfig.config ? { config: zoneConfig.config } : {}),
-        },
+        [zoneName]: { widgets: limited },
       },
     }
     await saveLayout()
   }
 
   /**
-   * Remove a zone from the layout and persist.
+   * Clear all widgets from a zone and persist.
    */
-  async function removeZone(zoneName) {
-    if (!layout.value.zones[zoneName]) return
-
-    const newZones = { ...layout.value.zones }
-    delete newZones[zoneName]
-    layout.value = { ...layout.value, zones: newZones }
-    await saveLayout()
+  async function clearZone(zoneName) {
+    await setZoneWidgets(zoneName, [])
   }
 
   /**
@@ -220,28 +225,22 @@ export function useLayout() {
     await saveLayout()
   }
 
-  /**
-   * Get the config for a specific zone, or null if the zone is not defined.
-   */
-  function getZone(zoneName) {
-    return layout.value.zones[zoneName] ?? null
-  }
-
   _instance = {
     layout: readonly(layout),
     loaded: readonly(loaded),
     loading: readonly(loading),
     load,
     saveLayout,
-    setZone,
-    removeZone,
+    setZoneWidgets,
+    clearZone,
     setLayout,
     resetLayout,
-    getZone,
     WIDGET_TYPES,
     WIDGET_LABELS,
+    WIDGET_ZONE_RULES,
     ZONE_NAMES,
     ZONE_LABELS,
+    STACK_ZONES,
     DEFAULT_LAYOUT,
   }
 
