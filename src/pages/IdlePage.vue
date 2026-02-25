@@ -1,12 +1,14 @@
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LayoutZone from '../components/LayoutZone.vue'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import { useLayout } from '../composables/useLayout.js'
-import { setMachineState, getProfiles } from '../api/rest.js'
+import { setMachineState, getProfiles, getLatestShot } from '../api/rest.js'
+
+const HistoryShotGraph = defineAsyncComponent(() => import('../components/HistoryShotGraph.vue'))
 
 const { t } = useI18n()
 
@@ -212,8 +214,22 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
+// ---- Last shot on idle ----
+const showLastShot = computed(() => settings?.settings?.showLastShotOnIdle ?? false)
+const lastShot = ref(null)
+
+async function fetchLastShot() {
+  if (!showLastShot.value) { lastShot.value = null; return }
+  try {
+    lastShot.value = await getLatestShot()
+  } catch {
+    lastShot.value = null
+  }
+}
+
 onMounted(() => {
   loadLayout()
+  fetchLastShot()
 })
 
 // ---- Quick-start presets on idle page ----
@@ -396,6 +412,14 @@ function hasZone(name) {
         <button class="idle-page__new-combo-btn" @click="router.push('/bean-info')">
           + New Combo
         </button>
+      </div>
+
+      <!-- Last shot graph -->
+      <div v-if="showLastShot && lastShot" class="idle-page__last-shot">
+        <span class="idle-page__preset-label">Last Shot</span>
+        <div class="idle-page__last-shot-chart">
+          <HistoryShotGraph :shot="lastShot" />
+        </div>
       </div>
 
       <!-- Quick-start presets -->
@@ -583,6 +607,19 @@ function hasZone(name) {
 
 .idle-page__new-combo-btn:active {
   opacity: 0.7;
+}
+
+.idle-page__last-shot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.idle-page__last-shot-chart {
+  width: 100%;
+  height: 200px;
 }
 
 </style>
