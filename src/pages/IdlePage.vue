@@ -227,6 +227,51 @@ async function fetchLastShot() {
   }
 }
 
+const lastShotInfo = computed(() => {
+  const s = lastShot.value
+  if (!s) return {}
+  const w = s.workflow ?? {}
+  const coffee = w.coffeeData ?? {}
+  const grinder = w.grinderData ?? {}
+  const dd = w.doseData ?? {}
+
+  const profileName = w.profile?.title ?? w.name ?? null
+  const coffeeName = [coffee.roaster, coffee.name].filter(Boolean).join(' — ') || null
+  const doseIn = s.doseIn ?? dd.doseIn
+  const doseOut = s.doseOut ?? dd.doseOut
+  let dose = null
+  if (doseIn && doseOut) {
+    const ratio = doseOut / doseIn
+    dose = `${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`
+  } else if (doseIn) {
+    dose = `${Number(doseIn).toFixed(1)}g in`
+  }
+
+  const grinderName = [grinder.manufacturer, grinder.model].filter(Boolean).join(' ')
+  const grinderSetting = grinder.setting ?? s.grinderSetting
+  let grinderText = null
+  if (grinderName && grinderSetting) grinderText = `${grinderName} @ ${grinderSetting}`
+  else if (grinderSetting) grinderText = `Grind: ${grinderSetting}`
+  else if (grinderName) grinderText = grinderName
+
+  let duration = null
+  if (s.duration) {
+    duration = `${Number(s.duration).toFixed(0)}s`
+  } else if (s.measurements?.length >= 2) {
+    const first = s.measurements[0]
+    const last = s.measurements[s.measurements.length - 1]
+    const getTs = (m) => {
+      if (m.elapsed != null) return m.elapsed
+      const ts = m.machine?.timestamp ?? m.timestamp
+      return ts ? new Date(ts).getTime() / 1000 : 0
+    }
+    const d = getTs(last) - getTs(first)
+    if (d > 0) duration = `${d.toFixed(0)}s`
+  }
+
+  return { profile: profileName, coffee: coffeeName, dose, grinder: grinderText, duration }
+})
+
 onMounted(() => {
   loadLayout()
   fetchLastShot()
@@ -414,11 +459,20 @@ function hasZone(name) {
         </button>
       </div>
 
-      <!-- Last shot graph -->
+      <!-- Last shot graph + info -->
       <div v-if="showLastShot && lastShot" class="idle-page__last-shot">
         <span class="idle-page__preset-label">Last Shot</span>
-        <div class="idle-page__last-shot-chart">
-          <HistoryShotGraph :shot="lastShot" />
+        <div class="idle-page__last-shot-card" @click="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)">
+          <div class="idle-page__last-shot-chart">
+            <HistoryShotGraph :shot="lastShot" />
+          </div>
+          <div class="idle-page__last-shot-info">
+            <span v-if="lastShotInfo.profile" class="idle-page__last-shot-profile">{{ lastShotInfo.profile }}</span>
+            <span v-if="lastShotInfo.coffee" class="idle-page__last-shot-detail">{{ lastShotInfo.coffee }}</span>
+            <span v-if="lastShotInfo.dose" class="idle-page__last-shot-detail">{{ lastShotInfo.dose }}</span>
+            <span v-if="lastShotInfo.grinder" class="idle-page__last-shot-detail">{{ lastShotInfo.grinder }}</span>
+            <span v-if="lastShotInfo.duration" class="idle-page__last-shot-detail">{{ lastShotInfo.duration }}</span>
+          </div>
         </div>
       </div>
 
@@ -617,9 +671,45 @@ function hasZone(name) {
   width: 100%;
 }
 
-.idle-page__last-shot-chart {
+.idle-page__last-shot-card {
+  display: flex;
+  gap: var(--spacing-medium);
   width: 100%;
-  height: 200px;
+  max-width: 700px;
+  cursor: pointer;
+}
+
+.idle-page__last-shot-chart {
+  flex: 1;
+  min-width: 0;
+  height: 180px;
+}
+
+.idle-page__last-shot-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.idle-page__last-shot-profile {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-page__last-shot-detail {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 </style>

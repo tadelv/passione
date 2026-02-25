@@ -283,6 +283,12 @@ function onKeyDown(e) {
       setMachineState('idle').catch(() => {})
     }
   }
+
+  // Settings shortcut (comma key, like Cmd+, in most apps)
+  if (key === ',') {
+    e.preventDefault()
+    router.push('/settings')
+  }
 }
 
 onMounted(async () => {

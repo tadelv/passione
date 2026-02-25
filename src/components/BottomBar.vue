@@ -26,6 +26,27 @@ function onHome() {
     router.push('/')
   }
 }
+
+// Long-press home button → settings (escape hatch if layout removes settings button)
+let longPressTimer = null
+let longPressTriggered = false
+
+function onHomePointerDown() {
+  longPressTriggered = false
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true
+    router.push('/settings')
+  }, 500)
+}
+
+function onHomePointerUp() {
+  clearTimeout(longPressTimer)
+}
+
+function onHomeClick() {
+  if (longPressTriggered) return
+  onHome()
+}
 </script>
 
 <template>
@@ -44,8 +65,13 @@ function onHome() {
     <button
       v-if="showHomeButton"
       class="bottom-bar__home"
-      @click="onHome"
-      aria-label="Home"
+      @click="onHomeClick"
+      @pointerdown="onHomePointerDown"
+      @pointerup="onHomePointerUp"
+      @pointerleave="onHomePointerUp"
+      @pointercancel="onHomePointerUp"
+      @contextmenu.prevent
+      aria-label="Home (long-press for Settings)"
     >
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
