@@ -1,31 +1,20 @@
 <script setup>
-import { ref, computed, inject, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import LayoutZone from '../components/LayoutZone.vue'
-import PresetPillRow from '../components/PresetPillRow.vue'
+import LayoutWidget from '../components/LayoutWidget.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import { useLayout } from '../composables/useLayout.js'
-import { setMachineState, getProfiles, getLatestShot } from '../api/rest.js'
-
-const HistoryShotGraph = defineAsyncComponent(() => import('../components/HistoryShotGraph.vue'))
+import { setMachineState, getProfiles } from '../api/rest.js'
 
 const { t } = useI18n()
-
 const router = useRouter()
 
 // Layout system
-const { layout, loaded: layoutLoaded, load: loadLayout } = useLayout()
+const { layout, loaded: layoutLoaded, load: loadLayout, STACK_ZONES } = useLayout()
 
-// Injected from App.vue (populated by real composables)
+// Injected from App.vue
 const machineState = inject('machineState', ref('idle'))
-const machineConnected = inject('machineConnected', ref(false))
-const scaleConnected = inject('scaleConnected', ref(false))
-const temperature = inject('temperature', ref(0))
-const targetTemperature = inject('targetTemperature', ref(0))
-const pressure = inject('pressure', ref(0))
-const waterLevel = inject('waterLevel', ref(0))
-const profileName = inject('profileName', ref(''))
 const workflow = inject('workflow', null)
 const updateWorkflow = inject('updateWorkflow')
 const settings = inject('settings', null)
@@ -35,67 +24,47 @@ const isReady = computed(() =>
   machineState.value === 'idle' || machineState.value === 'ready'
 )
 
-// P1-4: Shot Plan Text — display brewing plan from workflow data
-// P1-4: Shot plan — structured lines from workflow data
+// Shot plan lines — from workflow data
 const shotPlanLines = computed(() => {
   if (!workflow) return []
-
   const lines = []
   const coffeeData = workflow.coffeeData
   const doseData = workflow.doseData
   const grinderData = workflow.grinderData
 
-  // Line 1: beans (API fields: name, roaster)
   if (coffeeData) {
     const coffeeName = coffeeData.name
     const roaster = coffeeData.roaster
-    if (roaster && coffeeName) {
-      lines.push(`${roaster} — ${coffeeName}`)
-    } else if (coffeeName) {
-      lines.push(coffeeName)
-    } else if (roaster) {
-      lines.push(roaster)
-    }
+    if (roaster && coffeeName) lines.push(`${roaster} — ${coffeeName}`)
+    else if (coffeeName) lines.push(coffeeName)
+    else if (roaster) lines.push(roaster)
   }
 
-  // Line 2: dose / yield / ratio
   if (doseData) {
     const doseIn = doseData.doseIn ?? doseData.dose
     const doseOut = doseData.doseOut ?? doseData.targetWeight
     if (doseIn && doseOut) {
       const ratio = doseOut / doseIn
       lines.push(`${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`)
-    } else if (doseIn) {
-      lines.push(`${Number(doseIn).toFixed(1)}g in`)
-    } else if (doseOut) {
-      lines.push(`${Number(doseOut).toFixed(1)}g out`)
-    }
+    } else if (doseIn) lines.push(`${Number(doseIn).toFixed(1)}g in`)
+    else if (doseOut) lines.push(`${Number(doseOut).toFixed(1)}g out`)
   }
 
-  // Line 3: grinder (API fields: manufacturer, model, setting)
   if (grinderData) {
     const grinderName = [grinderData.manufacturer, grinderData.model].filter(Boolean).join(' ') || grinderData.grinder || grinderData.name
     const grinderSetting = grinderData.setting ?? grinderData.grindSetting
-    if (grinderName && grinderSetting != null) {
-      lines.push(`${grinderName} @ ${grinderSetting}`)
-    } else if (grinderSetting != null) {
-      lines.push(`Grind: ${grinderSetting}`)
-    } else if (grinderName) {
-      lines.push(grinderName)
-    }
+    if (grinderName && grinderSetting != null) lines.push(`${grinderName} @ ${grinderSetting}`)
+    else if (grinderSetting != null) lines.push(`Grind: ${grinderSetting}`)
+    else if (grinderName) lines.push(grinderName)
   }
 
   return lines
 })
 
-// Flat text fallback for components that use a single string
-const shotPlanText = computed(() => shotPlanLines.value.join(' | '))
-
-// ---- Workflow combos (single tap loads everything, action buttons start) ----
+// ---- Workflow combos ----
 const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
 const selectedWorkflowCombo = computed(() => settings?.settings?.selectedWorkflowCombo ?? -1)
 
-// Long-press edit popup state
 const editPopupVisible = ref(false)
 const editPopupPreset = ref(null)
 const editPopupIndex = ref(-1)
@@ -106,45 +75,29 @@ async function onComboSelect(index) {
   const combo = workflowCombos.value[index]
   if (!combo) return
 
-  // Build workflow update from non-null combo fields
   const update = {}
 
-  // Profile
   if (combo.profileId) {
     try {
       const records = await getProfiles()
       const record = (Array.isArray(records) ? records : []).find(r => r.id === combo.profileId)
       if (record?.profile) update.profile = record.profile
-    } catch { /* profile not found, skip */ }
+    } catch { /* skip */ }
   }
 
-  // Coffee data
   const coffeeName = [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
   if (coffeeName || combo.roaster) {
-    update.coffeeData = {
-      name: coffeeName || null,
-      roaster: combo.roaster || null,
-    }
+    update.coffeeData = { name: coffeeName || null, roaster: combo.roaster || null }
   }
 
-  // Dose data
   if (combo.doseIn != null || combo.doseOut != null) {
-    update.doseData = {
-      doseIn: combo.doseIn ?? undefined,
-      doseOut: combo.doseOut ?? undefined,
-    }
+    update.doseData = { doseIn: combo.doseIn ?? undefined, doseOut: combo.doseOut ?? undefined }
   }
 
-  // Grinder data
   if (combo.grinder || combo.grinderSetting) {
-    update.grinderData = {
-      manufacturer: null,
-      model: combo.grinder || null,
-      setting: combo.grinderSetting ?? null,
-    }
+    update.grinderData = { manufacturer: null, model: combo.grinder || null, setting: combo.grinderSetting ?? null }
   }
 
-  // Steam settings → workflow API + local settings
   if (combo.steamSettings) {
     update.steamSettings = {
       targetTemperature: combo.steamSettings.temperature,
@@ -156,17 +109,12 @@ async function onComboSelect(index) {
     settings.settings.steamTemperature = combo.steamSettings.temperature ?? settings.settings.steamTemperature
   }
 
-  // Flush settings → workflow API (rinseData) + local settings
   if (combo.flushSettings) {
-    update.rinseData = {
-      duration: combo.flushSettings.duration,
-      flow: combo.flushSettings.flow,
-    }
+    update.rinseData = { duration: combo.flushSettings.duration, flow: combo.flushSettings.flow }
     settings.settings.flushDuration = combo.flushSettings.duration ?? settings.settings.flushDuration
     settings.settings.flushFlowRate = combo.flushSettings.flow ?? settings.settings.flushFlowRate
   }
 
-  // Hot water settings → workflow API + local settings
   if (combo.hotWaterSettings) {
     update.hotWaterData = {
       targetTemperature: combo.hotWaterSettings.temperature,
@@ -214,70 +162,7 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-// ---- Last shot on idle ----
-const showLastShot = computed(() => settings?.settings?.showLastShotOnIdle ?? false)
-const lastShot = ref(null)
-
-async function fetchLastShot() {
-  if (!showLastShot.value) { lastShot.value = null; return }
-  try {
-    lastShot.value = await getLatestShot()
-  } catch {
-    lastShot.value = null
-  }
-}
-
-const lastShotInfo = computed(() => {
-  const s = lastShot.value
-  if (!s) return {}
-  const w = s.workflow ?? {}
-  const coffee = w.coffeeData ?? {}
-  const grinder = w.grinderData ?? {}
-  const dd = w.doseData ?? {}
-
-  const profileName = w.profile?.title ?? w.name ?? null
-  const coffeeName = [coffee.roaster, coffee.name].filter(Boolean).join(' — ') || null
-  const doseIn = s.doseIn ?? dd.doseIn
-  const doseOut = s.doseOut ?? dd.doseOut
-  let dose = null
-  if (doseIn && doseOut) {
-    const ratio = doseOut / doseIn
-    dose = `${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`
-  } else if (doseIn) {
-    dose = `${Number(doseIn).toFixed(1)}g in`
-  }
-
-  const grinderName = [grinder.manufacturer, grinder.model].filter(Boolean).join(' ')
-  const grinderSetting = grinder.setting ?? s.grinderSetting
-  let grinderText = null
-  if (grinderName && grinderSetting) grinderText = `${grinderName} @ ${grinderSetting}`
-  else if (grinderSetting) grinderText = `Grind: ${grinderSetting}`
-  else if (grinderName) grinderText = grinderName
-
-  let duration = null
-  if (s.duration) {
-    duration = `${Number(s.duration).toFixed(0)}s`
-  } else if (s.measurements?.length >= 2) {
-    const first = s.measurements[0]
-    const last = s.measurements[s.measurements.length - 1]
-    const getTs = (m) => {
-      if (m.elapsed != null) return m.elapsed
-      const ts = m.machine?.timestamp ?? m.timestamp
-      return ts ? new Date(ts).getTime() / 1000 : 0
-    }
-    const d = getTs(last) - getTs(first)
-    if (d > 0) duration = `${d.toFixed(0)}s`
-  }
-
-  return { profile: profileName, coffee: coffeeName, dose, grinder: grinderText, duration }
-})
-
-onMounted(() => {
-  loadLayout()
-  fetchLastShot()
-})
-
-// ---- Quick-start presets on idle page ----
+// ---- Quick-start presets ----
 const steamPresets = computed(() => settings?.settings?.steamPitcherPresets ?? [])
 const selectedSteamPreset = computed(() => settings?.settings?.selectedSteamPitcherPreset ?? -1)
 const hotWaterPresets = computed(() => settings?.settings?.waterVesselPresets ?? [])
@@ -340,24 +225,53 @@ async function startFlush() {
   router.push('/flush')
 }
 
-// ---- Layout zone helpers ----
+// ---- Layout helpers ----
 const zones = computed(() => layout.value.zones)
 
-function hasZone(name) {
-  return !!zones.value[name]
+function zoneWidgets(name) {
+  return zones.value[name]?.widgets ?? []
 }
+
+function hasWidgets(name) {
+  return zoneWidgets(name).length > 0
+}
+
+// Row visibility: collapse if both sides empty
+const showTopRow = computed(() => hasWidgets('topLeft') || hasWidgets('topRight'))
+const showBottomRow = computed(() => hasWidgets('bottomLeft') || hasWidgets('bottomRight'))
+const hasCenterLeft = computed(() => hasWidgets('centerLeft'))
+const hasCenterRight = computed(() => hasWidgets('centerRight'))
+
+// Common props to pass to every LayoutWidget
+const widgetEvents = {
+  'start-espresso': startEspresso,
+  'start-steam': startSteam,
+  'start-hot-water': startHotWater,
+  'start-flush': startFlush,
+  'workflow-combo-select': onComboSelect,
+  'workflow-combo-long-press': onComboLongPress,
+  'steam-preset-select': onSteamPresetSelect,
+  'hot-water-preset-select': onHotWaterPresetSelect,
+  'flush-preset-select': onFlushPresetSelect,
+}
+
+onMounted(() => {
+  loadLayout()
+})
 </script>
 
 <template>
-  <div class="idle-page">
-    <!-- Top section: topBar zone -->
-    <div v-if="hasZone('topBar')" class="idle-page__top">
+  <div class="idle-page" :class="{
+    'idle-page--center-left-only': hasCenterLeft && !hasCenterRight,
+    'idle-page--center-right-only': !hasCenterLeft && hasCenterRight,
+  }">
+    <!-- Top row -->
+    <template v-if="showTopRow">
       <div class="idle-page__top-left">
-        <LayoutZone
-          v-if="hasZone('centerLeft')"
-          :zone="zones.centerLeft"
+        <LayoutWidget
+          v-if="hasWidgets('topLeft')"
+          :type="zoneWidgets('topLeft')[0]"
           :is-ready="isReady"
-          :shot-plan-text="shotPlanText"
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
@@ -367,35 +281,35 @@ function hasZone(name) {
           :selected-hot-water-preset="selectedHotWaterPreset"
           :flush-presets="flushPresets"
           :selected-flush-preset="selectedFlushPreset"
-          @start-espresso="startEspresso"
-          @start-steam="startSteam"
-          @start-hot-water="startHotWater"
-          @start-flush="startFlush"
-          @workflow-combo-select="onComboSelect"
-          @workflow-combo-long-press="onComboLongPress"
-          @steam-preset-select="onSteamPresetSelect"
-          @hot-water-preset-select="onHotWaterPresetSelect"
-          @flush-preset-select="onFlushPresetSelect"
+          v-on="widgetEvents"
         />
       </div>
       <div class="idle-page__top-right">
-        <LayoutZone
-          :zone="zones.topBar"
+        <LayoutWidget
+          v-if="hasWidgets('topRight')"
+          :type="zoneWidgets('topRight')[0]"
           :is-ready="isReady"
-          :shot-plan-text="shotPlanText"
           :shot-plan-lines="shotPlanLines"
+          :workflow-combos="workflowCombos"
+          :selected-workflow-combo="selectedWorkflowCombo"
+          :steam-presets="steamPresets"
+          :selected-steam-preset="selectedSteamPreset"
+          :hot-water-presets="hotWaterPresets"
+          :selected-hot-water-preset="selectedHotWaterPreset"
+          :flush-presets="flushPresets"
+          :selected-flush-preset="selectedFlushPreset"
+          v-on="widgetEvents"
         />
       </div>
-    </div>
+    </template>
 
-    <!-- Center section -->
-    <div class="idle-page__center">
-      <!-- Shot plan / profile zone (centerRight in default layout) -->
-      <LayoutZone
-        v-if="hasZone('centerRight')"
-        :zone="zones.centerRight"
+    <!-- Center left column (widget stack) -->
+    <div class="idle-page__center-left" v-if="hasCenterLeft">
+      <LayoutWidget
+        v-for="(widgetType, i) in zoneWidgets('centerLeft')"
+        :key="'cl-' + i"
+        :type="widgetType"
         :is-ready="isReady"
-        :shot-plan-text="shotPlanText"
         :shot-plan-lines="shotPlanLines"
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
@@ -405,185 +319,69 @@ function hasZone(name) {
         :selected-hot-water-preset="selectedHotWaterPreset"
         :flush-presets="flushPresets"
         :selected-flush-preset="selectedFlushPreset"
-        @start-espresso="startEspresso"
-        @start-steam="startSteam"
-        @start-hot-water="startHotWater"
-        @start-flush="startFlush"
-        @workflow-combo-select="onComboSelect"
-        @workflow-combo-long-press="onComboLongPress"
-        @steam-preset-select="onSteamPresetSelect"
-        @hot-water-preset-select="onHotWaterPresetSelect"
-        @flush-preset-select="onFlushPresetSelect"
-      />
-
-      <!-- Action buttons (centerMain zone) -->
-      <LayoutZone
-        v-if="hasZone('centerMain')"
-        :zone="zones.centerMain"
-        :is-ready="isReady"
-        :shot-plan-text="shotPlanText"
-        :shot-plan-lines="shotPlanLines"
-        :workflow-combos="workflowCombos"
-        :selected-workflow-combo="selectedWorkflowCombo"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
-        @start-espresso="startEspresso"
-        @start-steam="startSteam"
-        @start-hot-water="startHotWater"
-        @start-flush="startFlush"
-        @workflow-combo-select="onComboSelect"
-        @workflow-combo-long-press="onComboLongPress"
-        @steam-preset-select="onSteamPresetSelect"
-        @hot-water-preset-select="onHotWaterPresetSelect"
-        @flush-preset-select="onFlushPresetSelect"
-      />
-
-      <!-- Workflow combo presets -->
-      <div v-if="workflowCombos.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">Workflows</span>
-        <PresetPillRow
-          :presets="workflowCombos"
-          :selected-index="selectedWorkflowCombo"
-          :long-press-enabled="true"
-          @select="onComboSelect"
-          @long-press="onComboLongPress"
-        />
-      </div>
-      <div v-else class="idle-page__preset-section">
-        <button class="idle-page__new-combo-btn" @click="router.push('/bean-info')">
-          + New Combo
-        </button>
-      </div>
-
-      <!-- Last shot graph + info -->
-      <div v-if="showLastShot && lastShot" class="idle-page__last-shot">
-        <span class="idle-page__preset-label">Last Shot</span>
-        <div class="idle-page__last-shot-card" @click="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)">
-          <div class="idle-page__last-shot-chart">
-            <HistoryShotGraph :shot="lastShot" />
-          </div>
-          <div class="idle-page__last-shot-info">
-            <span v-if="lastShotInfo.profile" class="idle-page__last-shot-profile">{{ lastShotInfo.profile }}</span>
-            <span v-if="lastShotInfo.coffee" class="idle-page__last-shot-detail">{{ lastShotInfo.coffee }}</span>
-            <span v-if="lastShotInfo.dose" class="idle-page__last-shot-detail">{{ lastShotInfo.dose }}</span>
-            <span v-if="lastShotInfo.grinder" class="idle-page__last-shot-detail">{{ lastShotInfo.grinder }}</span>
-            <span v-if="lastShotInfo.duration" class="idle-page__last-shot-detail">{{ lastShotInfo.duration }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick-start presets -->
-      <div v-if="steamPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">{{ t('idle.steam') }}</span>
-        <PresetPillRow
-          :presets="steamPresets"
-          :selected-index="selectedSteamPreset"
-          @select="onSteamPresetSelect"
-          @activate="startSteam"
-        />
-      </div>
-      <div v-if="hotWaterPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">{{ t('idle.hotWater') }}</span>
-        <PresetPillRow
-          :presets="hotWaterPresets"
-          :selected-index="selectedHotWaterPreset"
-          @select="onHotWaterPresetSelect"
-          @activate="startHotWater"
-        />
-      </div>
-      <div v-if="flushPresets.length" class="idle-page__preset-section">
-        <span class="idle-page__preset-label">{{ t('idle.flush') }}</span>
-        <PresetPillRow
-          :presets="flushPresets"
-          :selected-index="selectedFlushPreset"
-          @select="onFlushPresetSelect"
-          @activate="startFlush"
-        />
-      </div>
-
-      <!-- Bottom bar zone (rendered inside center for vertical flow) -->
-      <LayoutZone
-        v-if="hasZone('bottomBar')"
-        :zone="zones.bottomBar"
-        :is-ready="isReady"
-        :shot-plan-text="shotPlanText"
-        :shot-plan-lines="shotPlanLines"
-        :workflow-combos="workflowCombos"
-        :selected-workflow-combo="selectedWorkflowCombo"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
-        @start-espresso="startEspresso"
-        @start-steam="startSteam"
-        @start-hot-water="startHotWater"
-        @start-flush="startFlush"
-        @workflow-combo-select="onComboSelect"
-        @workflow-combo-long-press="onComboLongPress"
-        @steam-preset-select="onSteamPresetSelect"
-        @hot-water-preset-select="onHotWaterPresetSelect"
-        @flush-preset-select="onFlushPresetSelect"
-      />
-
-      <!-- Extra zones (optional, configurable) -->
-      <LayoutZone
-        v-if="hasZone('extraTop')"
-        :zone="zones.extraTop"
-        :is-ready="isReady"
-        :shot-plan-text="shotPlanText"
-        :shot-plan-lines="shotPlanLines"
-        :workflow-combos="workflowCombos"
-        :selected-workflow-combo="selectedWorkflowCombo"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
-        @start-espresso="startEspresso"
-        @start-steam="startSteam"
-        @start-hot-water="startHotWater"
-        @start-flush="startFlush"
-        @workflow-combo-select="onComboSelect"
-        @workflow-combo-long-press="onComboLongPress"
-        @steam-preset-select="onSteamPresetSelect"
-        @hot-water-preset-select="onHotWaterPresetSelect"
-        @flush-preset-select="onFlushPresetSelect"
-      />
-
-      <LayoutZone
-        v-if="hasZone('extraBottom')"
-        :zone="zones.extraBottom"
-        :is-ready="isReady"
-        :shot-plan-text="shotPlanText"
-        :shot-plan-lines="shotPlanLines"
-        :workflow-combos="workflowCombos"
-        :selected-workflow-combo="selectedWorkflowCombo"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
-        @start-espresso="startEspresso"
-        @start-steam="startSteam"
-        @start-hot-water="startHotWater"
-        @start-flush="startFlush"
-        @workflow-combo-select="onComboSelect"
-        @workflow-combo-long-press="onComboLongPress"
-        @steam-preset-select="onSteamPresetSelect"
-        @hot-water-preset-select="onHotWaterPresetSelect"
-        @flush-preset-select="onFlushPresetSelect"
+        v-on="widgetEvents"
       />
     </div>
 
-    <!-- Combo quick edit popup (on long-press) -->
+    <!-- Center right column (widget stack) -->
+    <div class="idle-page__center-right" v-if="hasCenterRight">
+      <LayoutWidget
+        v-for="(widgetType, i) in zoneWidgets('centerRight')"
+        :key="'cr-' + i"
+        :type="widgetType"
+        :is-ready="isReady"
+        :shot-plan-lines="shotPlanLines"
+        :workflow-combos="workflowCombos"
+        :selected-workflow-combo="selectedWorkflowCombo"
+        :steam-presets="steamPresets"
+        :selected-steam-preset="selectedSteamPreset"
+        :hot-water-presets="hotWaterPresets"
+        :selected-hot-water-preset="selectedHotWaterPreset"
+        :flush-presets="flushPresets"
+        :selected-flush-preset="selectedFlushPreset"
+        v-on="widgetEvents"
+      />
+    </div>
+
+    <!-- Bottom row -->
+    <template v-if="showBottomRow">
+      <div class="idle-page__bottom-left">
+        <LayoutWidget
+          v-if="hasWidgets('bottomLeft')"
+          :type="zoneWidgets('bottomLeft')[0]"
+          :is-ready="isReady"
+          :shot-plan-lines="shotPlanLines"
+          :workflow-combos="workflowCombos"
+          :selected-workflow-combo="selectedWorkflowCombo"
+          :steam-presets="steamPresets"
+          :selected-steam-preset="selectedSteamPreset"
+          :hot-water-presets="hotWaterPresets"
+          :selected-hot-water-preset="selectedHotWaterPreset"
+          :flush-presets="flushPresets"
+          :selected-flush-preset="selectedFlushPreset"
+          v-on="widgetEvents"
+        />
+      </div>
+      <div class="idle-page__bottom-right">
+        <LayoutWidget
+          v-if="hasWidgets('bottomRight')"
+          :type="zoneWidgets('bottomRight')[0]"
+          :is-ready="isReady"
+          :shot-plan-lines="shotPlanLines"
+          :workflow-combos="workflowCombos"
+          :selected-workflow-combo="selectedWorkflowCombo"
+          :steam-presets="steamPresets"
+          :selected-steam-preset="selectedSteamPreset"
+          :hot-water-presets="hotWaterPresets"
+          :selected-hot-water-preset="selectedHotWaterPreset"
+          :flush-presets="flushPresets"
+          :selected-flush-preset="selectedFlushPreset"
+          v-on="widgetEvents"
+        />
+      </div>
+    </template>
+
+    <!-- Combo quick edit popup -->
     <PresetEditPopup
       :visible="editPopupVisible"
       :preset="editPopupPreset"
@@ -598,32 +396,48 @@ function hasZone(name) {
 
 <style scoped>
 .idle-page {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "top-left     top-right"
+    "center-left  center-right"
+    "bottom-left  bottom-right";
   min-height: 100%;
   padding: var(--margin-standard);
-}
-
-.idle-page__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.idle-page__top-left {
-  display: flex;
-  align-items: center;
   gap: var(--spacing-large);
 }
 
-.idle-page__top-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-medium);
+/* When only one center column has widgets, it spans full width */
+.idle-page--center-left-only {
+  grid-template-areas:
+    "top-left     top-right"
+    "center-left  center-left"
+    "bottom-left  bottom-right";
 }
 
-.idle-page__center {
-  flex: 1;
+.idle-page--center-right-only {
+  grid-template-areas:
+    "top-left      top-right"
+    "center-right  center-right"
+    "bottom-left   bottom-right";
+}
+
+.idle-page__top-left {
+  grid-area: top-left;
+  display: flex;
+  align-items: center;
+}
+
+.idle-page__top-right {
+  grid-area: top-right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.idle-page__center-left {
+  grid-area: center-left;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -632,84 +446,26 @@ function hasZone(name) {
   min-height: 0;
 }
 
-.idle-page__preset-section {
+.idle-page__center-right {
+  grid-area: center-right;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  width: 100%;
-}
-
-.idle-page__preset-label {
-  font-size: var(--font-caption);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.idle-page__new-combo-btn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: 1px dashed var(--color-border);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.idle-page__new-combo-btn:active {
-  opacity: 0.7;
-}
-
-.idle-page__last-shot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-}
-
-.idle-page__last-shot-card {
-  display: flex;
-  gap: var(--spacing-medium);
-  width: 100%;
-  max-width: 700px;
-  cursor: pointer;
-}
-
-.idle-page__last-shot-chart {
-  flex: 1;
-  min-width: 0;
-  height: 180px;
-}
-
-.idle-page__last-shot-info {
-  display: flex;
-  flex-direction: column;
   justify-content: center;
-  gap: 4px;
-  flex-shrink: 0;
-  min-width: 140px;
-  max-width: 200px;
+  gap: var(--spacing-large);
+  min-height: 0;
 }
 
-.idle-page__last-shot-profile {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.idle-page__bottom-left {
+  grid-area: bottom-left;
+  display: flex;
+  align-items: center;
 }
 
-.idle-page__last-shot-detail {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.idle-page__bottom-right {
+  grid-area: bottom-right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
-
 </style>
