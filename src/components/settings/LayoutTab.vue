@@ -79,7 +79,7 @@ async function onReset() {
 
 // ---- Zone editing ----
 
-const isStackZone = computed(() => STACK_ZONES.has(selectedZone.value))
+const isCenterZone = computed(() => STACK_ZONES.has(selectedZone.value))
 
 // Widgets available for the selected zone based on WIDGET_ZONE_RULES
 const availableWidgets = computed(() => {
@@ -96,19 +96,6 @@ const availableWidgets = computed(() => {
   })
 })
 
-// For top/bottom (single widget) zones
-const singleWidgetValue = computed({
-  get() {
-    const widgets = editZones[selectedZone.value] ?? []
-    return widgets[0] ?? ''
-  },
-  set(val) {
-    editZones[selectedZone.value] = val ? [val] : []
-    scheduleSave()
-  },
-})
-
-// For center (stack) zones
 function moveWidget(index, direction) {
   const widgets = editZones[selectedZone.value]
   if (!widgets) return
@@ -141,8 +128,8 @@ function addWidget() {
   scheduleSave()
 }
 
-// Widgets not yet added to the selected center zone
-const unusedCenterWidgets = computed(() => {
+// Widgets not yet added to the selected zone
+const unusedWidgets = computed(() => {
   const current = new Set(editZones[selectedZone.value] ?? [])
   return availableWidgets.value.filter(wt => !current.has(wt))
 })
@@ -181,69 +168,54 @@ const unusedCenterWidgets = computed(() => {
 
     <!-- Zone editor -->
     <div class="layout-tab__editor">
-      <h4 class="layout-tab__section-title">{{ ZONE_LABELS[selectedZone] }}</h4>
+      <h4 class="layout-tab__section-title">
+        {{ ZONE_LABELS[selectedZone] }}
+        <span class="layout-tab__zone-hint">{{ isCenterZone ? '(vertical stack)' : '(horizontal row)' }}</span>
+      </h4>
 
-      <!-- Single widget zones (top/bottom) -->
-      <template v-if="!isStackZone">
-        <select
-          class="layout-tab__select"
-          v-model="singleWidgetValue"
+      <div v-if="editZones[selectedZone]?.length" class="layout-tab__widget-list">
+        <div
+          v-for="(wt, idx) in editZones[selectedZone]"
+          :key="idx"
+          class="layout-tab__widget-row"
         >
-          <option value="">Empty</option>
-          <option
-            v-for="wt in availableWidgets"
-            :key="wt"
-            :value="wt"
-          >{{ WIDGET_LABELS[wt] || wt }}</option>
-        </select>
-      </template>
-
-      <!-- Widget stack zones (center) -->
-      <template v-else>
-        <div v-if="editZones[selectedZone]?.length" class="layout-tab__widget-list">
-          <div
-            v-for="(wt, idx) in editZones[selectedZone]"
-            :key="idx"
-            class="layout-tab__widget-row"
-          >
-            <span class="layout-tab__widget-name">{{ WIDGET_LABELS[wt] || wt }}</span>
-            <div class="layout-tab__widget-actions">
-              <button
-                class="layout-tab__widget-btn"
-                :disabled="idx === 0"
-                @click="moveWidget(idx, -1)"
-                title="Move up"
-              >&uarr;</button>
-              <button
-                class="layout-tab__widget-btn"
-                :disabled="idx === editZones[selectedZone].length - 1"
-                @click="moveWidget(idx, 1)"
-                title="Move down"
-              >&darr;</button>
-              <button
-                class="layout-tab__widget-btn layout-tab__widget-btn--remove"
-                @click="removeWidget(idx)"
-                title="Remove"
-              >&times;</button>
-            </div>
+          <span class="layout-tab__widget-name">{{ WIDGET_LABELS[wt] || wt }}</span>
+          <div class="layout-tab__widget-actions">
+            <button
+              class="layout-tab__widget-btn"
+              :disabled="idx === 0"
+              @click="moveWidget(idx, -1)"
+              :title="isCenterZone ? 'Move up' : 'Move left'"
+            >{{ isCenterZone ? '&uarr;' : '&larr;' }}</button>
+            <button
+              class="layout-tab__widget-btn"
+              :disabled="idx === editZones[selectedZone].length - 1"
+              @click="moveWidget(idx, 1)"
+              :title="isCenterZone ? 'Move down' : 'Move right'"
+            >{{ isCenterZone ? '&darr;' : '&rarr;' }}</button>
+            <button
+              class="layout-tab__widget-btn layout-tab__widget-btn--remove"
+              @click="removeWidget(idx)"
+              title="Remove"
+            >&times;</button>
           </div>
         </div>
-        <p v-else class="layout-tab__empty-hint">No widgets in this zone.</p>
+      </div>
+      <p v-else class="layout-tab__empty-hint">No widgets in this zone.</p>
 
-        <div v-if="unusedCenterWidgets.length" class="layout-tab__add-row">
-          <select class="layout-tab__select" v-model="addWidgetType">
-            <option value="" disabled>Add widget...</option>
-            <option v-for="wt in unusedCenterWidgets" :key="wt" :value="wt">
-              {{ WIDGET_LABELS[wt] || wt }}
-            </option>
-          </select>
-          <button
-            class="layout-tab__add-btn"
-            :disabled="!addWidgetType"
-            @click="addWidget"
-          >Add</button>
-        </div>
-      </template>
+      <div v-if="unusedWidgets.length" class="layout-tab__add-row">
+        <select class="layout-tab__select" v-model="addWidgetType">
+          <option value="" disabled>Add widget...</option>
+          <option v-for="wt in unusedWidgets" :key="wt" :value="wt">
+            {{ WIDGET_LABELS[wt] || wt }}
+          </option>
+        </select>
+        <button
+          class="layout-tab__add-btn"
+          :disabled="!addWidgetType"
+          @click="addWidget"
+        >Add</button>
+      </div>
     </div>
 
     <!-- Actions -->
@@ -359,6 +331,13 @@ const unusedCenterWidgets = computed(() => {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
   margin: 0;
+}
+
+.layout-tab__zone-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin-left: 8px;
 }
 
 .layout-tab__select {

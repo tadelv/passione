@@ -41,8 +41,8 @@ const settings = useSettings()
 const theme = useTheme()
 const volumeMode = useVolumeMode(machine, scale, workflow)
 const operationSettings = useOperationSettings(settings, workflow)
-const autoSleep = useAutoSleep(machine, settings)
 const display = useDisplay()
+const autoSleep = useAutoSleep(machine, settings, display)
 const toast = useToast()
 
 // Provide reactive data for child components that use inject

@@ -1,40 +1,45 @@
 /**
- * Auto-sleep system — sends heartbeats to the server's presence API.
+ * Presence & idle management composable.
  *
- * The server handles sleep countdown and triggers sleep when the heartbeat
- * timeout expires. This composable:
- *   - Sends throttled heartbeats on user activity (mousedown/touchstart/keydown)
- *   - Sends heartbeats on machine state changes
- *   - Syncs the autoSleepMinutes setting to the server's presence config
- *   - On startup, loads the server's current sleepTimeoutMinutes as source of truth
+ * Follows the recommended pattern from Skins.md:
+ *   - On user activity: send heartbeat to prevent machine auto-sleep + restore display
+ *   - After local idle timeout: dim display (screensaver-like)
+ *   - Server handles the actual sleep countdown via heartbeat timeout
+ *   - Syncs autoSleepMinutes setting to server's presence config
  */
 
 import { watch, onMounted, onUnmounted } from 'vue'
 import { sendHeartbeat, getPresenceSettings, updatePresenceSettings } from '../api/rest.js'
 
-const HEARTBEAT_THROTTLE_MS = 30_000 // 30 seconds
+const LOCAL_DIM_TIMEOUT_MS = 60_000 // Dim display after 60s of no user activity
 
-export function useAutoSleep(machine, settings) {
+export function useAutoSleep(machine, settings, display) {
   let _activityCleanup = null
-  let _lastHeartbeat = 0
+  let _idleTimer = null
 
-  // ---- Throttled heartbeat --------------------------------------------------
-
-  function _sendThrottled() {
-    const now = Date.now()
-    if (now - _lastHeartbeat < HEARTBEAT_THROTTLE_MS) return
-    _lastHeartbeat = now
-    sendHeartbeat().catch(() => {})
-  }
-
-  // ---- User activity tracking -----------------------------------------------
+  // ---- User activity handling ------------------------------------------------
 
   function _onUserActivity() {
-    _sendThrottled()
+    // Signal presence to server (server throttles to 30s internally)
+    sendHeartbeat().catch(() => {})
+
+    // Restore display if dimmed
+    display?.restore()
+
+    // Reset local idle timer
+    _resetIdleTimer()
+  }
+
+  function _resetIdleTimer() {
+    clearTimeout(_idleTimer)
+    _idleTimer = setTimeout(() => {
+      // Dim display when user is idle locally
+      display?.dim()
+    }, LOCAL_DIM_TIMEOUT_MS)
   }
 
   function _startActivityTracking() {
-    const events = ['mousedown', 'touchstart', 'keydown']
+    const events = ['pointerdown', 'keydown']
     for (const event of events) {
       document.addEventListener(event, _onUserActivity, { passive: true })
     }
@@ -63,11 +68,14 @@ export function useAutoSleep(machine, settings) {
 
   function start() {
     _startActivityTracking()
-    _sendThrottled()
+    _resetIdleTimer()
+    // Send initial heartbeat
+    sendHeartbeat().catch(() => {})
     _syncSettingsToServer()
   }
 
   function stop() {
+    clearTimeout(_idleTimer)
     _activityCleanup?.()
     _activityCleanup = null
   }
@@ -75,7 +83,7 @@ export function useAutoSleep(machine, settings) {
   // Send heartbeat on machine state changes
   watch(
     () => machine.state.value,
-    () => _sendThrottled()
+    () => sendHeartbeat().catch(() => {})
   )
 
   // Re-sync when autoSleepMinutes changes

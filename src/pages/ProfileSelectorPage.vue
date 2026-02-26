@@ -1,16 +1,20 @@
 <script setup>
 import { ref, computed, inject, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { getProfiles } from '../api/rest.js'
 
 const router = useRouter()
+const route = useRoute()
 
 const settings = inject('settings')
 const workflow = inject('workflow')
 const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
+
+// When navigated from workflow editor, use select-only mode
+const selectOnly = computed(() => route.query.from === 'workflow')
 
 // All profiles from the server
 const allProfiles = ref([])
@@ -84,13 +88,29 @@ const activeProfileId = computed(() => {
 // Selected profile for preview (right panel / detail)
 const selectedRecord = ref(null)
 
-// Single click: select AND apply (matches QML behavior)
-async function selectAndApplyProfile(record) {
+// Single click: select only (preview) or select+apply depending on mode
+function onProfileClick(record) {
   selectedRecord.value = record
+  if (!selectOnly.value) {
+    applyProfile(record)
+  }
+}
+
+// Apply profile to workflow
+async function applyProfile(record) {
   try {
     await updateWorkflow({ profile: record.profile })
   } catch (e) {
     console.warn('[ProfileSelectorPage] Failed to apply profile:', e.message)
+  }
+}
+
+// "Use Profile" button — apply and navigate back
+async function useSelectedProfile() {
+  if (!selectedRecord.value) return
+  await applyProfile(selectedRecord.value)
+  if (selectOnly.value) {
+    router.push('/bean-info')
   }
 }
 
@@ -116,7 +136,7 @@ async function fetchProfiles() {
 }
 
 function goBack() {
-  router.push('/')
+  router.push(selectOnly.value ? '/bean-info' : '/')
 }
 
 onMounted(fetchProfiles)
@@ -157,7 +177,7 @@ onMounted(fetchProfiles)
               'profile-selector__item--active': record.id === activeProfileId,
               'profile-selector__item--selected': record.id === selectedRecord?.id,
             }"
-            @click="selectAndApplyProfile(record)"
+            @click="onProfileClick(record)"
           >
             <span class="profile-selector__badge" :class="'profile-selector__badge--' + getSourceBadge(record).toLowerCase()">
               {{ getSourceBadge(record) }}
@@ -187,7 +207,7 @@ onMounted(fetchProfiles)
             <span v-if="selectedRecord.profile?.beverage_type">{{ selectedRecord.profile.beverage_type }}</span>
           </div>
           <div class="profile-selector__preview-actions">
-            <button class="profile-selector__btn profile-selector__btn--primary" @click="selectAndApplyProfile(selectedRecord)">
+            <button class="profile-selector__btn profile-selector__btn--primary" @click="useSelectedProfile">
               Use Profile
             </button>
             <button class="profile-selector__btn" @click="viewProfileInfo(selectedRecord)">

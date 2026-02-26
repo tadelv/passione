@@ -3,8 +3,8 @@
  *
  * Layout configuration is stored in the Streamline-Bridge KV store
  * under the namespace "decenza-js" with key "layout". The v2 layout
- * defines 6 named zones. Center zones support ordered widget stacks
- * (multiple widgets), while edge zones hold at most one widget.
+ * defines 6 named zones. All zones support multiple widgets.
+ * Center zones stack vertically, edge zones stack horizontally.
  *
  * API:
  *   GET  /api/v1/store/decenza-js/layout
@@ -37,7 +37,7 @@ const ZONE_LABELS = {
   bottomRight: 'Bottom Right',
 }
 
-// Zones that accept ordered widget stacks (multiple widgets)
+// Center zones stack vertically; edge zones stack horizontally
 const STACK_ZONES = new Set(['centerLeft', 'centerRight'])
 
 const WIDGET_TYPES = [
@@ -100,8 +100,8 @@ const WIDGET_ZONE_RULES = {
 const DEFAULT_LAYOUT = {
   version: 2,
   zones: {
-    topLeft:     { widgets: ['statusInfo'] },
-    topRight:    { widgets: [] },
+    topLeft:     { widgets: ['connectionStatus', 'scaleInfo', 'waterLevel'] },
+    topRight:    { widgets: ['fullscreen'] },
     centerLeft:  { widgets: ['gauge'] },
     centerRight: { widgets: ['actionButtons', 'shotPlan', 'workflowPresets'] },
     bottomLeft:  { widgets: ['navButtons'] },
@@ -138,11 +138,7 @@ export function useLayout() {
         continue
       }
       const widgets = zoneConfig.widgets.filter(w => WIDGET_TYPES.includes(w))
-      if (!STACK_ZONES.has(zoneName)) {
-        validated.zones[zoneName] = { widgets: widgets.slice(0, 1) }
-      } else {
-        validated.zones[zoneName] = { widgets }
-      }
+      validated.zones[zoneName] = { widgets }
     }
 
     return validated
@@ -189,12 +185,11 @@ export function useLayout() {
   async function setZoneWidgets(zoneName, widgets) {
     if (!ZONE_NAMES.includes(zoneName)) return
     const filtered = widgets.filter(w => WIDGET_TYPES.includes(w))
-    const limited = STACK_ZONES.has(zoneName) ? filtered : filtered.slice(0, 1)
     layout.value = {
       ...layout.value,
       zones: {
         ...layout.value.zones,
-        [zoneName]: { widgets: limited },
+        [zoneName]: { widgets: filtered },
       },
     }
     await saveLayout()

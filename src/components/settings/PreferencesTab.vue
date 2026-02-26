@@ -15,15 +15,17 @@ const settings = settingsInstance?.settings
 
         <div class="preferences-tab__field">
           <label class="preferences-tab__label">Auto-sleep timeout</label>
-          <ValueInput
-            :model-value="settings.autoSleepMinutes"
-            @update:model-value="v => settings.autoSleepMinutes = v"
-            :min="0"
-            :max="240"
-            :step="5"
-            suffix=" min"
-          />
-          <span class="preferences-tab__hint">0 = never</span>
+          <select
+            class="preferences-tab__select"
+            :value="settings.autoSleepMinutes"
+            @change="settings.autoSleepMinutes = Number($event.target.value)"
+          >
+            <option :value="0">Disabled</option>
+            <option :value="15">15 minutes</option>
+            <option :value="30">30 minutes</option>
+            <option :value="45">45 minutes</option>
+            <option :value="60">60 minutes</option>
+          </select>
         </div>
       </div>
 
@@ -132,6 +134,18 @@ const settings = settingsInstance?.settings
   font-size: 12px;
   color: var(--color-text-secondary);
   opacity: 0.7;
+}
+
+.preferences-tab__select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .preferences-tab__toggle {

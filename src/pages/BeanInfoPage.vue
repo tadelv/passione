@@ -66,28 +66,22 @@ function loadFromPreset(index) {
   ratioValue.value = doseIn.value > 0 ? +(doseOut.value / doseIn.value).toFixed(1) : 2.0
   profileId.value = preset.profileId ?? null
   profileTitle.value = preset.profileTitle ?? ''
-  // Operation settings
-  if (preset.steamSettings) {
-    includeSteam.value = true
+  // Operation settings — use explicit includeSteam flag if present, else infer from duration > 0
+  includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
+  if (preset.steamSettings && includeSteam.value) {
     steamDuration.value = preset.steamSettings.duration ?? 30
     steamFlow.value = preset.steamSettings.flow ?? 1.5
     steamTemperature.value = preset.steamSettings.temperature ?? 160
-  } else {
-    includeSteam.value = false
   }
-  if (preset.flushSettings) {
-    includeFlush.value = true
+  includeFlush.value = preset.includeFlush ?? (preset.flushSettings?.duration > 0)
+  if (preset.flushSettings && includeFlush.value) {
     flushDuration.value = preset.flushSettings.duration ?? 5
     flushFlowRate.value = preset.flushSettings.flow ?? 6.0
-  } else {
-    includeFlush.value = false
   }
-  if (preset.hotWaterSettings) {
-    includeHotWater.value = true
+  includeHotWater.value = preset.includeHotWater ?? (preset.hotWaterSettings?.volume > 0)
+  if (preset.hotWaterSettings && includeHotWater.value) {
     hotWaterVolume.value = preset.hotWaterSettings.volume ?? 200
     hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
-  } else {
-    includeHotWater.value = false
   }
   _updating = false
 }
@@ -141,9 +135,12 @@ function comboValues() {
     doseOut: doseOut.value,
     grinder: grinder.value,
     grinderSetting: grinderSetting.value,
-    steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : null,
-    flushSettings: includeFlush.value ? { duration: flushDuration.value, flow: flushFlowRate.value } : null,
-    hotWaterSettings: includeHotWater.value ? { volume: hotWaterVolume.value, temperature: hotWaterTemperature.value } : null,
+    includeSteam: includeSteam.value,
+    steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : { duration: 0 },
+    includeFlush: includeFlush.value,
+    flushSettings: includeFlush.value ? { duration: flushDuration.value, flow: flushFlowRate.value } : { duration: 0 },
+    includeHotWater: includeHotWater.value,
+    hotWaterSettings: includeHotWater.value ? { volume: hotWaterVolume.value, temperature: hotWaterTemperature.value } : { volume: 0 },
   }
 }
 
@@ -201,28 +198,15 @@ async function saveToWorkflow() {
         doseOut: doseOut.value,
       },
     }
-    if (includeSteam.value) {
-      workflowUpdate.steamSettings = {
-        targetTemperature: steamTemperature.value,
-        duration: steamDuration.value,
-        flow: steamFlow.value,
-      }
-    }
-    if (includeFlush.value) {
-      workflowUpdate.rinseData = {
-        targetTemperature: settings?.settings?.flushTemperature ?? 90,
-        duration: flushDuration.value,
-        flow: flushFlowRate.value,
-      }
-    }
-    if (includeHotWater.value) {
-      workflowUpdate.hotWaterData = {
-        targetTemperature: hotWaterTemperature.value,
-        volume: hotWaterVolume.value,
-        duration: settings?.settings?.hotWaterDuration ?? 60,
-        flow: settings?.settings?.hotWaterFlow ?? 6.0,
-      }
-    }
+    workflowUpdate.steamSettings = includeSteam.value
+      ? { targetTemperature: steamTemperature.value, duration: steamDuration.value, flow: steamFlow.value }
+      : { targetTemperature: settings?.settings?.steamTemperature ?? 160, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
+    workflowUpdate.rinseData = includeFlush.value
+      ? { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: flushDuration.value, flow: flushFlowRate.value }
+      : { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: 0, flow: settings?.settings?.flushFlowRate ?? 6.0 }
+    workflowUpdate.hotWaterData = includeHotWater.value
+      ? { targetTemperature: hotWaterTemperature.value, volume: hotWaterVolume.value, duration: settings?.settings?.hotWaterDuration ?? 60, flow: settings?.settings?.hotWaterFlow ?? 6.0 }
+      : { targetTemperature: settings?.settings?.hotWaterTemperature ?? 80, volume: 0, duration: 0, flow: settings?.settings?.hotWaterFlow ?? 6.0 }
     await updateWorkflow(workflowUpdate)
     // Also save to combo if one is selected
     if (settings && selectedIndex.value >= 0) {
@@ -303,7 +287,7 @@ watch(() => workflow?.profile, (newProfile) => {
       <h4 class="bean-info__section-title">Profile</h4>
       <div class="bean-info__profile-row">
         <span class="bean-info__profile-name">{{ profileTitle || 'No profile selected' }}</span>
-        <button class="bean-info__change-btn" @click="router.push('/profiles')">Change</button>
+        <button class="bean-info__change-btn" @click="router.push('/profiles?from=workflow')">Change</button>
       </div>
     </div>
 

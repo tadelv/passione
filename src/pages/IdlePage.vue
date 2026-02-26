@@ -107,18 +107,18 @@ async function onComboSelect(index) {
   // Update operation settings via settings (useOperationSettings watcher handles API sync)
   if (combo.steamSettings) {
     settings.settings.steamDuration = combo.steamSettings.duration ?? settings.settings.steamDuration
-    settings.settings.steamFlow = combo.steamSettings.flow ?? settings.settings.steamFlow
-    settings.settings.steamTemperature = combo.steamSettings.temperature ?? settings.settings.steamTemperature
+    if (combo.steamSettings.flow != null) settings.settings.steamFlow = combo.steamSettings.flow
+    if (combo.steamSettings.temperature != null) settings.settings.steamTemperature = combo.steamSettings.temperature
   }
 
   if (combo.flushSettings) {
     settings.settings.flushDuration = combo.flushSettings.duration ?? settings.settings.flushDuration
-    settings.settings.flushFlowRate = combo.flushSettings.flow ?? settings.settings.flushFlowRate
+    if (combo.flushSettings.flow != null) settings.settings.flushFlowRate = combo.flushSettings.flow
   }
 
   if (combo.hotWaterSettings) {
-    settings.settings.hotWaterVolume = combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume
-    settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature
+    if (combo.hotWaterSettings.volume != null) settings.settings.hotWaterVolume = combo.hotWaterSettings.volume
+    if (combo.hotWaterSettings.temperature != null) settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature
   }
 
   if (Object.keys(update).length > 0) {
@@ -266,8 +266,9 @@ onMounted(() => {
     <template v-if="showTopRow">
       <div class="idle-page__top-left">
         <LayoutWidget
-          v-if="hasWidgets('topLeft')"
-          :type="zoneWidgets('topLeft')[0]"
+          v-for="(widgetType, i) in zoneWidgets('topLeft')"
+          :key="'tl-' + i"
+          :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
@@ -283,8 +284,9 @@ onMounted(() => {
       </div>
       <div class="idle-page__top-right">
         <LayoutWidget
-          v-if="hasWidgets('topRight')"
-          :type="zoneWidgets('topRight')[0]"
+          v-for="(widgetType, i) in zoneWidgets('topRight')"
+          :key="'tr-' + i"
+          :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
@@ -344,8 +346,9 @@ onMounted(() => {
     <template v-if="showBottomRow">
       <div class="idle-page__bottom-left">
         <LayoutWidget
-          v-if="hasWidgets('bottomLeft')"
-          :type="zoneWidgets('bottomLeft')[0]"
+          v-for="(widgetType, i) in zoneWidgets('bottomLeft')"
+          :key="'bl-' + i"
+          :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
@@ -361,8 +364,9 @@ onMounted(() => {
       </div>
       <div class="idle-page__bottom-right">
         <LayoutWidget
-          v-if="hasWidgets('bottomRight')"
-          :type="zoneWidgets('bottomRight')[0]"
+          v-for="(widgetType, i) in zoneWidgets('bottomRight')"
+          :key="'br-' + i"
+          :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
@@ -424,6 +428,7 @@ onMounted(() => {
   grid-area: top-left;
   display: flex;
   align-items: center;
+  gap: var(--spacing-medium);
 }
 
 .idle-page__top-right {
@@ -431,6 +436,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: var(--spacing-medium);
 }
 
 .idle-page__center-left {
@@ -457,6 +463,7 @@ onMounted(() => {
   grid-area: bottom-left;
   display: flex;
   align-items: center;
+  gap: var(--spacing-medium);
 }
 
 .idle-page__bottom-right {
@@ -464,5 +471,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: var(--spacing-medium);
 }
 </style>
