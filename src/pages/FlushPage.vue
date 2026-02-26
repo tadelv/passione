@@ -41,6 +41,7 @@ function syncFlushToWorkflow() {
   _flushSyncTimer = setTimeout(async () => {
     await updateWorkflow({
       rinseData: {
+        targetTemperature: settings.settings.flushTemperature,
         duration: flushSeconds.value,
         flow: flushFlow.value,
       },

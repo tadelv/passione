@@ -49,6 +49,8 @@ function syncHotWaterToWorkflow() {
       hotWaterData: {
         targetTemperature: temperature.value,
         volume: volume.value,
+        duration: settings.settings.hotWaterDuration,
+        flow: settings.settings.hotWaterFlow,
       },
     }).catch(() => {})
   }, 300)

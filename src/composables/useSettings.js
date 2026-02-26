@@ -34,11 +34,14 @@ const DEFAULT_SETTINGS = {
   // Hot water
   hotWaterVolume: 200,
   hotWaterTemperature: 80,
+  hotWaterDuration: 60,    // safety timeout (seconds)
+  hotWaterFlow: 6.0,       // mL/s
   hotWaterMode: 'weight',  // 'weight' or 'volume'
 
   // Flush
   flushDuration: 5,
   flushFlowRate: 6.0,
+  flushTemperature: 90,    // °C
 
   // Presets
   steamPitcherPresets: [],
@@ -162,11 +165,11 @@ export function useSettings() {
       'steamPitcherPresets', 'selectedSteamPitcherPreset',
     ],
     hotwater: [
-      'hotWaterVolume', 'hotWaterTemperature', 'hotWaterMode',
-      'waterVesselPresets', 'selectedWaterVesselPreset',
+      'hotWaterVolume', 'hotWaterTemperature', 'hotWaterDuration', 'hotWaterFlow',
+      'hotWaterMode', 'waterVesselPresets', 'selectedWaterVesselPreset',
     ],
     flush: [
-      'flushDuration', 'flushFlowRate',
+      'flushDuration', 'flushFlowRate', 'flushTemperature',
       'flushPresets', 'selectedFlushPreset',
     ],
     combos: [

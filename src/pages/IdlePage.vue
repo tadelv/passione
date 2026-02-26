@@ -81,8 +81,14 @@ async function onComboSelect(index) {
     try {
       const records = await getProfiles()
       const record = (Array.isArray(records) ? records : []).find(r => r.id === combo.profileId)
-      if (record?.profile) update.profile = record.profile
-    } catch { /* skip */ }
+      if (record?.profile) {
+        update.profile = record.profile
+      } else {
+        toast?.warning(`Profile "${combo.profileTitle || combo.profileId}" not found — keeping current profile`)
+      }
+    } catch {
+      toast?.warning('Could not load profile — keeping current profile')
+    }
   }
 
   const coffeeName = [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
@@ -98,28 +104,19 @@ async function onComboSelect(index) {
     update.grinderData = { manufacturer: null, model: combo.grinder || null, setting: combo.grinderSetting ?? null }
   }
 
+  // Update operation settings via settings (useOperationSettings watcher handles API sync)
   if (combo.steamSettings) {
-    update.steamSettings = {
-      targetTemperature: combo.steamSettings.temperature,
-      duration: combo.steamSettings.duration,
-      flow: combo.steamSettings.flow,
-    }
     settings.settings.steamDuration = combo.steamSettings.duration ?? settings.settings.steamDuration
     settings.settings.steamFlow = combo.steamSettings.flow ?? settings.settings.steamFlow
     settings.settings.steamTemperature = combo.steamSettings.temperature ?? settings.settings.steamTemperature
   }
 
   if (combo.flushSettings) {
-    update.rinseData = { duration: combo.flushSettings.duration, flow: combo.flushSettings.flow }
     settings.settings.flushDuration = combo.flushSettings.duration ?? settings.settings.flushDuration
     settings.settings.flushFlowRate = combo.flushSettings.flow ?? settings.settings.flushFlowRate
   }
 
   if (combo.hotWaterSettings) {
-    update.hotWaterData = {
-      targetTemperature: combo.hotWaterSettings.temperature,
-      volume: combo.hotWaterSettings.volume,
-    }
     settings.settings.hotWaterVolume = combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume
     settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature
   }

@@ -59,6 +59,12 @@ export function useOperationSettings(settings, workflow) {
       if (workflow.hotWaterData.targetTemperature != null) {
         settings.settings.hotWaterTemperature = workflow.hotWaterData.targetTemperature
       }
+      if (workflow.hotWaterData.duration != null) {
+        settings.settings.hotWaterDuration = workflow.hotWaterData.duration
+      }
+      if (workflow.hotWaterData.flow != null) {
+        settings.settings.hotWaterFlow = workflow.hotWaterData.flow
+      }
     }
 
     // Flush (rinse)
@@ -68,6 +74,9 @@ export function useOperationSettings(settings, workflow) {
       }
       if (workflow.rinseData.flow != null) {
         settings.settings.flushFlowRate = workflow.rinseData.flow
+      }
+      if (workflow.rinseData.targetTemperature != null) {
+        settings.settings.flushTemperature = workflow.rinseData.targetTemperature
       }
     }
   }
@@ -98,13 +107,17 @@ export function useOperationSettings(settings, workflow) {
     () => [
       settings.settings.hotWaterVolume,
       settings.settings.hotWaterTemperature,
+      settings.settings.hotWaterDuration,
+      settings.settings.hotWaterFlow,
     ],
-    ([volume, temperature]) => {
+    ([volume, temperature, duration, flow]) => {
       if (!settings.loaded.value) return
       _debouncedUpdate('hotwater', {
         hotWaterData: {
           targetTemperature: temperature,
           volume: volume,
+          duration: duration,
+          flow: flow,
         },
       })
     }
@@ -115,11 +128,13 @@ export function useOperationSettings(settings, workflow) {
     () => [
       settings.settings.flushDuration,
       settings.settings.flushFlowRate,
+      settings.settings.flushTemperature,
     ],
-    ([duration, flow]) => {
+    ([duration, flow, temperature]) => {
       if (!settings.loaded.value) return
       _debouncedUpdate('flush', {
         rinseData: {
+          targetTemperature: temperature,
           duration: duration,
           flow: flow,
         },

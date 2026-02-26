@@ -205,11 +205,12 @@ async function saveToWorkflow() {
       workflowUpdate.steamSettings = {
         targetTemperature: steamTemperature.value,
         duration: steamDuration.value,
-        flow: steamFlow.value,
+        flow: steamFlow.value / 100,
       }
     }
     if (includeFlush.value) {
       workflowUpdate.rinseData = {
+        targetTemperature: settings?.settings?.flushTemperature ?? 90,
         duration: flushDuration.value,
         flow: flushFlowRate.value,
       }
@@ -218,6 +219,8 @@ async function saveToWorkflow() {
       workflowUpdate.hotWaterData = {
         targetTemperature: hotWaterTemperature.value,
         volume: hotWaterVolume.value,
+        duration: settings?.settings?.hotWaterDuration ?? 60,
+        flow: settings?.settings?.hotWaterFlow ?? 6.0,
       }
     }
     await updateWorkflow(workflowUpdate)
