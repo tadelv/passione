@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS = {
 
   // Steam
   steamDuration: 30,
-  steamFlow: 150,          // stored in 0.01 mL/s units
+  steamFlow: 1.5,           // mL/s (actual value)
   steamTemperature: 160,
   keepSteamHeaterOn: false,
   steamDisabled: false,
@@ -216,7 +216,40 @@ export function useSettings() {
   async function load() {
     const promises = Object.keys(GROUPS).map(groupKey => _loadKey(groupKey))
     await Promise.allSettled(promises)
+    _migrateSteamFlow()
     loaded.value = true
+  }
+
+  /**
+   * One-time migration: steamFlow was stored as integer (e.g. 150 = 1.5 mL/s).
+   * Convert to actual float. Also migrates presets and combos.
+   */
+  function _migrateSteamFlow() {
+    if (settings.steamFlow > 10) {
+      settings.steamFlow = settings.steamFlow / 100
+    }
+    // Migrate steam presets
+    let presetsChanged = false
+    for (const preset of settings.steamPitcherPresets) {
+      if (preset.flow != null && preset.flow > 10) {
+        preset.flow = preset.flow / 100
+        presetsChanged = true
+      }
+    }
+    if (presetsChanged) {
+      settings.steamPitcherPresets = [...settings.steamPitcherPresets]
+    }
+    // Migrate combo steam settings
+    let combosChanged = false
+    for (const combo of settings.workflowCombos) {
+      if (combo.steamSettings?.flow != null && combo.steamSettings.flow > 10) {
+        combo.steamSettings.flow = combo.steamSettings.flow / 100
+        combosChanged = true
+      }
+    }
+    if (combosChanged) {
+      settings.workflowCombos = [...settings.workflowCombos]
+    }
   }
 
   /**

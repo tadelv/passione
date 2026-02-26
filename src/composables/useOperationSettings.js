@@ -43,8 +43,7 @@ export function useOperationSettings(settings, workflow) {
         settings.settings.steamDuration = workflow.steamSettings.duration
       }
       if (workflow.steamSettings.flow != null) {
-        // Workflow flow is in actual units; settings stores in 0.01 mL/s units
-        settings.settings.steamFlow = Math.round(workflow.steamSettings.flow * 100)
+        settings.settings.steamFlow = workflow.steamSettings.flow
       }
       if (workflow.steamSettings.targetTemperature != null) {
         settings.settings.steamTemperature = workflow.steamSettings.targetTemperature
@@ -96,7 +95,7 @@ export function useOperationSettings(settings, workflow) {
         steamSettings: {
           targetTemperature: temperature,
           duration: duration,
-          flow: flow / 100, // convert from 0.01 units to actual
+          flow: flow,
         },
       })
     }

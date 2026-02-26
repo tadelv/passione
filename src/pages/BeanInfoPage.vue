@@ -36,7 +36,7 @@ const profileId = ref(null)
 // ---- Optional operation settings (for combo) ----
 const includeSteam = ref(false)
 const steamDuration = ref(30)
-const steamFlow = ref(150)
+const steamFlow = ref(1.5)
 const steamTemperature = ref(160)
 
 const includeFlush = ref(false)
@@ -70,7 +70,7 @@ function loadFromPreset(index) {
   if (preset.steamSettings) {
     includeSteam.value = true
     steamDuration.value = preset.steamSettings.duration ?? 30
-    steamFlow.value = preset.steamSettings.flow ?? 150
+    steamFlow.value = preset.steamSettings.flow ?? 1.5
     steamTemperature.value = preset.steamSettings.temperature ?? 160
   } else {
     includeSteam.value = false
@@ -205,7 +205,7 @@ async function saveToWorkflow() {
       workflowUpdate.steamSettings = {
         targetTemperature: steamTemperature.value,
         duration: steamDuration.value,
-        flow: steamFlow.value / 100,
+        flow: steamFlow.value,
       }
     }
     if (includeFlush.value) {
@@ -443,7 +443,7 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
           <div class="bean-info__field">
             <label class="bean-info__label">Flow</label>
-            <ValueInput v-model="steamFlow" :min="40" :max="250" :step="5" :decimals="0" />
+            <ValueInput v-model="steamFlow" :min="0.4" :max="2.5" :step="0.05" :decimals="2" suffix=" mL/s" />
           </div>
           <div class="bean-info__field">
             <label class="bean-info__label">Temperature</label>

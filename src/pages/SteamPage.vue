@@ -63,16 +63,13 @@ function syncSteamToWorkflow() {
       steamSettings: {
         targetTemperature: temperature.value,
         duration: duration.value,
-        flow: steamFlow.value / 100, // convert from 0.01 units to actual
+        flow: steamFlow.value,
       },
     }).catch(() => {})
   }, 300)
 }
 watch([duration, steamFlow, temperature], syncSteamToWorkflow)
 
-function flowToDisplay(val) {
-  return (val / 100).toFixed(1)
-}
 
 // ---- Presets ----
 const presets = computed(() => settings.settings.steamPitcherPresets)
@@ -206,10 +203,11 @@ function goBack() {
           <span class="steam-page__flow-label">Steam Flow</span>
           <ValueInput
             :model-value="steamFlow"
-            :min="40"
-            :max="250"
-            :step="5"
-            :decimals="0"
+            :min="0.4"
+            :max="2.5"
+            :step="0.05"
+            :decimals="2"
+            suffix=" mL/s"
             value-color="var(--color-primary)"
             @update:model-value="steamFlow = $event"
           />
@@ -283,10 +281,11 @@ function goBack() {
             </div>
             <ValueInput
               :model-value="steamFlow"
-              :min="40"
-              :max="250"
-              :step="5"
-              :decimals="0"
+              :min="0.4"
+              :max="2.5"
+              :step="0.05"
+              :decimals="2"
+              suffix=" mL/s"
               value-color="var(--color-primary)"
               @update:model-value="steamFlow = $event"
             />
@@ -322,7 +321,7 @@ function goBack() {
     >
       <span>{{ duration }}s</span>
       <span style="opacity: 0.3">|</span>
-      <span>Flow {{ flowToDisplay(steamFlow) }}</span>
+      <span>Flow {{ steamFlow.toFixed(2) }}</span>
       <span style="opacity: 0.3">|</span>
       <span>{{ temperature }}&deg;C</span>
     </BottomBar>

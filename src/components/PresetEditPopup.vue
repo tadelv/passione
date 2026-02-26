@@ -23,7 +23,7 @@ const emoji = ref('')
 
 // Steam fields
 const steamDuration = ref(30)
-const steamFlow = ref(150)
+const steamFlow = ref(1.5)
 
 // Hot water fields
 const hotWaterVolume = ref(200)
@@ -47,7 +47,7 @@ watch(() => props.visible, (val) => {
     // Load operation-specific fields
     if (props.operationType === 'steam') {
       steamDuration.value = props.preset.duration ?? 30
-      steamFlow.value = props.preset.flow ?? 150
+      steamFlow.value = props.preset.flow ?? 1.5
     } else if (props.operationType === 'hotwater') {
       hotWaterVolume.value = props.preset.volume ?? 200
       hotWaterTemperature.value = props.preset.temperature ?? 80
@@ -60,7 +60,7 @@ watch(() => props.visible, (val) => {
     name.value = ''
     emoji.value = ''
     steamDuration.value = 30
-    steamFlow.value = 150
+    steamFlow.value = 1.5
     hotWaterVolume.value = 200
     hotWaterTemperature.value = 80
     flushDuration.value = 5
@@ -159,7 +159,8 @@ function onCancel() {
               <label class="preset-edit-popup__label">Steam Flow</label>
               <ValueInput
                 :model-value="steamFlow"
-                :min="40" :max="250" :step="5" :decimals="0"
+                :min="0.4" :max="2.5" :step="0.05" :decimals="2"
+                suffix=" mL/s"
                 value-color="var(--color-primary)"
                 @update:model-value="steamFlow = $event"
               />
