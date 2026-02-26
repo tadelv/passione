@@ -81,9 +81,6 @@ const DEFAULT_SETTINGS = {
   // Espresso / Brew Dialog
   showBrewDialog: false,
 
-  // Shot History
-  autoFavorites: false,
-
   // DYE sticky metadata
   dyeBeanBrand: '',
   dyeBeanType: '',
@@ -192,9 +189,6 @@ export function useSettings() {
     ],
     espresso: [
       'showBrewDialog',
-    ],
-    history: [
-      'autoFavorites',
     ],
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',

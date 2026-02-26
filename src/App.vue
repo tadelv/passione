@@ -21,7 +21,7 @@ import { useDisplay } from './composables/useDisplay.js'
 import { useVolumeMode } from './composables/useVolumeMode.js'
 import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
-import { setMachineState } from './api/rest.js'
+import { setMachineState, getLatestShot } from './api/rest.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -222,8 +222,17 @@ watch(machine.state, (newState, oldState) => {
       }
       stopReasonVisible.value = true
       userRequestedStop = false
-      // Navigate to idle after a moment
-      if (route.path !== '/') router.push('/')
+      // Navigate to shot review if enabled, otherwise to idle
+      if (settings.settings.visualizerShowAfterShot) {
+        getLatestShot().then(shot => {
+          if (shot?.id) router.push(`/shot-review/${encodeURIComponent(shot.id)}`)
+          else if (route.path !== '/') router.push('/')
+        }).catch(() => {
+          if (route.path !== '/') router.push('/')
+        })
+      } else {
+        if (route.path !== '/') router.push('/')
+      }
     } else {
       // P0-5: Show completion overlay for steam/hotwater/flush
       const messages = {

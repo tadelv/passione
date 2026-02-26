@@ -9,7 +9,6 @@ const router = useRouter()
 const TABS = [
   { id: 'device', label: 'Device' },
   { id: 'preferences', label: 'Preferences' },
-  { id: 'options', label: 'Options' },
   { id: 'layout', label: 'Layout' },
   { id: 'visualizer', label: 'Visualizer' },
   { id: 'history', label: 'History' },
@@ -56,7 +55,6 @@ import { defineAsyncComponent } from 'vue'
 
 const DeviceTab = defineAsyncComponent(() => import('../components/settings/DeviceTab.vue'))
 const PreferencesTab = defineAsyncComponent(() => import('../components/settings/PreferencesTab.vue'))
-const OptionsTab = defineAsyncComponent(() => import('../components/settings/OptionsTab.vue'))
 const LayoutTab = defineAsyncComponent(() => import('../components/settings/LayoutTab.vue'))
 const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
 const ShotHistoryTab = defineAsyncComponent(() => import('../components/settings/ShotHistoryTab.vue'))
@@ -67,7 +65,7 @@ const AboutTab = defineAsyncComponent(() => import('../components/settings/About
 const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
 
 const tabComponents = [
-  DeviceTab, PreferencesTab, OptionsTab, LayoutTab, VisualizerTab,
+  DeviceTab, PreferencesTab, LayoutTab, VisualizerTab,
   ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab, AboutTab, AccessibilityTab,
 ]
 </script>

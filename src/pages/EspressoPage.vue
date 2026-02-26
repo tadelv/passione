@@ -238,13 +238,8 @@ const brewRatioText = computed(() => {
   return ratio > 0 ? `1:${ratio.toFixed(1)}` : ''
 })
 
-const rawShotTime = computed(() => {
-  const t = shotTime.value
-  return typeof t === 'number' ? t : (typeof t === 'function' ? t() : 0)
-})
-
 const displayShotTime = computed(() => {
-  const t = rawShotTime.value
+  const t = shotTime.value ?? 0
   const mins = Math.floor(t / 60)
   const secs = t % 60
   return mins > 0

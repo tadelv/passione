@@ -17,11 +17,8 @@ const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
 const selectedIndex = computed(() => settings?.settings?.selectedWorkflowCombo ?? -1)
 
 // ---- Editable fields ----
+const coffeeName = ref('')
 const roaster = ref('')
-const beanBrand = ref('')
-const beanType = ref('')
-const roastDate = ref('')
-const roastLevel = ref('')
 const grinder = ref('')
 const grinderSetting = ref('')
 const doseIn = ref(18.0)
@@ -47,18 +44,14 @@ const includeHotWater = ref(false)
 const hotWaterVolume = ref(200)
 const hotWaterTemperature = ref(80)
 
-const ROAST_LEVELS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark']
-
 // ---- Populate from selected preset ----
 function loadFromPreset(index) {
   const preset = workflowCombos.value[index]
   if (!preset) return
   _updating = true
+  // Coffee: support legacy beanBrand/beanType combos
+  coffeeName.value = preset.coffeeName ?? ([preset.beanBrand, preset.beanType].filter(Boolean).join(' ') || '')
   roaster.value = preset.roaster ?? ''
-  beanBrand.value = preset.beanBrand ?? preset.brand ?? ''
-  beanType.value = preset.beanType ?? preset.type ?? ''
-  roastDate.value = preset.roastDate ?? ''
-  roastLevel.value = preset.roastLevel ?? ''
   grinder.value = preset.grinder ?? ''
   grinderSetting.value = preset.grinderSetting ?? ''
   doseIn.value = preset.doseIn ?? 18.0
@@ -66,7 +59,7 @@ function loadFromPreset(index) {
   ratioValue.value = doseIn.value > 0 ? +(doseOut.value / doseIn.value).toFixed(1) : 2.0
   profileId.value = preset.profileId ?? null
   profileTitle.value = preset.profileTitle ?? ''
-  // Operation settings — use explicit includeSteam flag if present, else infer from duration > 0
+  // Operation settings
   includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
   if (preset.steamSettings && includeSteam.value) {
     steamDuration.value = preset.steamSettings.duration ?? 30
@@ -104,11 +97,8 @@ if (selectedIndex.value >= 0) {
     grinderSetting.value = wg.setting ?? wg.grindSetting ?? ''
   }
   if (wc) {
+    coffeeName.value = wc.name ?? ''
     roaster.value = wc.roaster ?? ''
-    beanBrand.value = wc.beanBrand ?? wc.brand ?? ''
-    beanType.value = wc.beanType ?? wc.type ?? ''
-    roastDate.value = wc.roastDate ?? ''
-    roastLevel.value = wc.roastLevel ?? ''
   }
   if (workflow?.profile) {
     profileTitle.value = workflow.profile.title ?? ''
@@ -126,11 +116,8 @@ function comboValues() {
   return {
     profileId: profileId.value,
     profileTitle: profileTitle.value,
+    coffeeName: coffeeName.value,
     roaster: roaster.value,
-    beanBrand: beanBrand.value,
-    beanType: beanType.value,
-    roastDate: roastDate.value,
-    roastLevel: roastLevel.value,
     doseIn: doseIn.value,
     doseOut: doseOut.value,
     grinder: grinder.value,
@@ -160,7 +147,7 @@ function debouncedSaveToCombo() {
 }
 
 // Watch all fields for auto-save
-watch([roaster, beanBrand, beanType, roastDate, roastLevel, grinder, grinderSetting, doseIn, doseOut,
+watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
        includeSteam, steamDuration, steamFlow, steamTemperature,
        includeFlush, flushDuration, flushFlowRate,
        includeHotWater, hotWaterVolume, hotWaterTemperature], debouncedSaveToCombo)
@@ -170,7 +157,7 @@ function saveAsNew() {
   if (!settings) return
   const vals = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || profileTitle.value || 'Unnamed',
+    name: coffeeName.value || profileTitle.value || 'Unnamed',
     emoji: '',
     ...comboValues(),
   }
@@ -185,7 +172,7 @@ async function saveToWorkflow() {
   try {
     const workflowUpdate = {
       coffeeData: {
-        name: [beanBrand.value, beanType.value].filter(Boolean).join(' ') || 'Unnamed',
+        name: coffeeName.value || 'Unnamed',
         roaster: roaster.value || null,
       },
       grinderData: {
@@ -222,6 +209,9 @@ async function saveToWorkflow() {
 }
 
 // ---- Suggestion lists from existing combos ----
+const coffeeSuggestions = computed(() =>
+  [...new Set(workflowCombos.value.map(p => p.coffeeName ?? [p.beanBrand, p.beanType].filter(Boolean).join(' ')).filter(Boolean))]
+)
 const roasterSuggestions = computed(() =>
   [...new Set(workflowCombos.value.map(p => p.roaster).filter(Boolean))]
 )
@@ -293,9 +283,18 @@ watch(() => workflow?.profile, (newProfile) => {
 
     <!-- Field grid -->
     <div class="bean-info__grid">
-      <!-- Column 1: Bean info -->
+      <!-- Column 1: Coffee -->
       <div class="bean-info__column">
-        <h4 class="bean-info__section-title">Bean</h4>
+        <h4 class="bean-info__section-title">Coffee</h4>
+
+        <div class="bean-info__field">
+          <label class="bean-info__label">Name</label>
+          <SuggestionField
+            v-model="coffeeName"
+            placeholder="Coffee name"
+            :suggestions="coffeeSuggestions"
+          />
+        </div>
 
         <div class="bean-info__field">
           <label class="bean-info__label">Roaster</label>
@@ -304,46 +303,6 @@ watch(() => workflow?.profile, (newProfile) => {
             placeholder="Roaster name"
             :suggestions="roasterSuggestions"
           />
-        </div>
-
-        <div class="bean-info__field">
-          <label class="bean-info__label">Brand</label>
-          <input
-            class="bean-info__input"
-            type="text"
-            v-model="beanBrand"
-            placeholder="Bean brand"
-          />
-        </div>
-
-        <div class="bean-info__field">
-          <label class="bean-info__label">Type</label>
-          <input
-            class="bean-info__input"
-            type="text"
-            v-model="beanType"
-            placeholder="Bean type"
-          />
-        </div>
-
-        <div class="bean-info__field">
-          <label class="bean-info__label">Roast Date</label>
-          <input
-            class="bean-info__input"
-            type="text"
-            v-model="roastDate"
-            placeholder="yyyy-mm-dd"
-          />
-        </div>
-
-        <div class="bean-info__field">
-          <label class="bean-info__label">Roast Level</label>
-          <select class="bean-info__select" v-model="roastLevel">
-            <option value="">--</option>
-            <option v-for="level in ROAST_LEVELS" :key="level" :value="level">
-              {{ level }}
-            </option>
-          </select>
         </div>
       </div>
 
@@ -432,6 +391,29 @@ watch(() => workflow?.profile, (newProfile) => {
           <div class="bean-info__field">
             <label class="bean-info__label">Temperature</label>
             <ValueInput v-model="steamTemperature" :min="100" :max="170" :step="1" :decimals="0" suffix=" &deg;C" />
+          </div>
+          <div class="bean-info__op-divider"></div>
+          <div class="bean-info__field">
+            <label class="bean-info__label">Keep steam heater on</label>
+            <button
+              class="bean-info__toggle"
+              :class="{ 'bean-info__toggle--on': settings?.settings?.keepSteamHeaterOn }"
+              @click="settings.settings.keepSteamHeaterOn = !settings.settings.keepSteamHeaterOn"
+            >
+              {{ settings?.settings?.keepSteamHeaterOn ? 'ON' : 'OFF' }}
+            </button>
+          </div>
+          <div class="bean-info__field">
+            <label class="bean-info__label">Auto-flush after steam</label>
+            <ValueInput
+              :model-value="settings?.settings?.steamAutoFlushSeconds ?? 0"
+              @update:model-value="v => settings.settings.steamAutoFlushSeconds = v"
+              :min="0"
+              :max="60"
+              :step="1"
+              suffix=" s"
+            />
+            <span class="bean-info__hint">0 = disabled</span>
           </div>
         </div>
       </div>
@@ -596,6 +578,12 @@ watch(() => workflow?.profile, (newProfile) => {
   color: var(--color-text-secondary);
 }
 
+.bean-info__hint {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
 .bean-info__input {
   height: 40px;
   padding: 0 12px;
@@ -669,6 +657,32 @@ watch(() => workflow?.profile, (newProfile) => {
   flex-direction: column;
   gap: 8px;
   border-top: 1px solid var(--color-border);
+}
+
+.bean-info__op-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
+.bean-info__toggle {
+  width: 80px;
+  height: 36px;
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bean-info__toggle--on {
+  background: var(--color-success);
+  color: #fff;
+  border-color: var(--color-success);
 }
 
 .bean-info__save-btn {

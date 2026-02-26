@@ -49,22 +49,6 @@ function goToHistory() {
         </button>
       </div>
 
-      <!-- Column 2: Preferences -->
-      <div class="history-tab__column">
-        <h4 class="history-tab__section-title">Preferences</h4>
-
-        <div class="history-tab__field">
-          <label class="history-tab__label">Auto-favorite shots</label>
-          <button
-            class="history-tab__toggle"
-            :class="{ 'history-tab__toggle--on': settings.autoFavorites }"
-            @click="settings.autoFavorites = !settings.autoFavorites"
-          >
-            {{ settings.autoFavorites ? 'ON' : 'OFF' }}
-          </button>
-          <span class="history-tab__hint">Automatically mark new shots as favorites</span>
-        </div>
-      </div>
     </div>
   </div>
   <div v-else class="history-tab__empty">Settings not available.</div>
@@ -95,23 +79,6 @@ function goToHistory() {
   color: var(--color-text);
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
-}
-
-.history-tab__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.history-tab__label {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-.history-tab__hint {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  opacity: 0.7;
 }
 
 .history-tab__stat {
@@ -150,26 +117,6 @@ function goToHistory() {
 
 .history-tab__nav-btn:active {
   opacity: 0.8;
-}
-
-.history-tab__toggle {
-  width: 80px;
-  height: 40px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.history-tab__toggle--on {
-  background: var(--color-success);
-  color: #fff;
-  border-color: var(--color-success);
 }
 
 .history-tab__empty {

@@ -178,9 +178,11 @@ export function useMachine() {
     }
   })
 
-  // For espresso, start the timer when preinfusion begins (not during preheat)
+  // For espresso, start the timer when liquid flow begins (not during preheat)
   watch(substate, (newSubstate) => {
-    if (state.value === 'espresso' && newSubstate === 'preinfusion' && _shotStartTime.value === null) {
+    if (state.value === 'espresso' &&
+        (newSubstate === 'preinfusion' || newSubstate === 'pouring') &&
+        _shotStartTime.value === null) {
       _startShotTimer()
     }
   })
