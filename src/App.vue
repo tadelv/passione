@@ -21,6 +21,8 @@ import { useDisplay } from './composables/useDisplay.js'
 import { useVolumeMode } from './composables/useVolumeMode.js'
 import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
+import { useBeans } from './composables/useBeans'
+import { useGrinders } from './composables/useGrinders'
 import { setMachineState, getLatestShot } from './api/rest.js'
 
 const router = useRouter()
@@ -35,6 +37,9 @@ const waterLevels = useWaterLevels()
 const shotSettings = useShotSettings()
 const { workflow, updateWorkflow } = useWorkflow()
 const shotData = useShotData()
+
+const beansComposable = useBeans()
+const grindersComposable = useGrinders()
 
 // Settings, theme, and cross-cutting composables
 const settings = useSettings()
@@ -54,7 +59,7 @@ provide('targetTemperature', machine.targetMixTemperature)
 provide('pressure', machine.pressure)
 provide('flow', machine.flow)
 provide('weight', scale.weight)
-provide('targetWeight', computed(() => workflow.doseData?.doseOut ?? 36))
+provide('targetWeight', computed(() => workflow.context?.targetYield ?? 36))
 provide('shotTime', machine.shotTime)
 provide('substate', machine.substate)
 provide('waterLevel', waterLevels.currentLevel)
@@ -80,6 +85,10 @@ provide('targetSteamTemp', computed(() => shotSettings.targetSteamTemp.value ?? 
 provide('profileFrame', machine.profileFrame)
 provide('workflow', workflow)
 provide('updateWorkflow', updateWorkflow)
+provide('beans', beansComposable.beans)
+provide('beansApi', beansComposable)
+provide('grinders', grindersComposable.grinders)
+provide('grindersApi', grindersComposable)
 
 // Provide derived machine state flags
 provide('isReady', machine.isReady)
@@ -204,7 +213,7 @@ watch(machine.state, (newState, oldState) => {
     if (newState === 'espresso') {
       shotData.start()
       userRequestedStop = false
-      lastTargetWeight = workflow.doseData?.doseOut ?? 36
+      lastTargetWeight = workflow.context?.targetYield ?? 36
     }
     router.replace(targetRoute)
   } else if (!targetRoute && oldState && OPERATION_STATES.has(oldState)) {
