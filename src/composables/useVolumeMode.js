@@ -36,7 +36,7 @@ export function useVolumeMode(machine, scale, workflow) {
   // ---- Targets --------------------------------------------------------------
 
   const targetWeight = computed(() => {
-    return workflow.doseData?.doseOut ?? workflow.profile?.target_weight ?? 36
+    return workflow.context?.targetYield ?? workflow.profile?.target_weight ?? 36
   })
 
   const targetVolume = computed(() => {
@@ -76,7 +76,7 @@ export function useVolumeMode(machine, scale, workflow) {
 
   /** Current brew ratio: output / dose. */
   const brewByRatio = computed(() => {
-    const dose = workflow.doseData?.doseIn
+    const dose = workflow.context?.targetDoseWeight
     if (!dose || dose <= 0) return 0
     const output = isVolumeMode.value ? cumulativeVolume.value : scale.weight.value
     return output / dose
