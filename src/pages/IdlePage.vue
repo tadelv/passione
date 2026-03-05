@@ -28,31 +28,25 @@ const isReady = computed(() =>
 const shotPlanLines = computed(() => {
   if (!workflow) return []
   const lines = []
-  const coffeeData = workflow.coffeeData
-  const doseData = workflow.doseData
-  const grinderData = workflow.grinderData
+  const ctx = workflow.context
 
-  if (coffeeData) {
-    const coffeeName = coffeeData.name
-    const roaster = coffeeData.roaster
+  if (ctx) {
+    const coffeeName = ctx.coffeeName
+    const roaster = ctx.coffeeRoaster
     if (roaster && coffeeName) lines.push(`${roaster} — ${coffeeName}`)
     else if (coffeeName) lines.push(coffeeName)
     else if (roaster) lines.push(roaster)
-  }
 
-  if (doseData) {
-    const doseIn = doseData.doseIn ?? doseData.dose
-    const doseOut = doseData.doseOut ?? doseData.targetWeight
+    const doseIn = ctx.targetDoseWeight
+    const doseOut = ctx.targetYield
     if (doseIn && doseOut) {
       const ratio = doseOut / doseIn
       lines.push(`${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`)
     } else if (doseIn) lines.push(`${Number(doseIn).toFixed(1)}g in`)
     else if (doseOut) lines.push(`${Number(doseOut).toFixed(1)}g out`)
-  }
 
-  if (grinderData) {
-    const grinderName = [grinderData.manufacturer, grinderData.model].filter(Boolean).join(' ') || grinderData.grinder || grinderData.name
-    const grinderSetting = grinderData.setting ?? grinderData.grindSetting
+    const grinderName = ctx.grinderModel
+    const grinderSetting = ctx.grinderSetting
     if (grinderName && grinderSetting != null) lines.push(`${grinderName} @ ${grinderSetting}`)
     else if (grinderSetting != null) lines.push(`Grind: ${grinderSetting}`)
     else if (grinderName) lines.push(grinderName)
@@ -92,16 +86,15 @@ async function onComboSelect(index) {
   }
 
   const coffeeName = [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
-  if (coffeeName || combo.roaster) {
-    update.coffeeData = { name: coffeeName || null, roaster: combo.roaster || null }
-  }
-
-  if (combo.doseIn != null || combo.doseOut != null) {
-    update.doseData = { doseIn: combo.doseIn ?? undefined, doseOut: combo.doseOut ?? undefined }
-  }
-
-  if (combo.grinder || combo.grinderSetting) {
-    update.grinderData = { manufacturer: null, model: combo.grinder || null, setting: combo.grinderSetting ?? null }
+  if (coffeeName || combo.roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting) {
+    update.context = {
+      coffeeName: coffeeName || null,
+      coffeeRoaster: combo.roaster || null,
+      targetDoseWeight: combo.doseIn ?? undefined,
+      targetYield: combo.doseOut ?? undefined,
+      grinderModel: combo.grinder || null,
+      grinderSetting: combo.grinderSetting ?? null,
+    }
   }
 
   // Update operation settings via settings (useOperationSettings watcher handles API sync)
