@@ -3,6 +3,7 @@ import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import { getShotIds, getShots } from '../api/rest.js'
+import { normalizeShot as normalizeShotShared } from '../composables/useShotNormalize'
 
 const router = useRouter()
 const toast = inject('toast', null)
@@ -48,60 +49,33 @@ function openComparison() {
 
 /**
  * Normalize a shot record from API format to flat fields for display.
- * ReaPrime returns nested fields (workflow.doseData, metadata, shotNotes)
- * but the UI expects flat access patterns.
+ * Delegates core flattening to the shared normalizeShot helper, then
+ * applies page-specific fields (profileName, notes, barista, duration).
  */
 function normalizeShot(shot) {
   if (!shot) return shot
+  const result = normalizeShotShared(shot)
   const w = shot.workflow ?? {}
-  const dd = w.doseData ?? {}
   const meta = shot.metadata ?? {}
-  const coffee = w.coffeeData ?? {}
-  const grinder = w.grinderData ?? {}
 
   // Flatten profile name
-  if (!shot.profileName) {
-    shot.profileName = w.profile?.title ?? w.name ?? null
-  }
-  // Flatten dose from workflow.doseData
-  if (shot.doseIn == null) {
-    shot.doseIn = dd.doseIn ?? null
-  }
-  if (shot.doseOut == null) {
-    shot.doseOut = dd.doseOut ?? null
-  }
-  // Flatten coffee data from workflow.coffeeData
-  if (!shot.coffeeName) {
-    shot.coffeeName = coffee.name ?? null
-  }
-  if (!shot.roaster) {
-    shot.roaster = coffee.roaster ?? null
-  }
-  // Flatten grinder data from workflow.grinderData
-  if (!shot.grinderSetting) {
-    shot.grinderSetting = grinder.setting ?? null
-  }
-  if (!shot.grinderModel) {
-    shot.grinderModel = grinder.model ?? null
-  }
-  // Flatten rating from metadata
-  if (shot.rating == null) {
-    shot.rating = meta.rating ?? null
+  if (!result.profileName) {
+    result.profileName = w.profile?.title ?? w.name ?? null
   }
   // Flatten notes
-  if (shot.notes == null && shot.shotNotes != null) {
-    shot.notes = shot.shotNotes
+  if (result.notes == null && shot.shotNotes != null) {
+    result.notes = shot.shotNotes
   }
   // Flatten barista from metadata
-  if (shot.barista == null && meta.barista != null) {
-    shot.barista = meta.barista
+  if (result.barista == null && meta.barista != null) {
+    result.barista = meta.barista
   }
   // Flatten profile object for Load button
-  if (!shot.profile && w.profile) {
-    shot.profile = w.profile
+  if (!result.profile && w.profile) {
+    result.profile = w.profile
   }
   // Calculate duration from measurements if missing
-  if (shot.duration == null && shot.measurements?.length >= 2) {
+  if (result.duration == null && shot.measurements?.length >= 2) {
     const first = shot.measurements[0]
     const last = shot.measurements[shot.measurements.length - 1]
     const getTs = (m) => {
@@ -110,9 +84,9 @@ function normalizeShot(shot) {
       return ts ? new Date(ts).getTime() / 1000 : 0
     }
     const d = getTs(last) - getTs(first)
-    if (d > 0) shot.duration = d
+    if (d > 0) result.duration = d
   }
-  return shot
+  return result
 }
 
 // Load all shot IDs first, then load pages
@@ -162,7 +136,7 @@ const displayedShots = computed(() => {
   const q = searchQuery.value.toLowerCase()
   return loadedShots.value.filter(shot => {
     const fields = [
-      shot.profileName, shot.coffeeName, shot.roaster,
+      shot.profileName, shot.coffeeName, shot.coffeeRoaster,
       shot.grinderModel, shot.grinderSetting, shot.barista,
       shot.notes,
     ]
