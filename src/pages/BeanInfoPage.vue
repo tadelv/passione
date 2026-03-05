@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
+import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 
 const settings = inject('settings', null)
@@ -11,6 +12,11 @@ const workflow = inject('workflow', null)
 const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
 const router = useRouter()
+
+const beans = inject('beans', ref([]))
+const beansApi = inject('beansApi', null)
+const grinders = inject('grinders', ref([]))
+const grindersApi = inject('grindersApi', null)
 
 // ---- Workflow combos ----
 const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
@@ -25,6 +31,15 @@ const doseIn = ref(18.0)
 const doseOut = ref(36.0)
 const ratioValue = ref(2.0)
 let _updating = false
+
+// ---- Entity selection state ----
+const selectedBeanId = ref(null)
+const selectedBatchId = ref(null)
+const selectedGrinderId = ref(null)
+const selectedBatch = ref(null)
+const selectedGrinder = computed(() => grinders.value.find(g => g.id === selectedGrinderId.value) ?? null)
+const batchesForBean = ref([])
+const showBatchList = ref(false)
 
 // ---- Profile state ----
 const profileTitle = ref('')
@@ -43,6 +58,59 @@ const flushFlowRate = ref(6.0)
 const includeHotWater = ref(false)
 const hotWaterVolume = ref(200)
 const hotWaterTemperature = ref(80)
+
+// ---- Bean/batch selection ----
+async function onBeanSelect(beanId) {
+  selectedBeanId.value = beanId || null
+  selectedBatchId.value = null
+  selectedBatch.value = null
+  batchesForBean.value = []
+  if (!beanId || !beansApi) {
+    coffeeName.value = ''
+    roaster.value = ''
+    return
+  }
+  const bean = beans.value.find(b => b.id === beanId)
+  if (bean) {
+    coffeeName.value = bean.name ?? ''
+    roaster.value = bean.roaster ?? ''
+  }
+  // Auto-select active batch
+  const batch = await beansApi.activeBatchForBean(beanId)
+  if (batch) {
+    selectedBatchId.value = batch.id
+    selectedBatch.value = batch
+  }
+  // Load all batches for switch UI
+  batchesForBean.value = await beansApi.getBatches(beanId) ?? []
+}
+
+function onBatchSelect(batchId) {
+  selectedBatchId.value = batchId
+  selectedBatch.value = batchesForBean.value.find(b => b.id === batchId) ?? null
+}
+
+// ---- Grinder selection ----
+function onGrinderSelect(grinderId) {
+  selectedGrinderId.value = grinderId || null
+  if (!grinderId) {
+    grinder.value = ''
+    grinderSetting.value = ''
+    return
+  }
+  const g = grinders.value.find(g => g.id === grinderId)
+  if (g) {
+    grinder.value = g.model ?? ''
+    grinderSetting.value = ''  // Reset setting when switching grinders
+  }
+}
+
+// ---- Batch info helper ----
+function daysSinceRoast(batch) {
+  if (!batch?.roastDate) return null
+  const diff = Date.now() - new Date(batch.roastDate).getTime()
+  return Math.floor(diff / (1000 * 60 * 60 * 24))
+}
 
 // ---- Populate from selected preset ----
 function loadFromPreset(index) {
@@ -77,6 +145,31 @@ function loadFromPreset(index) {
     hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
   }
   _updating = false
+  // Restore entity selections (async, after _updating flag cleared)
+  if (preset.selectedBeanId) {
+    onBeanSelect(preset.selectedBeanId)
+  } else {
+    selectedBeanId.value = null
+    selectedBatchId.value = null
+    selectedBatch.value = null
+    batchesForBean.value = []
+  }
+  if (preset.selectedGrinderId) {
+    onGrinderSelect(preset.selectedGrinderId)
+  } else {
+    selectedGrinderId.value = null
+  }
+  // Restore batch if both IDs present (after bean batches load)
+  if (preset.selectedBeanId && preset.selectedBatchId) {
+    const batchId = preset.selectedBatchId
+    // Wait for onBeanSelect to finish loading batches, then select
+    const unwatchBatches = watch(batchesForBean, (batches) => {
+      if (batches.length > 0) {
+        onBatchSelect(batchId)
+        unwatchBatches()
+      }
+    })
+  }
 }
 
 // Load on mount if a preset is selected
@@ -113,7 +206,7 @@ function onPresetSelect(index) {
 
 // ---- Auto-save to selected combo ----
 function comboValues() {
-  return {
+  const vals = {
     profileId: profileId.value,
     profileTitle: profileTitle.value,
     coffeeName: coffeeName.value,
@@ -122,6 +215,9 @@ function comboValues() {
     doseOut: doseOut.value,
     grinder: grinder.value,
     grinderSetting: grinderSetting.value,
+    selectedBeanId: selectedBeanId.value || null,
+    selectedBatchId: selectedBatchId.value || null,
+    selectedGrinderId: selectedGrinderId.value || null,
     includeSteam: includeSteam.value,
     steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : { duration: 0 },
     includeFlush: includeFlush.value,
@@ -129,6 +225,7 @@ function comboValues() {
     includeHotWater: includeHotWater.value,
     hotWaterSettings: includeHotWater.value ? { volume: hotWaterVolume.value, temperature: hotWaterTemperature.value } : { volume: 0 },
   }
+  return vals
 }
 
 let saveTimer = null
@@ -148,6 +245,7 @@ function debouncedSaveToCombo() {
 
 // Watch all fields for auto-save
 watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
+       selectedBeanId, selectedBatchId, selectedGrinderId,
        includeSteam, steamDuration, steamFlow, steamTemperature,
        includeFlush, flushDuration, flushFlowRate,
        includeHotWater, hotWaterVolume, hotWaterTemperature], debouncedSaveToCombo)
@@ -170,21 +268,18 @@ function saveAsNew() {
 // ---- Save to workflow ----
 async function saveToWorkflow() {
   try {
-    const workflowUpdate = {
-      coffeeData: {
-        name: coffeeName.value || 'Unnamed',
-        roaster: roaster.value || null,
-      },
-      grinderData: {
-        setting: grinderSetting.value,
-        manufacturer: null,
-        model: grinder.value || null,
-      },
-      doseData: {
-        doseIn: doseIn.value,
-        doseOut: doseOut.value,
-      },
+    const ctx = {
+      targetDoseWeight: doseIn.value,
+      targetYield: doseOut.value,
+      coffeeName: coffeeName.value || null,
+      coffeeRoaster: roaster.value || null,
+      grinderModel: selectedGrinder.value?.model ?? (grinder.value || null),
+      grinderSetting: grinderSetting.value ?? null,
     }
+    if (selectedGrinderId.value) ctx.grinderId = selectedGrinderId.value
+    if (selectedBatchId.value) ctx.beanBatchId = selectedBatchId.value
+
+    const workflowUpdate = { context: ctx }
     workflowUpdate.steamSettings = includeSteam.value
       ? { targetTemperature: steamTemperature.value, duration: steamDuration.value, flow: steamFlow.value }
       : { targetTemperature: settings?.settings?.steamTemperature ?? 160, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
@@ -288,22 +383,78 @@ watch(() => workflow?.profile, (newProfile) => {
         <h4 class="bean-info__section-title">Coffee</h4>
 
         <div class="bean-info__field">
-          <label class="bean-info__label">Name</label>
-          <SuggestionField
-            v-model="coffeeName"
-            placeholder="Coffee name"
-            :suggestions="coffeeSuggestions"
-          />
+          <label class="bean-info__label">Bean</label>
+          <select class="bean-info__input" :value="selectedBeanId" @change="onBeanSelect($event.target.value)">
+            <option value="">Manual entry...</option>
+            <option v-for="b in beans" :key="b.id" :value="b.id">{{ b.roaster }} — {{ b.name }}</option>
+          </select>
         </div>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Roaster</label>
-          <SuggestionField
-            v-model="roaster"
-            placeholder="Roaster name"
-            :suggestions="roasterSuggestions"
-          />
-        </div>
+        <!-- Manual mode: free-text fields -->
+        <template v-if="!selectedBeanId">
+          <div class="bean-info__field">
+            <label class="bean-info__label">Name</label>
+            <SuggestionField
+              v-model="coffeeName"
+              placeholder="Coffee name"
+              :suggestions="coffeeSuggestions"
+            />
+          </div>
+
+          <div class="bean-info__field">
+            <label class="bean-info__label">Roaster</label>
+            <SuggestionField
+              v-model="roaster"
+              placeholder="Roaster name"
+              :suggestions="roasterSuggestions"
+            />
+          </div>
+        </template>
+
+        <!-- Entity mode: read-only bean display + batch info -->
+        <template v-else>
+          <div class="bean-info__field">
+            <label class="bean-info__label">Name</label>
+            <span class="bean-info__readonly">{{ coffeeName }}</span>
+          </div>
+
+          <div class="bean-info__field">
+            <label class="bean-info__label">Roaster</label>
+            <span class="bean-info__readonly">{{ roaster }}</span>
+          </div>
+
+          <div v-if="selectedBatch" class="bean-info__batch-info">
+            <span v-if="selectedBatch.roastDate" class="bean-info__batch-detail">
+              Roasted: {{ selectedBatch.roastDate }}
+              <template v-if="daysSinceRoast(selectedBatch) !== null">
+                ({{ daysSinceRoast(selectedBatch) }}d ago)
+              </template>
+            </span>
+            <span v-if="selectedBatch.weightRemaining != null" class="bean-info__batch-detail">
+              Remaining: {{ selectedBatch.weightRemaining }}g
+            </span>
+          </div>
+
+          <div v-if="batchesForBean.length > 1" class="bean-info__field">
+            <button class="bean-info__link-btn" @click="showBatchList = !showBatchList">
+              {{ showBatchList ? 'Hide batches' : 'Switch batch' }} ({{ batchesForBean.length }})
+            </button>
+            <div v-if="showBatchList" class="bean-info__batch-list">
+              <button
+                v-for="b in batchesForBean"
+                :key="b.id"
+                class="bean-info__batch-option"
+                :class="{ 'bean-info__batch-option--active': b.id === selectedBatchId }"
+                @click="onBatchSelect(b.id)"
+              >
+                {{ b.roastDate || 'No date' }}
+                <span v-if="b.weightRemaining != null"> · {{ b.weightRemaining }}g</span>
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <button class="bean-info__link-btn" @click="router.push('/settings/beans')">Manage...</button>
       </div>
 
       <!-- Column 2: Grinder -->
@@ -312,22 +463,43 @@ watch(() => workflow?.profile, (newProfile) => {
 
         <div class="bean-info__field">
           <label class="bean-info__label">Grinder</label>
-          <SuggestionField
-            v-model="grinder"
-            placeholder="Grinder model"
-            :suggestions="grinderSuggestions"
-          />
+          <select class="bean-info__input" :value="selectedGrinderId" @change="onGrinderSelect($event.target.value)">
+            <option value="">Manual entry...</option>
+            <option v-for="g in grinders" :key="g.id" :value="g.id">{{ g.model }}</option>
+          </select>
         </div>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Setting</label>
-          <input
-            class="bean-info__input"
-            type="text"
-            v-model="grinderSetting"
-            placeholder="Grind setting"
-          />
-        </div>
+        <!-- Manual mode: free-text grinder -->
+        <template v-if="!selectedGrinderId">
+          <div class="bean-info__field">
+            <label class="bean-info__label">Model</label>
+            <SuggestionField
+              v-model="grinder"
+              placeholder="Grinder model"
+              :suggestions="grinderSuggestions"
+            />
+          </div>
+
+          <div class="bean-info__field">
+            <label class="bean-info__label">Setting</label>
+            <input
+              class="bean-info__input"
+              type="text"
+              v-model="grinderSetting"
+              placeholder="Grind setting"
+            />
+          </div>
+        </template>
+
+        <!-- Entity mode: GrinderSettingInput -->
+        <template v-else>
+          <div class="bean-info__field">
+            <label class="bean-info__label">Setting</label>
+            <GrinderSettingInput v-model="grinderSetting" :grinder="selectedGrinder" />
+          </div>
+        </template>
+
+        <button class="bean-info__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
       </div>
 
       <!-- Column 3: Dose -->
@@ -705,6 +877,67 @@ watch(() => workflow?.profile, (newProfile) => {
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
+}
+
+.bean-info__readonly {
+  font-size: 15px;
+  color: var(--color-text);
+  padding: 8px 0 2px;
+}
+
+.bean-info__batch-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.bean-info__batch-detail {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.bean-info__link-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bean-info__link-btn:active {
+  opacity: 0.7;
+}
+
+.bean-info__batch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bean-info__batch-option {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bean-info__batch-option--active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+}
+
+.bean-info__batch-option:active {
+  opacity: 0.7;
 }
 
 @media (max-width: 600px) {
