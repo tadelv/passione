@@ -15,6 +15,8 @@ const TABS = [
   { id: 'gateway', label: 'Gateway' },
   { id: 'screensaver', label: 'Screensaver' },
   { id: 'themes', label: 'Themes' },
+  { id: 'beans', label: 'Beans' },
+  { id: 'grinders', label: 'Grinders' },
   { id: 'about', label: 'About' },
   { id: 'accessibility', label: 'Accessibility' },
 ]
@@ -61,12 +63,15 @@ const ShotHistoryTab = defineAsyncComponent(() => import('../components/settings
 const GatewayTab = defineAsyncComponent(() => import('../components/settings/GatewayTab.vue'))
 const ScreensaverTab = defineAsyncComponent(() => import('../components/settings/ScreensaverTab.vue'))
 const ThemesTab = defineAsyncComponent(() => import('../components/settings/ThemesTab.vue'))
+const BeansTab = defineAsyncComponent(() => import('../components/settings/BeansTab.vue'))
+const GrindersTab = defineAsyncComponent(() => import('../components/settings/GrindersTab.vue'))
 const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
 const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
 
 const tabComponents = [
   DeviceTab, PreferencesTab, LayoutTab, VisualizerTab,
-  ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab, AboutTab, AccessibilityTab,
+  ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab,
+  BeansTab, GrindersTab, AboutTab, AccessibilityTab,
 ]
 </script>
 
