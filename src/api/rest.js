@@ -365,3 +365,78 @@ export function callPluginEndpoint(pluginId, endpoint, method = 'GET', body = nu
     body
   )
 }
+
+// ---------------------------------------------------------------------------
+// Beans
+// ---------------------------------------------------------------------------
+
+export function getBeans(params = {}) {
+  const qs = new URLSearchParams(params).toString()
+  return sendCommand(`/api/v1/beans${qs ? '?' + qs : ''}`)
+}
+
+export function getBean(id) {
+  return sendCommand(`/api/v1/beans/${encodeURIComponent(id)}`)
+}
+
+export function createBean(data) {
+  return sendCommand('/api/v1/beans', 'POST', data)
+}
+
+export function updateBean(id, data) {
+  return sendCommand(`/api/v1/beans/${encodeURIComponent(id)}`, 'PUT', data)
+}
+
+export function deleteBean(id) {
+  return sendCommand(`/api/v1/beans/${encodeURIComponent(id)}`, 'DELETE')
+}
+
+// ---------------------------------------------------------------------------
+// Bean Batches
+// ---------------------------------------------------------------------------
+
+export function getBeanBatches(beanId, params = {}) {
+  const qs = new URLSearchParams(params).toString()
+  return sendCommand(`/api/v1/beans/${encodeURIComponent(beanId)}/batches${qs ? '?' + qs : ''}`)
+}
+
+export function createBeanBatch(beanId, data) {
+  return sendCommand(`/api/v1/beans/${encodeURIComponent(beanId)}/batches`, 'POST', data)
+}
+
+export function getBeanBatch(id) {
+  return sendCommand(`/api/v1/bean-batches/${encodeURIComponent(id)}`)
+}
+
+export function updateBeanBatch(id, data) {
+  return sendCommand(`/api/v1/bean-batches/${encodeURIComponent(id)}`, 'PUT', data)
+}
+
+export function deleteBeanBatch(id) {
+  return sendCommand(`/api/v1/bean-batches/${encodeURIComponent(id)}`, 'DELETE')
+}
+
+// ---------------------------------------------------------------------------
+// Grinders
+// ---------------------------------------------------------------------------
+
+export function getGrinders(params = {}) {
+  const qs = new URLSearchParams(params).toString()
+  return sendCommand(`/api/v1/grinders${qs ? '?' + qs : ''}`)
+}
+
+export function getGrinder(id) {
+  return sendCommand(`/api/v1/grinders/${encodeURIComponent(id)}`)
+}
+
+export function createGrinder(data) {
+  return sendCommand('/api/v1/grinders', 'POST', data)
+}
+
+export function updateGrinder(id, data) {
+  return sendCommand(`/api/v1/grinders/${encodeURIComponent(id)}`, 'PUT', data)
+}
+
+export function deleteGrinder(id) {
+  return sendCommand(`/api/v1/grinders/${encodeURIComponent(id)}`, 'DELETE')
+}
