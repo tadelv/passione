@@ -7,10 +7,15 @@ import ValueInput from '../components/ValueInput.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import BottomBar from '../components/BottomBar.vue'
 import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const route = useRoute()
 const router = useRouter()
 const settings = inject('settings', null)
+const beans = inject('beans', ref([]))
+const beansApi = inject('beansApi', null)
+const grinders = inject('grinders', ref([]))
+const grindersApi = inject('grindersApi', null)
 
 const shotId = computed(() => route.params.id)
 const shot = ref(null)
@@ -21,6 +26,30 @@ const confirmLeave = ref(false)
 const uploading = ref(false)
 const toast = inject('toast', null)
 let pendingNavigation = null
+
+// Entity enrichment
+const enrichedBean = ref(null)
+const enrichedGrinder = ref(null)
+
+async function enrichShot(s) {
+  enrichedBean.value = null
+  enrichedGrinder.value = null
+  if (s.beanBatchId && beansApi) {
+    try {
+      const batch = await beansApi.getBatch(s.beanBatchId)
+      if (batch?.beanId) {
+        const bean = await beansApi.getById(batch.beanId)
+        if (bean) enrichedBean.value = { ...bean, batch }
+      }
+    } catch {}
+  }
+  if (s.grinderId && grindersApi) {
+    try {
+      const g = await grindersApi.getById(s.grinderId)
+      if (g) enrichedGrinder.value = g
+    } catch {}
+  }
+}
 
 // Editable fields
 const roaster = ref('')
@@ -75,25 +104,15 @@ async function loadSuggestions() {
       barista: new Set(),
     }
 
-    for (const s of shots) {
-      const meta = s.metadata ?? {}
-      const coffee = s.workflow?.coffeeData ?? {}
-      const grinder = s.workflow?.grinderData ?? {}
+    for (const raw of shots) {
+      const n = normalizeShot(raw)
+      const meta = raw.metadata ?? {}
 
-      const roasterVal = meta.roaster ?? coffee.roaster
-      if (roasterVal) sets.roaster.add(roasterVal)
-
+      if (n.coffeeRoaster) sets.roaster.add(n.coffeeRoaster)
       if (meta.beanBrand) sets.beanBrand.add(meta.beanBrand)
-
-      const beanVal = meta.beanType ?? coffee.name
-      if (beanVal) sets.beanType.add(beanVal)
-
-      const grinderVal = meta.grinderModel ?? ([grinder.manufacturer, grinder.model].filter(Boolean).join(' ') || null)
-      if (grinderVal) sets.grinderModel.add(grinderVal)
-
-      const settingVal = meta.grinderSetting ?? grinder.setting
-      if (settingVal != null) sets.grinderSetting.add(String(settingVal))
-
+      if (n.coffeeName) sets.beanType.add(n.coffeeName)
+      if (n.grinderModel) sets.grinderModel.add(n.grinderModel)
+      if (n.grinderSetting != null) sets.grinderSetting.add(String(n.grinderSetting))
       if (meta.barista) sets.barista.add(meta.barista)
     }
 
@@ -110,27 +129,23 @@ async function loadSuggestions() {
   }
 }
 
-function populateFromShot(s) {
-  const meta = s.metadata ?? {}
-  const w = s.workflow ?? {}
-  const dd = w.doseData ?? {}
-  const coffee = w.coffeeData ?? {}
-  const grinder = w.grinderData ?? {}
-
-  roaster.value = meta.roaster ?? coffee.roaster ?? ''
+function populateFromShot(shot) {
+  const s = normalizeShot(shot)
+  const meta = shot.metadata ?? {}
+  roaster.value = s.coffeeRoaster ?? ''
   beanBrand.value = meta.beanBrand ?? ''
-  beanType.value = meta.beanType ?? coffee.name ?? ''
+  beanType.value = s.coffeeName ?? ''
   roastDate.value = meta.roastDate ?? ''
   roastLevel.value = meta.roastLevel ?? ''
-  grinderModel.value = meta.grinderModel ?? ([grinder.manufacturer, grinder.model].filter(Boolean).join(' ') || '')
-  grinderSetting.value = meta.grinderSetting != null ? String(meta.grinderSetting) : (grinder.setting ?? '')
+  grinderModel.value = s.grinderModel ?? ''
+  grinderSetting.value = s.grinderSetting != null ? String(s.grinderSetting) : ''
   beverageType.value = meta.beverageType ?? ''
   barista.value = meta.barista ?? ''
-  doseIn.value = dd.doseIn ?? 0
-  doseOut.value = dd.doseOut ?? 0
+  doseIn.value = s.doseIn ?? 0
+  doseOut.value = s.doseOut ?? 0
   tds.value = meta.tds ?? 0
-  rating.value = meta.rating ?? 0
-  notes.value = s.shotNotes ?? ''
+  rating.value = s.rating ?? 0
+  notes.value = shot.shotNotes ?? ''
 }
 
 function populateFromSticky() {
@@ -162,6 +177,8 @@ async function loadShot(id) {
     shot.value = result
     populateFromShot(result)
     populateFromSticky()
+    const normalized = normalizeShot(result)
+    enrichShot(normalized)
   } catch {
     shot.value = null
   }
@@ -208,17 +225,13 @@ async function save() {
         tds: tds.value || undefined,
       },
       workflow: {
-        doseData: {
-          doseIn: doseIn.value || undefined,
-          doseOut: doseOut.value || undefined,
-        },
-        coffeeData: {
-          name: beanType.value || '',
-          roaster: roaster.value || undefined,
-        },
-        grinderData: {
-          model: grinderModel.value || undefined,
-          setting: grinderSetting.value || '',
+        context: {
+          targetDoseWeight: doseIn.value || undefined,
+          targetYield: doseOut.value || undefined,
+          coffeeName: beanType.value || undefined,
+          coffeeRoaster: roaster.value || undefined,
+          grinderModel: grinderModel.value || undefined,
+          grinderSetting: grinderSetting.value || undefined,
         },
       },
     })
@@ -353,6 +366,12 @@ function goBack() {
                 <option v-for="rl in ROAST_LEVELS" :key="rl" :value="rl">{{ rl }}</option>
               </select>
             </div>
+
+            <div v-if="enrichedBean" class="review-page__enriched">
+              <span class="review-page__enriched-label">Linked Bean:</span>
+              <span class="review-page__enriched-value">{{ enrichedBean.name }}</span>
+              <span v-if="enrichedBean.batch?.label" class="review-page__enriched-value"> — {{ enrichedBean.batch.label }}</span>
+            </div>
           </div>
 
           <!-- Column 2: Grinder / Beverage -->
@@ -392,6 +411,11 @@ function goBack() {
                 placeholder="Barista"
                 :suggestions="historySuggestions.barista"
               />
+            </div>
+
+            <div v-if="enrichedGrinder" class="review-page__enriched">
+              <span class="review-page__enriched-label">Linked Grinder:</span>
+              <span class="review-page__enriched-value">{{ enrichedGrinder.manufacturer }} {{ enrichedGrinder.model }}</span>
             </div>
           </div>
 
@@ -598,6 +622,27 @@ function goBack() {
 .review-page__input:focus,
 .review-page__select:focus {
   border-color: var(--color-primary);
+}
+
+.review-page__enriched {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+}
+
+.review-page__enriched-label {
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.review-page__enriched-value {
+  font-size: var(--font-caption);
+  color: var(--color-text);
 }
 
 .review-page__ey {
