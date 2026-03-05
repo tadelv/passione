@@ -13,6 +13,7 @@ import ActionButton from './ActionButton.vue'
 import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import { setMachineState, getLatestShot } from '../api/rest.js'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const HistoryShotGraph = defineAsyncComponent(() => import('./HistoryShotGraph.vue'))
 
@@ -138,31 +139,26 @@ async function fetchLastShot() {
 }
 
 const lastShotInfo = computed(() => {
-  const s = lastShot.value
-  if (!s) return {}
+  const raw = lastShot.value
+  if (!raw) return {}
+  const s = normalizeShot(raw)
   const w = s.workflow ?? {}
-  const coffee = w.coffeeData ?? {}
-  const grinder = w.grinderData ?? {}
-  const dd = w.doseData ?? {}
 
   const shotProfile = w.profile?.title ?? w.name ?? null
-  const coffeeName = [coffee.roaster, coffee.name].filter(Boolean).join(' — ') || null
-  const doseIn = s.doseIn ?? dd.doseIn
-  const doseOut = s.doseOut ?? dd.doseOut
+  const coffeeName = [s.coffeeRoaster, s.coffeeName].filter(Boolean).join(' — ') || null
+
   let dose = null
-  if (doseIn && doseOut) {
-    const ratio = doseOut / doseIn
-    dose = `${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`
-  } else if (doseIn) {
-    dose = `${Number(doseIn).toFixed(1)}g in`
+  if (s.doseIn && s.doseOut) {
+    const ratio = s.doseOut / s.doseIn
+    dose = `${Number(s.doseIn).toFixed(1)}g in / ${Number(s.doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`
+  } else if (s.doseIn) {
+    dose = `${Number(s.doseIn).toFixed(1)}g in`
   }
 
-  const grinderName = [grinder.manufacturer, grinder.model].filter(Boolean).join(' ')
-  const grinderSetting = grinder.setting ?? s.grinderSetting
   let grinderText = null
-  if (grinderName && grinderSetting) grinderText = `${grinderName} @ ${grinderSetting}`
-  else if (grinderSetting) grinderText = `Grind: ${grinderSetting}`
-  else if (grinderName) grinderText = grinderName
+  if (s.grinderModel && s.grinderSetting) grinderText = `${s.grinderModel} @ ${s.grinderSetting}`
+  else if (s.grinderSetting) grinderText = `Grind: ${s.grinderSetting}`
+  else if (s.grinderModel) grinderText = s.grinderModel
 
   let duration = null
   if (s.duration) {
