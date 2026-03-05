@@ -48,21 +48,12 @@ const brewTemperature = computed(() => {
   const targetTemp = machine?.targetMixTemperature?.value ?? machine?.targetGroupTemperature?.value ?? 93
   return targetTemp
 })
-const brewDoseIn = computed(() => {
-  const dd = workflow?.doseData
-  return dd?.doseIn ?? dd?.dose ?? 18
-})
-const brewDoseOut = computed(() => {
-  const dd = workflow?.doseData
-  return dd?.doseOut ?? dd?.targetWeight ?? 36
-})
-const brewGrinderName = computed(() => {
-  const gd = workflow?.grinderData
-  return gd?.grinder ?? gd?.name ?? ''
-})
+const brewDoseIn = computed(() => workflow?.context?.targetDoseWeight ?? 18)
+const brewDoseOut = computed(() => workflow?.context?.targetYield ?? 36)
+const brewGrinderName = computed(() => workflow?.context?.grinderModel ?? '')
 const brewGrindSetting = computed(() => {
-  const gd = workflow?.grinderData
-  return gd?.setting ?? gd?.grindSetting ?? 0
+  const s = workflow?.context?.grinderSetting
+  return s != null ? Number(s) || 0 : 0
 })
 const scaleWeight = computed(() => scale?.weight?.value ?? weight.value ?? 0)
 
@@ -71,10 +62,10 @@ async function onBrewDialogStart(params) {
   try {
     // Apply settings to workflow before starting
     const workflowUpdate = {
-      doseData: {
-        ...(workflow?.doseData ?? {}),
-        doseIn: params.doseIn,
-        doseOut: params.doseOut,
+      context: {
+        ...workflow?.context,
+        targetDoseWeight: params.doseIn,
+        targetYield: params.doseOut,
       },
     }
     await updateWorkflow(workflowUpdate)
@@ -108,9 +99,9 @@ async function onBrewDialogUpdateTemperature(temp) {
 async function onBrewDialogUpdateYield(yieldVal) {
   try {
     await updateWorkflow({
-      doseData: {
-        ...(workflow?.doseData ?? {}),
-        doseOut: yieldVal,
+      context: {
+        ...workflow?.context,
+        targetYield: yieldVal,
       },
     })
     if (toast) toast.success('Yield updated')
@@ -136,17 +127,17 @@ async function onBrewDialogUseLastShot() {
   try {
     const lastShot = await getLatestShot()
     if (lastShot) {
-      // Extract relevant parameters from last shot and populate workflow
-      const doseData = {}
+      // Extract relevant parameters from last shot and populate workflow context
+      const contextUpdate = {}
       if (lastShot.doseIn != null || lastShot.dose != null) {
-        doseData.doseIn = lastShot.doseIn ?? lastShot.dose
+        contextUpdate.targetDoseWeight = lastShot.doseIn ?? lastShot.dose
       }
       if (lastShot.doseOut != null || lastShot.targetWeight != null) {
-        doseData.doseOut = lastShot.doseOut ?? lastShot.targetWeight
+        contextUpdate.targetYield = lastShot.doseOut ?? lastShot.targetWeight
       }
-      if (Object.keys(doseData).length > 0) {
+      if (Object.keys(contextUpdate).length > 0) {
         await updateWorkflow({
-          doseData: { ...(workflow?.doseData ?? {}), ...doseData },
+          context: { ...workflow?.context, ...contextUpdate },
         })
       }
       if (toast) toast.info('Loaded settings from last shot')
@@ -161,12 +152,10 @@ async function onBrewDialogUseLastShot() {
 function onBrewDialogUpdateGrinder(grinder) {
   try {
     updateWorkflow({
-      grinderData: {
-        ...(workflow?.grinderData ?? {}),
-        grinder: grinder.name,
-        name: grinder.name,
-        setting: grinder.setting,
-        grindSetting: grinder.setting,
+      context: {
+        ...workflow?.context,
+        grinderModel: grinder.name,
+        grinderSetting: String(grinder.setting),
       },
     })
   } catch (e) {
@@ -277,7 +266,7 @@ async function stopAndGoBack() {
       :scale-weight="scaleWeight"
       :grinder-name="brewGrinderName"
       :grind-setting="brewGrindSetting"
-      :show-extended-fields="!!workflow?.grinderData"
+      :show-extended-fields="!!workflow?.context?.grinderModel"
       @start="onBrewDialogStart"
       @cancel="onBrewDialogCancel"
       @update-temperature="onBrewDialogUpdateTemperature"
