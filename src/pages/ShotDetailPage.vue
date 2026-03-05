@@ -6,9 +6,12 @@ import RatingInput from '../components/RatingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 import SwipeableArea from '../components/SwipeableArea.vue'
 import { getShot, getShotIds, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const route = useRoute()
 const router = useRouter()
+const beansApi = inject('beansApi', null)
+const grindersApi = inject('grindersApi', null)
 
 const shotId = computed(() => route.params.id)
 const shot = ref(null)
@@ -50,28 +53,42 @@ function navigateShot(delta) {
 function onSwipeLeft() { navigateShot(1) }
 function onSwipeRight() { navigateShot(-1) }
 
+// Entity enrichment
+const enrichedBean = ref(null)
+const enrichedGrinder = ref(null)
+
+async function enrichShot(s) {
+  enrichedBean.value = null
+  enrichedGrinder.value = null
+  if (s.beanBatchId && beansApi) {
+    try {
+      const batch = await beansApi.getBatch(s.beanBatchId)
+      if (batch?.beanId) {
+        const bean = await beansApi.getById(batch.beanId)
+        if (bean) enrichedBean.value = { ...bean, batch }
+      }
+    } catch {}
+  }
+  if (s.grinderId && grindersApi) {
+    try {
+      const g = await grindersApi.getById(s.grinderId)
+      if (g) enrichedGrinder.value = g
+    } catch {}
+  }
+}
+
 async function loadShot(id) {
   if (!id) return
   loading.value = true
   try {
-    const result = await getShot(id)
-    // Normalize nested API fields to flat access
-    if (result) {
-      const w = result.workflow ?? {}
-      const dd = w.doseData ?? {}
-      const meta = result.metadata ?? {}
-      const coffee = w.coffeeData ?? {}
-      const grinder = w.grinderData ?? {}
+    const raw = await getShot(id)
+    if (raw) {
+      const result = normalizeShot(raw)
+      const w = raw.workflow ?? {}
+      const meta = raw.metadata ?? {}
 
+      // Fields not covered by normalizeShot
       if (!result.profileName) result.profileName = w.profile?.title ?? w.name ?? null
-      if (result.doseIn == null) result.doseIn = dd.doseIn ?? null
-      if (result.doseOut == null) result.doseOut = dd.doseOut ?? null
-      if (!result.coffeeName) result.coffeeName = coffee.name ?? null
-      if (!result.roaster) result.roaster = coffee.roaster ?? null
-      if (!result.grinderSetting) result.grinderSetting = grinder.setting ?? null
-      if (!result.grinderModel) result.grinderModel = grinder.model ?? null
-      if (!result.grinderManufacturer) result.grinderManufacturer = grinder.manufacturer ?? null
-      if (result.rating == null) result.rating = meta.rating ?? null
       if (result.barista == null) result.barista = meta.barista ?? null
       if (result.notes == null && result.shotNotes != null) result.notes = result.shotNotes
       if (!result.profile && w.profile) result.profile = w.profile
@@ -86,9 +103,13 @@ async function loadShot(id) {
         const d = getTs(last) - getTs(first)
         if (d > 0) result.duration = d
       }
+
+      shot.value = result
+      rating.value = result.rating ?? result.metadata?.rating ?? 0
+      enrichShot(result)
+    } else {
+      shot.value = null
     }
-    shot.value = result
-    rating.value = result?.rating ?? result?.metadata?.rating ?? 0
   } catch {
     shot.value = null
   }
@@ -248,18 +269,21 @@ async function uploadToVisualizer() {
           <span class="shot-detail__card-value">{{ shotDate }}</span>
         </div>
 
-        <div v-if="shot.coffeeName || shot.roaster" class="shot-detail__card">
+        <div v-if="shot.coffeeName || shot.coffeeRoaster" class="shot-detail__card">
           <span class="shot-detail__card-label">Coffee</span>
           <span class="shot-detail__card-value">
-            {{ [shot.roaster, shot.coffeeName].filter(Boolean).join(' — ') }}
+            {{ [shot.coffeeRoaster, shot.coffeeName].filter(Boolean).join(' — ') }}
+            <span v-if="enrichedBean?.country" class="shot-detail__card-detail"> &middot; {{ enrichedBean.country }}</span>
+            <span v-if="enrichedBean?.processing" class="shot-detail__card-detail"> &middot; {{ enrichedBean.processing }}</span>
           </span>
         </div>
 
-        <div v-if="shot.grinderModel || shot.grinderManufacturer" class="shot-detail__card">
+        <div v-if="shot.grinderModel" class="shot-detail__card">
           <span class="shot-detail__card-label">Grinder</span>
           <span class="shot-detail__card-value">
-            {{ [shot.grinderManufacturer, shot.grinderModel].filter(Boolean).join(' ') }}
+            {{ shot.grinderModel }}
             <template v-if="shot.grinderSetting"> @ {{ shot.grinderSetting }}</template>
+            <span v-if="enrichedGrinder?.burrs" class="shot-detail__card-detail"> &middot; {{ enrichedGrinder.burrs }}</span>
           </span>
         </div>
 
@@ -411,6 +435,11 @@ async function uploadToVisualizer() {
   font-size: 15px;
   color: var(--color-text);
   word-break: break-word;
+}
+
+.shot-detail__card-detail {
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 .shot-detail__actions {
