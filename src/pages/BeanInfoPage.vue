@@ -176,22 +176,24 @@ function loadFromPreset(index) {
 if (selectedIndex.value >= 0) {
   loadFromPreset(selectedIndex.value)
 } else {
-  // Populate from workflow if available
-  const wd = workflow?.doseData
-  const wg = workflow?.grinderData
-  const wc = workflow?.coffeeData
-  if (wd) {
-    doseIn.value = wd.doseIn ?? wd.dose ?? 18.0
-    doseOut.value = wd.doseOut ?? wd.targetWeight ?? 36.0
+  // Populate from workflow context
+  const ctx = workflow?.context
+  if (ctx) {
+    doseIn.value = ctx.targetDoseWeight ?? 18.0
+    doseOut.value = ctx.targetYield ?? 36.0
     if (doseIn.value > 0) ratioValue.value = +(doseOut.value / doseIn.value).toFixed(1)
-  }
-  if (wg) {
-    grinder.value = [wg.manufacturer, wg.model].filter(Boolean).join(' ') || (wg.grinder ?? wg.name ?? '')
-    grinderSetting.value = wg.setting ?? wg.grindSetting ?? ''
-  }
-  if (wc) {
-    coffeeName.value = wc.name ?? ''
-    roaster.value = wc.roaster ?? ''
+    grinder.value = ctx.grinderModel ?? ''
+    grinderSetting.value = ctx.grinderSetting ?? ''
+    coffeeName.value = ctx.coffeeName ?? ''
+    roaster.value = ctx.coffeeRoaster ?? ''
+    // Restore entity selections if present
+    if (ctx.grinderId) selectedGrinderId.value = ctx.grinderId
+    if (ctx.beanBatchId) {
+      selectedBatchId.value = ctx.beanBatchId
+      // Find matching bean
+      const matchingBean = beans.value.find(b => b.name === ctx.coffeeName && b.roaster === ctx.coffeeRoaster)
+      if (matchingBean) selectedBeanId.value = matchingBean.id
+    }
   }
   if (workflow?.profile) {
     profileTitle.value = workflow.profile.title ?? ''

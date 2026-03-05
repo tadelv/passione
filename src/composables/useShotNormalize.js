@@ -22,7 +22,8 @@ export function normalizeShot(shot) {
 
   // Grinder — context first, then legacy grinderData, then metadata
   if (result.grinderModel == null) {
-    result.grinderModel = ctx.grinderModel ?? grinder.model ?? [grinder.manufacturer, grinder.grinder ?? grinder.name].filter(Boolean).join(' ') || null
+    const fallbackName = [grinder.manufacturer, (grinder.grinder ?? grinder.name)].filter(Boolean).join(' ') || null
+    result.grinderModel = ctx.grinderModel ?? grinder.model ?? fallbackName
   }
   if (result.grinderSetting == null) result.grinderSetting = ctx.grinderSetting ?? grinder.setting ?? grinder.grindSetting ?? meta.grinderSetting ?? null
 
