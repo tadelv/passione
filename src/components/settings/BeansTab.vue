@@ -11,7 +11,7 @@ const creatingBean = ref(false)
 const batchesByBean = reactive({})
 
 // Bean form defaults
-const emptyBean = () => ({ roaster: '', name: '', country: '', processing: '', variety: '' })
+const emptyBean = () => ({ roaster: '', name: '', country: '', processing: '', variety: '', altitudeMin: '', altitudeMax: '' })
 const newBean = reactive(emptyBean())
 
 // Batch form state per bean
@@ -51,6 +51,11 @@ async function saveNewBean() {
       processing: newBean.processing.trim() || undefined,
       variety: newBean.variety.trim() || undefined,
     }
+    const altMin = newBean.altitudeMin ? Number(newBean.altitudeMin) : null
+    const altMax = newBean.altitudeMax ? Number(newBean.altitudeMax) : null
+    if (altMin != null || altMax != null) {
+      payload.altitude = [altMin ?? altMax, altMax ?? altMin]
+    }
     await beansApi.create(payload)
     creatingBean.value = false
     toast?.({ message: 'Bean created', type: 'success' })
@@ -73,6 +78,8 @@ async function toggleBean(bean) {
     country: bean.country || '',
     processing: bean.processing || '',
     variety: bean.variety || '',
+    altitudeMin: bean.altitude?.[0] ?? '',
+    altitudeMax: bean.altitude?.[1] ?? '',
   })
   // Load batches
   if (!batchesByBean[bean.id]) {
@@ -93,6 +100,11 @@ async function saveEditBean(bean) {
       country: editBean.country.trim() || undefined,
       processing: editBean.processing.trim() || undefined,
       variety: editBean.variety.trim() || undefined,
+    }
+    const altMin = editBean.altitudeMin ? Number(editBean.altitudeMin) : null
+    const altMax = editBean.altitudeMax ? Number(editBean.altitudeMax) : null
+    if (altMin != null || altMax != null) {
+      payload.altitude = [altMin ?? altMax, altMax ?? altMin]
     }
     await beansApi.update(bean.id, payload)
     toast?.({ message: 'Bean updated', type: 'success' })
@@ -239,6 +251,14 @@ async function deleteBatch(beanId, batch) {
           <label class="beans-tab__label">Variety</label>
           <input class="beans-tab__input" v-model="newBean.variety" placeholder="Comma-separated varieties" />
         </div>
+        <div class="beans-tab__field">
+          <label class="beans-tab__label">Altitude min (masl)</label>
+          <input class="beans-tab__input" type="number" v-model="newBean.altitudeMin" placeholder="e.g. 1100" />
+        </div>
+        <div class="beans-tab__field">
+          <label class="beans-tab__label">Altitude max (masl)</label>
+          <input class="beans-tab__input" type="number" v-model="newBean.altitudeMax" placeholder="e.g. 1300" />
+        </div>
       </div>
       <div class="beans-tab__form-actions">
         <button class="beans-tab__btn beans-tab__btn--save" @click="saveNewBean">Save</button>
@@ -291,6 +311,14 @@ async function deleteBatch(beanId, batch) {
               <div class="beans-tab__field beans-tab__field--full">
                 <label class="beans-tab__label">Variety</label>
                 <input class="beans-tab__input" v-model="editBean.variety" />
+              </div>
+              <div class="beans-tab__field">
+                <label class="beans-tab__label">Altitude min (masl)</label>
+                <input class="beans-tab__input" type="number" v-model="editBean.altitudeMin" />
+              </div>
+              <div class="beans-tab__field">
+                <label class="beans-tab__label">Altitude max (masl)</label>
+                <input class="beans-tab__input" type="number" v-model="editBean.altitudeMax" />
               </div>
             </div>
             <div class="beans-tab__form-actions">
