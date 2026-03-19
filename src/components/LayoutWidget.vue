@@ -12,7 +12,7 @@ import CircularGauge from './CircularGauge.vue'
 import ActionButton from './ActionButton.vue'
 import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
-import { setMachineState, getLatestShot } from '../api/rest.js'
+import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 
 const HistoryShotGraph = defineAsyncComponent(() => import('./HistoryShotGraph.vue'))
@@ -132,7 +132,13 @@ const lastShot = ref(null)
 
 async function fetchLastShot() {
   try {
-    lastShot.value = await getLatestShot()
+    const summary = await getLatestShot()
+    if (summary?.id) {
+      // Summary lacks measurements — fetch full shot for chart data
+      lastShot.value = await getShot(summary.id)
+    } else {
+      lastShot.value = null
+    }
   } catch {
     lastShot.value = null
   }
