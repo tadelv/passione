@@ -19,6 +19,7 @@ const workflow = inject('workflow', null)
 const updateWorkflow = inject('updateWorkflow')
 const settings = inject('settings', null)
 const toast = inject('toast', null)
+const operationSettings = inject('operationSettings', null)
 
 const isReady = computed(() =>
   machineState.value === 'idle' || machineState.value === 'ready'
@@ -93,26 +94,48 @@ async function onComboSelect(index) {
       targetDoseWeight: combo.doseIn ?? undefined,
       targetYield: combo.doseOut ?? undefined,
       grinderModel: combo.grinder || null,
-      grinderSetting: combo.grinderSetting ?? null,
+      grinderSetting: combo.grinderSetting != null ? String(combo.grinderSetting) : null,
     }
   }
 
-  // Update operation settings via settings (useOperationSettings watcher handles API sync)
+  // Include operation settings in the single workflow update (avoids multiple rapid PUTs).
+  // Suppress useOperationSettings watchers so settings mutations don't trigger extra API calls.
+  operationSettings?.suppress()
+
   if (combo.steamSettings) {
-    settings.settings.steamDuration = combo.steamSettings.duration ?? settings.settings.steamDuration
+    update.steamSettings = {
+      targetTemperature: combo.steamSettings.temperature ?? settings.settings.steamTemperature ?? 160,
+      duration: combo.steamSettings.duration ?? settings.settings.steamDuration ?? 30,
+      flow: combo.steamSettings.flow ?? settings.settings.steamFlow ?? 1.5,
+    }
+    if (combo.steamSettings.duration != null) settings.settings.steamDuration = combo.steamSettings.duration
     if (combo.steamSettings.flow != null) settings.settings.steamFlow = combo.steamSettings.flow
     if (combo.steamSettings.temperature != null) settings.settings.steamTemperature = combo.steamSettings.temperature
   }
 
   if (combo.flushSettings) {
-    settings.settings.flushDuration = combo.flushSettings.duration ?? settings.settings.flushDuration
+    update.rinseData = {
+      targetTemperature: settings.settings.flushTemperature ?? 90,
+      duration: combo.flushSettings.duration ?? settings.settings.flushDuration ?? 5,
+      flow: combo.flushSettings.flow ?? settings.settings.flushFlowRate ?? 6.0,
+    }
+    if (combo.flushSettings.duration != null) settings.settings.flushDuration = combo.flushSettings.duration
     if (combo.flushSettings.flow != null) settings.settings.flushFlowRate = combo.flushSettings.flow
   }
 
   if (combo.hotWaterSettings) {
+    update.hotWaterData = {
+      targetTemperature: combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature ?? 80,
+      volume: combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume ?? 200,
+      duration: settings.settings.hotWaterDuration ?? 60,
+      flow: settings.settings.hotWaterFlow ?? 6.0,
+    }
     if (combo.hotWaterSettings.volume != null) settings.settings.hotWaterVolume = combo.hotWaterSettings.volume
     if (combo.hotWaterSettings.temperature != null) settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature
   }
+
+  // Re-enable watchers after settings are updated (nextTick ensures Vue has flushed)
+  Promise.resolve().then(() => operationSettings?.unsuppress())
 
   if (Object.keys(update).length > 0) {
     updateWorkflow(update).catch(() => {})

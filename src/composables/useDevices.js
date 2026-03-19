@@ -15,6 +15,13 @@ export function useDevices() {
   const scanning = ref(false)
   const isConnected = ref(false)
 
+  // ConnectionManager status
+  const connectionPhase = ref('idle')
+  const foundMachines = ref([])
+  const foundScales = ref([])
+  const pendingAmbiguity = ref(null) // 'machinePicker' | 'scalePicker' | null
+  const connectionError = ref(null)
+
   let ws = null
 
   function onMessage(data) {
@@ -23,6 +30,14 @@ export function useDevices() {
     }
     if (typeof data.scanning === 'boolean') {
       scanning.value = data.scanning
+    }
+    if (data.connectionStatus) {
+      const cs = data.connectionStatus
+      if (cs.phase != null) connectionPhase.value = cs.phase
+      if (Array.isArray(cs.foundMachines)) foundMachines.value = cs.foundMachines
+      if (Array.isArray(cs.foundScales)) foundScales.value = cs.foundScales
+      pendingAmbiguity.value = cs.pendingAmbiguity ?? null
+      connectionError.value = cs.error ?? null
     }
   }
 
@@ -88,25 +103,20 @@ export function useDevices() {
   onUnmounted(disconnect)
 
   return {
-    /** All known devices from ReaPrime. */
     devices,
-    /** Whether a BLE/USB scan is in progress. */
     scanning,
-    /** Whether the devices WebSocket is connected to the gateway. */
     isConnected,
-    /** Whether a machine is physically connected. */
     machineConnected,
-    /** Whether a scale is physically connected. */
     scaleConnected,
-    /** The connected machine device info, or null. */
     machineDevice,
-    /** The connected scale device info, or null. */
     scaleDevice,
-    /** Send scan command. */
+    connectionPhase,
+    foundMachines,
+    foundScales,
+    pendingAmbiguity,
+    connectionError,
     scan,
-    /** Connect to a device by ID. */
     connectDevice,
-    /** Disconnect a device by ID. */
     disconnectDevice,
   }
 }

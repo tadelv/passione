@@ -7,6 +7,7 @@ import CompletionOverlay from './components/CompletionOverlay.vue'
 import StopReasonOverlay from './components/StopReasonOverlay.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import LogOverlay from './components/LogOverlay.vue'
+import DevicePickerDialog from './components/DevicePickerDialog.vue'
 import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
 import { useDevices } from './composables/useDevices.js'
@@ -70,9 +71,9 @@ const WATER_TANK_MAX_MM = 120
 const waterLevelDisplay = computed(() => {
   const mm = waterLevels.currentLevel.value
   if (settings.settings.waterLevelDisplayUnit === 'ml') {
-    return Math.round(mm * WATER_ML_PER_MM) + ' ml'
+    return (mm * WATER_ML_PER_MM).toFixed(1) + ' ml'
   }
-  return mm + ' mm'
+  return mm.toFixed(1) + ' mm'
 })
 const waterLevelPercent = computed(() => {
   return Math.min(100, Math.round((waterLevels.currentLevel.value / WATER_TANK_MAX_MM) * 100))
@@ -107,6 +108,7 @@ provide('volumeMode', volumeMode)
 provide('autoSleep', autoSleep)
 provide('display', display)
 provide('toast', toast)
+provide('operationSettings', operationSettings)
 
 // ---- Connection state toasts (driven by devices WebSocket API) ----
 
@@ -125,6 +127,21 @@ watch(devices.scaleConnected, (connected, wasConnected) => {
     toast.warning(t('toast.scaleDisconnected'))
   }
 })
+
+// ---- Device picker dialog (scan ambiguity resolution) ----
+const pickerDevices = computed(() => {
+  if (devices.pendingAmbiguity.value === 'machinePicker') return devices.foundMachines.value
+  if (devices.pendingAmbiguity.value === 'scalePicker') return devices.foundScales.value
+  return []
+})
+
+function onDevicePicked(deviceId) {
+  devices.connectDevice(deviceId)
+}
+
+function onDevicePickerCancel() {
+  // No-op: ambiguity clears when the server moves on or user triggers a new scan
+}
 
 // ---- Page transition control ----
 // Auto-navigation (machine state changes) uses no transition.
@@ -183,10 +200,13 @@ watch(machine.state, (newState, oldState) => {
   if (newState === oldState) return
 
   // Display control: dim on sleep, restore on wake
+  // Scale: disconnect during sleep to avoid unnecessary traffic
   if (newState === 'sleeping') {
     display.dim()
+    scale.disconnect()
   } else if (oldState === 'sleeping') {
     display.restore()
+    scale.connect()
   }
 
   // Wake-lock: hold during active operations
@@ -375,6 +395,15 @@ onUnmounted(() => {
   <ToastNotification
     :toasts="toast.toasts.value"
     @dismiss="toast.dismiss"
+  />
+
+  <!-- Device picker dialog (scan ambiguity) -->
+  <DevicePickerDialog
+    :visible="!!devices.pendingAmbiguity.value"
+    :ambiguity-type="devices.pendingAmbiguity.value"
+    :devices="pickerDevices"
+    @select="onDevicePicked"
+    @cancel="onDevicePickerCancel"
   />
 
   <!-- Floating log overlay (all pages) -->

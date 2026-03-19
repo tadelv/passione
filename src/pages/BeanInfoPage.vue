@@ -2,6 +2,7 @@
 import { ref, computed, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PresetPillRow from '../components/PresetPillRow.vue'
+import PresetEditPopup from '../components/PresetEditPopup.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
@@ -195,15 +196,54 @@ if (selectedIndex.value >= 0) {
       if (matchingBean) selectedBeanId.value = matchingBean.id
     }
   }
-  if (workflow?.profile) {
-    profileTitle.value = workflow.profile.title ?? ''
-  }
+}
+// Always sync profile from workflow — it's the source of truth for the applied profile
+// (handles returning from ProfileSelectorPage where the preset's saved title is stale)
+if (workflow?.profile) {
+  profileTitle.value = workflow.profile.title ?? ''
+  profileId.value = workflow.profile.id ?? null
 }
 
 function onPresetSelect(index) {
   if (!settings) return
   settings.settings.selectedWorkflowCombo = index
   loadFromPreset(index)
+}
+
+// ---- Combo edit popup (long-press) ----
+const editPopupVisible = ref(false)
+const editPopupPreset = ref(null)
+const editPopupIndex = ref(-1)
+
+function onComboLongPress(index) {
+  const combo = workflowCombos.value[index]
+  if (!combo) return
+  editPopupPreset.value = combo
+  editPopupIndex.value = index
+  editPopupVisible.value = true
+}
+
+function onComboEditSave(updated) {
+  if (!settings || editPopupIndex.value < 0) return
+  const combos = [...workflowCombos.value]
+  combos[editPopupIndex.value] = { ...combos[editPopupIndex.value], name: updated.name, emoji: updated.emoji }
+  settings.settings.workflowCombos = combos
+  editPopupVisible.value = false
+}
+
+function onComboEditDelete() {
+  if (!settings || editPopupIndex.value < 0) return
+  const combos = [...workflowCombos.value]
+  combos.splice(editPopupIndex.value, 1)
+  settings.settings.workflowCombos = combos
+  if (selectedIndex.value >= combos.length) {
+    settings.settings.selectedWorkflowCombo = combos.length - 1
+  }
+  editPopupVisible.value = false
+}
+
+function onComboEditCancel() {
+  editPopupVisible.value = false
 }
 
 // ---- Auto-save to selected combo ----
@@ -276,10 +316,10 @@ async function saveToWorkflow() {
       coffeeName: coffeeName.value || null,
       coffeeRoaster: roaster.value || null,
       grinderModel: selectedGrinder.value?.model ?? (grinder.value || null),
-      grinderSetting: grinderSetting.value ?? null,
+      grinderSetting: grinderSetting.value != null ? String(grinderSetting.value) : null,
     }
-    if (selectedGrinderId.value) ctx.grinderId = selectedGrinderId.value
-    if (selectedBatchId.value) ctx.beanBatchId = selectedBatchId.value
+    if (selectedGrinderId.value) ctx.grinderId = String(selectedGrinderId.value)
+    if (selectedBatchId.value) ctx.beanBatchId = String(selectedBatchId.value)
 
     const workflowUpdate = { context: ctx }
     workflowUpdate.steamSettings = includeSteam.value
@@ -359,7 +399,9 @@ watch(() => workflow?.profile, (newProfile) => {
       <PresetPillRow
         :presets="workflowCombos"
         :selected-index="selectedIndex"
+        :long-press-enabled="true"
         @select="onPresetSelect"
+        @long-press="onComboLongPress"
       />
       <button class="bean-info__add-btn" @click="saveAsNew">
         + New Combo
@@ -566,29 +608,6 @@ watch(() => workflow?.profile, (newProfile) => {
             <label class="bean-info__label">Temperature</label>
             <ValueInput v-model="steamTemperature" :min="100" :max="170" :step="1" :decimals="0" suffix=" &deg;C" />
           </div>
-          <div class="bean-info__op-divider"></div>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Keep steam heater on</label>
-            <button
-              class="bean-info__toggle"
-              :class="{ 'bean-info__toggle--on': settings?.settings?.keepSteamHeaterOn }"
-              @click="settings.settings.keepSteamHeaterOn = !settings.settings.keepSteamHeaterOn"
-            >
-              {{ settings?.settings?.keepSteamHeaterOn ? 'ON' : 'OFF' }}
-            </button>
-          </div>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Auto-flush after steam</label>
-            <ValueInput
-              :model-value="settings?.settings?.steamAutoFlushSeconds ?? 0"
-              @update:model-value="v => settings.settings.steamAutoFlushSeconds = v"
-              :min="0"
-              :max="60"
-              :step="1"
-              suffix=" s"
-            />
-            <span class="bean-info__hint">0 = disabled</span>
-          </div>
         </div>
       </div>
 
@@ -639,6 +658,16 @@ watch(() => workflow?.profile, (newProfile) => {
         Save as New
       </button>
     </BottomBar>
+
+    <PresetEditPopup
+      :visible="editPopupVisible"
+      :preset="editPopupPreset"
+      operation-type="combo"
+      :is-existing="true"
+      @save="onComboEditSave"
+      @delete="onComboEditDelete"
+      @cancel="onComboEditCancel"
+    />
   </div>
 </template>
 

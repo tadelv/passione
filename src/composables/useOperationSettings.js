@@ -15,12 +15,30 @@ const DEBOUNCE_MS = 500
 
 export function useOperationSettings(settings, workflow) {
   const _timers = {}
+  let _suppressed = false
+
+  /**
+   * Suppress watcher-driven API calls (e.g. during bulk combo loading).
+   * Clears any pending debounced updates.
+   */
+  function suppress() {
+    _suppressed = true
+    for (const key of Object.keys(_timers)) {
+      clearTimeout(_timers[key])
+    }
+  }
+
+  /** Resume watcher-driven API calls. */
+  function unsuppress() {
+    _suppressed = false
+  }
 
   /**
    * Debounced workflow update — waits for DEBOUNCE_MS of inactivity
    * before sending the update.
    */
   function _debouncedUpdate(key, payload) {
+    if (_suppressed) return
     clearTimeout(_timers[key])
     _timers[key] = setTimeout(async () => {
       try {
@@ -143,5 +161,7 @@ export function useOperationSettings(settings, workflow) {
 
   return {
     syncFromWorkflow,
+    suppress,
+    unsuppress,
   }
 }

@@ -17,7 +17,7 @@ function onSelect(e) {
 }
 
 function onNumeric(v) {
-  emit('update:modelValue', v)
+  emit('update:modelValue', String(v))
 }
 </script>
 
