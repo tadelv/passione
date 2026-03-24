@@ -149,7 +149,7 @@ function goBack() {
           <div class="flush-page__progress-bar">
             <div
               class="flush-page__progress-fill"
-              :style="{ width: (timerProgress * 100) + '%' }"
+              :style="{ transform: 'scaleX(' + timerProgress + ')' }"
             />
           </div>
         </div>
@@ -280,9 +280,11 @@ function goBack() {
 
 .flush-page__progress-fill {
   height: 100%;
+  width: 100%;
   border-radius: 4px;
   background: var(--color-primary);
-  transition: width 0.1s linear;
+  transform-origin: left;
+  transition: transform 0.1s linear;
 }
 
 .flush-page__stop-btn {
@@ -293,7 +295,7 @@ function goBack() {
   border-radius: var(--radius-card);
   border: none;
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
   font-size: var(--font-title);
   font-weight: 700;
   cursor: pointer;

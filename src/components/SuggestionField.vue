@@ -60,17 +60,19 @@ function onBlur() {
       type="text"
       :value="internalValue"
       :placeholder="placeholder"
+      :aria-label="placeholder"
       autocomplete="off"
       @input="onInput"
       @focus="onFocus"
       @blur="onBlur"
     />
     <Transition name="dropdown-fade">
-      <div v-if="showDropdown" class="suggestion-field__dropdown">
+      <div v-if="showDropdown" class="suggestion-field__dropdown" role="listbox">
         <button
           v-for="suggestion in filteredSuggestions"
           :key="suggestion"
           class="suggestion-field__option"
+          role="option"
           @pointerdown.prevent="selectSuggestion(suggestion)"
         >
           {{ suggestion }}

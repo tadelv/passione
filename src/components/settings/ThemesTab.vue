@@ -209,7 +209,7 @@ function resetTheme() {
 }
 
 .themes-tab__preset-btn--active {
-  border-color: #fff;
+  border-color: var(--color-text);
 }
 
 .themes-tab__random-btn {
@@ -217,7 +217,7 @@ function resetTheme() {
   border-radius: 8px;
   border: none;
   background: linear-gradient(135deg, #f44336, #ff9800, #ffeb3b, #4caf50, #2196f3, #9c27b0);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

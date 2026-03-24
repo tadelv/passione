@@ -15,7 +15,7 @@ function label(type) {
 </script>
 
 <template>
-  <div v-if="visible" class="device-picker" @click.self="emit('cancel')">
+  <div v-if="visible" class="device-picker" role="dialog" aria-modal="true" aria-label="Select device" @click.self="emit('cancel')" @keydown.esc="emit('cancel')">
     <div class="device-picker__card">
       <div class="device-picker__header">
         <span class="device-picker__title">Select {{ label(ambiguityType) }}</span>

@@ -174,7 +174,7 @@ function goBack() {
           <div v-if="!isVolumeMode" class="hotwater-page__progress-bar">
             <div
               class="hotwater-page__progress-fill"
-              :style="{ width: (weightProgress * 100) + '%' }"
+              :style="{ transform: 'scaleX(' + weightProgress + ')' }"
             />
           </div>
         </div>
@@ -326,9 +326,11 @@ function goBack() {
 
 .hotwater-page__progress-fill {
   height: 100%;
+  width: 100%;
   border-radius: 4px;
   background: var(--color-primary);
-  transition: width 0.1s linear;
+  transform-origin: left;
+  transition: transform 0.1s linear;
 }
 
 .hotwater-page__stop-btn {
@@ -339,7 +341,7 @@ function goBack() {
   border-radius: var(--radius-card);
   border: none;
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
   font-size: var(--font-title);
   font-weight: 700;
   cursor: pointer;

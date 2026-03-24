@@ -303,7 +303,7 @@ onMounted(loadSchedules)
 
 .preferences-tab__toggle--on {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-success);
 }
 
@@ -329,7 +329,7 @@ onMounted(loadSchedules)
 
 .preferences-tab__seg--active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .preferences-tab__schedule {
@@ -360,7 +360,7 @@ onMounted(loadSchedules)
 
 .preferences-tab__day-toggle--on {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-primary);
 }
 

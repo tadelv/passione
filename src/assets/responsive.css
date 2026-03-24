@@ -145,7 +145,7 @@
   }
 
   .espresso-page__back {
-    width: 40px;
+    width: 44px;
   }
 
   /* ---- SettingsPage: scrollable tabs, smaller pills ---- */
@@ -157,6 +157,7 @@
   .settings-page__tab {
     padding: 6px 12px;
     font-size: 12px;
+    min-height: 44px;
   }
 
   .settings-page__content {
@@ -206,6 +207,30 @@
     width: 28px;
     height: 28px;
     font-size: 11px;
+  }
+
+  /* ---- Graph containers: reduced height on mobile ---- */
+  .comparison-page__graph {
+    height: 200px;
+  }
+
+  .shot-detail__graph {
+    height: 180px;
+  }
+
+  .profile-info__graph {
+    height: 160px;
+  }
+
+  .review-page__graph {
+    height: 160px;
+  }
+
+  /* ---- ShotHistory: truncate profile names on mobile ---- */
+  .shot-history__profile {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   /* ---- Toast: full-width on mobile ---- */
@@ -356,7 +381,7 @@
 @media (max-height: 480px) and (orientation: landscape) {
   :root {
     --status-bar-height: 40px;
-    --bottom-bar-height: 40px;
+    --bottom-bar-height: 44px;
   }
 
   /* Reduce vertical padding in landscape mobile */

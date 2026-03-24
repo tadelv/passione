@@ -465,7 +465,7 @@ async function deleteBatch(beanId, batch) {
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -619,7 +619,7 @@ async function deleteBatch(beanId, batch) {
 
 .beans-tab__btn--save {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-primary);
 }
 
@@ -630,7 +630,7 @@ async function deleteBatch(beanId, batch) {
 
 .beans-tab__btn--danger {
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-danger);
 }
 

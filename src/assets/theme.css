@@ -6,7 +6,7 @@
   --color-primary: #4e85f4;
   --color-secondary: #c0c5e3;
   --color-text: #ffffff;
-  --color-text-secondary: #a0a8b8;
+  --color-text-secondary: #b0b8c8;
   --color-accent: #e94560;
   --color-success: #00cc6d;
   --color-warning: #ffaa00;
@@ -108,4 +108,18 @@ html, body {
   overflow: hidden;
 }
 
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Responsive rules are in responsive.css (imported from main.js) */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

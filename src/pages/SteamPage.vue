@@ -109,7 +109,7 @@ function stopSteam() {
           <div class="steam-page__progress-bar">
             <div
               class="steam-page__progress-fill"
-              :style="{ width: (timerProgress * 100) + '%' }"
+              :style="{ transform: 'scaleX(' + timerProgress + ')' }"
             />
           </div>
         </div>
@@ -212,9 +212,11 @@ function stopSteam() {
 
 .steam-page__progress-fill {
   height: 100%;
+  width: 100%;
   border-radius: 4px;
   background: var(--color-primary);
-  transition: width 0.1s linear;
+  transform-origin: left;
+  transition: transform 0.1s linear;
 }
 
 .steam-page__flow-control {
@@ -243,7 +245,7 @@ function stopSteam() {
   border-radius: var(--radius-card);
   border: none;
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
   font-size: var(--font-title);
   font-weight: 700;
   cursor: pointer;

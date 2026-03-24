@@ -428,7 +428,7 @@ async function toggleArchive(grinder) {
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -610,7 +610,7 @@ async function toggleArchive(grinder) {
   padding: 4px 10px;
   border-radius: 16px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
 }
@@ -623,7 +623,7 @@ async function toggleArchive(grinder) {
   height: 18px;
   border: none;
   background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  color: var(--color-text);
   border-radius: 50%;
   font-size: 14px;
   line-height: 1;
@@ -663,7 +663,7 @@ async function toggleArchive(grinder) {
 
 .grinders-tab__btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .grinders-tab__btn--primary:active:not(:disabled) {
@@ -682,7 +682,7 @@ async function toggleArchive(grinder) {
 
 .grinders-tab__btn--danger {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .grinders-tab__btn--danger:active {

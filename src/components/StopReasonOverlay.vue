@@ -69,7 +69,7 @@ onUnmounted(() => {
   transform: translateX(-50%) scale(0.8);
   z-index: 510;
   background: var(--color-warning);
-  color: #000;
+  color: var(--color-text);
   padding: 10px 28px;
   border-radius: 24px;
   font-size: var(--font-body);

@@ -135,7 +135,6 @@ function onInput(e) {
     var(--color-surface) var(--progress),
     var(--color-surface) 100%
   );
-  outline: none;
   cursor: pointer;
 }
 

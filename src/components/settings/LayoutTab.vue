@@ -428,7 +428,7 @@ const unusedWidgets = computed(() => {
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

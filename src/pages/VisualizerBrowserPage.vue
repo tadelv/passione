@@ -440,7 +440,7 @@ const frameCount = computed(() => {
 
 .viz-import__btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .viz-import__btn--secondary {
@@ -451,7 +451,7 @@ const frameCount = computed(() => {
 
 .viz-import__btn--danger {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .viz-import__btn--large {

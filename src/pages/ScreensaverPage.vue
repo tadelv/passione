@@ -177,7 +177,7 @@ onUnmounted(() => {
 .screensaver__digit {
   font-size: 96px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-text);
   font-variant-numeric: tabular-nums;
   letter-spacing: 4px;
 }

@@ -14,7 +14,7 @@ const TYPE_ICONS = {
 </script>
 
 <template>
-  <div class="toast-container" aria-live="polite">
+  <div class="toast-container" role="status" aria-live="polite">
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
@@ -51,7 +51,7 @@ const TYPE_ICONS = {
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
-  color: #fff;
+  color: var(--color-text);
   pointer-events: auto;
   cursor: pointer;
   backdrop-filter: blur(8px);

@@ -704,7 +704,7 @@ function goBack() {
   border-radius: 12px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: var(--font-body);
   font-weight: 600;
   cursor: pointer;
@@ -797,7 +797,7 @@ function goBack() {
 
 .review-page__confirm-btn--discard {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .review-page__confirm-btn--cancel {
@@ -808,7 +808,7 @@ function goBack() {
 
 .review-page__confirm-btn--save {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .confirm-fade-enter-active,

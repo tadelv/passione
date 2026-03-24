@@ -505,12 +505,12 @@ onMounted(loadShotIds)
 
 .shot-history__action-btn--load {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .shot-history__action-btn--edit {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .shot-history__chevron {
@@ -559,7 +559,7 @@ onMounted(loadShotIds)
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -584,7 +584,7 @@ onMounted(loadShotIds)
 .shot-history__checkbox.checked {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .shot-history__row--selected {

@@ -884,7 +884,7 @@ watch(() => workflow?.profile, (newProfile) => {
 
 .bean-info__toggle--on {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-success);
 }
 
@@ -893,7 +893,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border-radius: 8px;
   border: none;
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

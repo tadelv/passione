@@ -65,6 +65,8 @@ function testTickSound() {
           <button
             class="a11y-tab__toggle"
             :class="{ 'a11y-tab__toggle--on': settings.accessibilityEnabled }"
+            role="switch"
+            :aria-checked="settings.accessibilityEnabled"
             @click="settings.accessibilityEnabled = !settings.accessibilityEnabled"
           >
             {{ settings.accessibilityEnabled ? 'ON' : 'OFF' }}
@@ -76,6 +78,8 @@ function testTickSound() {
           <button
             class="a11y-tab__toggle"
             :class="{ 'a11y-tab__toggle--on': settings.voiceAnnouncements }"
+            role="switch"
+            :aria-checked="settings.voiceAnnouncements"
             :disabled="isDisabled"
             @click="settings.voiceAnnouncements = !settings.voiceAnnouncements"
           >
@@ -92,6 +96,8 @@ function testTickSound() {
           <button
             class="a11y-tab__toggle"
             :class="{ 'a11y-tab__toggle--on': settings.frameTickSounds }"
+            role="switch"
+            :aria-checked="settings.frameTickSounds"
             :disabled="isDisabled"
             @click="settings.frameTickSounds = !settings.frameTickSounds"
           >
@@ -258,7 +264,7 @@ function testTickSound() {
 
 .a11y-tab__toggle--on {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-success);
 }
 
@@ -289,7 +295,7 @@ function testTickSound() {
 
 .a11y-tab__seg--active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .a11y-tab__seg:disabled {
@@ -301,7 +307,7 @@ function testTickSound() {
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

@@ -136,7 +136,6 @@ const displayText = computed(() =>
     #FFC107 50%,
     #4caf50 100%
   );
-  outline: none;
   cursor: pointer;
   position: relative;
 }
@@ -195,7 +194,7 @@ const displayText = computed(() =>
 
 .rating-input__preset--active {
   background: var(--color-warning);
-  color: #000;
+  color: var(--color-text);
   border-color: var(--color-warning);
 }
 </style>

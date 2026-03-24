@@ -106,12 +106,12 @@ function onCancel() {
 
 <template>
   <Transition name="popup-fade">
-    <div v-if="visible" class="preset-edit-popup" @click.self="onCancel">
+    <div v-if="visible" class="preset-edit-popup" role="dialog" aria-modal="true" aria-label="Edit preset" @click.self="onCancel" @keydown.esc="onCancel">
       <div class="preset-edit-popup__card">
         <div class="preset-edit-popup__header">
           <span class="preset-edit-popup__title">{{ title }}</span>
           <button class="preset-edit-popup__close" @click="onCancel" aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -276,8 +276,8 @@ function onCancel() {
 }
 
 .preset-edit-popup__close {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
@@ -365,7 +365,7 @@ function onCancel() {
 
 .preset-edit-popup__btn--save {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .preset-edit-popup__btn--cancel {
@@ -376,7 +376,7 @@ function onCancel() {
 
 .preset-edit-popup__btn--delete {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .popup-fade-enter-active,

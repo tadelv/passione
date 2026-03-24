@@ -132,6 +132,6 @@ function onClick(index) {
 
 .preset-pill-row__pill--selected {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 </style>

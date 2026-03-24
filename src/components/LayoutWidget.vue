@@ -212,7 +212,7 @@ const lastShotInfo = computed(() => {
 
     <!-- Shot plan -->
     <template v-else-if="type === 'shotPlan'">
-      <div class="layout-widget__shot-plan" @click="router.push('/bean-info')">
+      <div class="layout-widget__shot-plan" role="button" tabindex="0" @click="router.push('/bean-info')" @keydown.enter="router.push('/bean-info')" @keydown.space.prevent="router.push('/bean-info')">
         <div v-if="profileName" class="layout-widget__profile" @click.stop="router.push('/profiles')">
           {{ profileName }}
         </div>
@@ -224,7 +224,7 @@ const lastShotInfo = computed(() => {
 
     <!-- Last Shot -->
     <template v-else-if="type === 'lastShot'">
-      <div v-if="lastShot" class="layout-widget__last-shot" @click="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)">
+      <div v-if="lastShot" class="layout-widget__last-shot" role="button" tabindex="0" @click="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)" @keydown.enter="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)" @keydown.space.prevent="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)">
         <span class="layout-widget__section-label">Last Shot</span>
         <div class="layout-widget__last-shot-card">
           <div class="layout-widget__last-shot-chart">
@@ -310,7 +310,7 @@ const lastShotInfo = computed(() => {
     <template v-else-if="type === 'waterLevel'">
       <div class="layout-widget__water">
         <div class="layout-widget__water-bar">
-          <div class="layout-widget__water-fill" :style="{ height: waterLevelPercent + '%' }" />
+          <div class="layout-widget__water-fill" :style="{ transform: 'scaleY(' + waterLevelPercent / 100 + ')' }" />
         </div>
         <span class="layout-widget__water-label">{{ waterLevelDisplay }}</span>
       </div>
@@ -344,7 +344,7 @@ const lastShotInfo = computed(() => {
         </div>
         <div class="layout-widget__water">
           <div class="layout-widget__water-bar">
-            <div class="layout-widget__water-fill" :style="{ height: waterLevelPercent + '%' }" />
+            <div class="layout-widget__water-fill" :style="{ transform: 'scaleY(' + waterLevelPercent / 100 + ')' }" />
           </div>
           <span class="layout-widget__water-label">{{ waterLevelDisplay }}</span>
         </div>
@@ -575,9 +575,11 @@ const lastShotInfo = computed(() => {
 
 .layout-widget__water-fill {
   width: 100%;
+  height: 100%;
   background: var(--color-flow);
   border-radius: 0 0 3px 3px;
-  transition: height 0.3s ease;
+  transform-origin: bottom;
+  transition: transform 0.3s ease;
 }
 
 .layout-widget__water-label {

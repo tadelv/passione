@@ -516,7 +516,7 @@ function reset() {
 
 .viz-multi__btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .viz-multi__btn--secondary {

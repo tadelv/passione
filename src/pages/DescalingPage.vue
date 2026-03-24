@@ -319,7 +319,7 @@ onUnmounted(stopTimer)
 .descaling-page__checkbox.checked {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .descaling-page__check-text {
@@ -361,7 +361,7 @@ onUnmounted(stopTimer)
   border-radius: 12px;
   border: none;
   background: var(--color-warning);
-  color: #000;
+  color: var(--color-text);
   font-size: var(--font-body);
   font-weight: 700;
   cursor: pointer;
@@ -459,7 +459,7 @@ onUnmounted(stopTimer)
 
 .descaling-page__stop-btn:active {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
 }
 
 /* Rinse phase */
@@ -477,7 +477,7 @@ onUnmounted(stopTimer)
   border-radius: 12px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: var(--font-body);
   font-weight: 700;
   cursor: pointer;

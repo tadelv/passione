@@ -25,6 +25,7 @@ function onNumeric(v) {
   <select
     v-if="grinder?.settingType === 'preset'"
     class="grinder-setting__select"
+    aria-label="Grinder setting"
     :value="modelValue"
     @change="onSelect"
   >
@@ -51,6 +52,7 @@ function onNumeric(v) {
     v-else
     class="grinder-setting__text"
     type="text"
+    aria-label="Grind setting"
     :value="modelValue"
     @input="onInput"
     placeholder="Grind setting"

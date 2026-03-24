@@ -131,7 +131,7 @@ const TYPES = [
 
 .ss-tab__seg--active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .ss-tab__toggle {
@@ -150,7 +150,7 @@ const TYPES = [
 
 .ss-tab__toggle--on {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-text);
   border-color: var(--color-success);
 }
 

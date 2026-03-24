@@ -461,7 +461,7 @@ function onDialogKeydown(e) {
 
 .brew-dialog__btn--start {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   flex: 1;
 }
 

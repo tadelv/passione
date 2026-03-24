@@ -824,7 +824,7 @@ onMounted(loadProfile)
         <span style="opacity: 0.3">|</span>
         <span>{{ frameCount }} frames</span>
         <span style="opacity: 0.3">|</span>
-        <span :style="{ color: profile.stop_at_type === 'volume' ? '#7aaaff' : '#a2693d' }">
+        <span :style="{ color: profile.stop_at_type === 'volume' ? 'var(--color-flow-goal)' : 'var(--color-weight)' }">
           {{ stopAtLabel }}
         </span>
         <span style="opacity: 0.3">|</span>
@@ -887,7 +887,7 @@ onMounted(loadProfile)
 .profile-editor__banner-title {
   font-size: var(--font-title, 16px);
   font-weight: bold;
-  color: #1a1a2e;
+  color: var(--color-background);
 }
 
 .profile-editor__banner-hint {
@@ -973,13 +973,13 @@ onMounted(loadProfile)
 .profile-editor__tool-btn--primary {
   background: var(--color-primary, #4e85f4);
   border-color: var(--color-primary, #4e85f4);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .profile-editor__tool-btn--danger {
   background: var(--color-accent, #e94560);
   border-color: var(--color-accent, #e94560);
-  color: #fff;
+  color: var(--color-text);
 }
 
 /* ======================================================================
@@ -1028,7 +1028,7 @@ onMounted(loadProfile)
   justify-content: center;
   border-radius: 50%;
   background: var(--color-primary, #4e85f4);
-  color: #fff;
+  color: var(--color-text);
   font-size: 11px;
   font-weight: bold;
   flex-shrink: 0;
@@ -1044,15 +1044,15 @@ onMounted(loadProfile)
   font-size: 11px;
   font-weight: bold;
   flex-shrink: 0;
-  color: #fff;
+  color: var(--color-text);
 }
 
 .profile-editor__frame-pump--pressure {
-  background: #18c37e;
+  background: var(--color-pressure);
 }
 
 .profile-editor__frame-pump--flow {
-  background: #4e85f4;
+  background: var(--color-flow);
 }
 
 .profile-editor__frame-name {
@@ -1267,7 +1267,7 @@ onMounted(loadProfile)
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
-  color: #fff;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1286,7 +1286,7 @@ onMounted(loadProfile)
 .profile-editor__bar-btn--save {
   background: #fff;
   color: var(--color-primary, #4e85f4);
-  border-color: #fff;
+  border-color: var(--color-text);
 }
 
 /* ======================================================================

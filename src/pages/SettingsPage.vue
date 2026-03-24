@@ -144,6 +144,7 @@ const tabComponents = [
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  min-height: 44px;
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -154,7 +155,7 @@ const tabComponents = [
 
 .settings-page__tab--active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .settings-page__content {

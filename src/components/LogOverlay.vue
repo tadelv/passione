@@ -180,7 +180,7 @@ onUnmounted(() => {
 
 .log-overlay__toggle:hover {
   background: var(--color-primary, #4e85f4);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .log-overlay__icon {
@@ -197,7 +197,7 @@ onUnmounted(() => {
   padding: 0 5px;
   border-radius: 9px;
   background: var(--color-error, #ff4444);
-  color: #fff;
+  color: var(--color-text);
   font-size: 11px;
   font-weight: 700;
   line-height: 18px;
@@ -254,7 +254,7 @@ onUnmounted(() => {
 .log-overlay__btn--close {
   background: var(--color-primary, #4e85f4);
   border-color: var(--color-primary, #4e85f4);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .log-overlay__btn--close:hover {

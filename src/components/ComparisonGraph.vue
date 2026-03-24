@@ -17,7 +17,7 @@ const props = defineProps({
 const SHOT_COLORS = [
   { pressure: '#18c37e', flow: '#4e85f4', weight: '#a2693d' },
   { pressure: '#ff8c42', flow: '#9c5bff', weight: '#e73249' },
-  { pressure: '#ffd700', flow: '#00bcd4', weight: '#ff6b9d' },
+  { pressure: '#ffd700', flow: '#40b0c0', weight: '#ff6b9d' },
 ]
 
 const chartEl = ref(null)

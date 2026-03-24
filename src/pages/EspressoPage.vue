@@ -312,7 +312,7 @@ async function stopAndGoBack() {
       </button>
 
       <!-- Timer -->
-      <div class="espresso-page__metric">
+      <div class="espresso-page__metric" aria-live="polite" aria-atomic="true">
         <span class="espresso-page__metric-value espresso-page__metric-value--timer">
           {{ displayShotTime }}
         </span>
@@ -363,7 +363,7 @@ async function stopAndGoBack() {
         <div class="espresso-page__progress">
           <div
             class="espresso-page__progress-fill"
-            :style="{ width: (weightProgress * 100) + '%' }"
+            :style="{ transform: 'scaleX(' + weightProgress + ')' }"
           />
         </div>
       </div>
@@ -523,6 +523,8 @@ async function stopAndGoBack() {
   height: 100%;
   background: var(--color-weight);
   border-radius: 4px;
-  transition: width 0.1s linear;
+  width: 100%;
+  transform-origin: left;
+  transition: transform 0.1s linear;
 }
 </style>

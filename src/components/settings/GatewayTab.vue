@@ -197,7 +197,7 @@ onMounted(loadSettings)
 
 .gateway-tab__seg--active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .gateway-tab__loading,
@@ -217,7 +217,7 @@ onMounted(loadSettings)
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;

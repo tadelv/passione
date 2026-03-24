@@ -969,7 +969,7 @@ onMounted(loadProfile)
         <span style="opacity: 0.3">|</span>
         <span>{{ enabledPhaseCount }} phases</span>
         <span style="opacity: 0.3">|</span>
-        <span :style="{ color: stopAtType === 'volume' ? '#7aaaff' : '#a2693d' }">
+        <span :style="{ color: stopAtType === 'volume' ? 'var(--color-flow-goal)' : 'var(--color-weight)' }">
           {{ stopAtType === 'volume' ? targetVolume + 'mL' : targetWeight + 'g' }}
         </span>
         <span style="opacity: 0.3">|</span>
@@ -1093,7 +1093,7 @@ onMounted(loadProfile)
 .recipe-editor__preset-pill--active {
   background: var(--color-primary, #4e85f4);
   border-color: var(--color-primary, #4e85f4);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .recipe-editor__globals {
@@ -1217,16 +1217,16 @@ onMounted(loadProfile)
   border-radius: 4px;
   font-size: 10px;
   font-weight: bold;
-  color: #fff;
+  color: var(--color-text);
   flex-shrink: 0;
 }
 
 .recipe-editor__phase-pump-badge--pressure {
-  background: #18c37e;
+  background: var(--color-pressure);
 }
 
 .recipe-editor__phase-pump-badge--flow {
-  background: #4e85f4;
+  background: var(--color-flow);
 }
 
 .recipe-editor__phase-duration {
@@ -1456,7 +1456,7 @@ onMounted(loadProfile)
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
-  color: #fff;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1475,7 +1475,7 @@ onMounted(loadProfile)
 .recipe-editor__bar-btn--save {
   background: #fff;
   color: var(--color-primary, #4e85f4);
-  border-color: #fff;
+  border-color: var(--color-text);
 }
 
 /* ======================================================================

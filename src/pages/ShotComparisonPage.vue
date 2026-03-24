@@ -177,7 +177,7 @@ onMounted(loadShots)
 .comparison-page__toggle.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .comparison-page__toggle:active {
@@ -239,7 +239,7 @@ onMounted(loadShots)
 
 .comparison-page__remove-btn:active {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-text);
 }
 
 .comparison-page__shot-meta {
