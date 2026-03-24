@@ -15,7 +15,9 @@ This file provides guidance to Claude Code when working with this repository.
 ## Tech Stack
 
 - **Framework**: Vue 3 + Vite (Composition API, `<script setup>`)
+- **Routing**: vue-router with hash history, lazy-loaded pages
 - **Charts**: uPlot (real-time time-series for shot graphs)
+- **i18n**: vue-i18n (`src/i18n/` with locale files)
 - **Build output**: Static HTML/CSS/JS (Vite build → `dist/`)
 - **Deployment**: Served by Streamline-Bridge as a WebUI skin at port 3000
 
@@ -64,25 +66,18 @@ The core real-time data structure (~10Hz via WebSocket):
 
 ## Architecture
 
-- **Pages** (`src/pages/`) handle routing and compose components into full views
-- **Components** (`src/components/`) are reusable UI: charts, inputs, dialogs, settings tabs
-- **Composables** (`src/composables/`) handle WebSocket/API connections, state management, and behavior
+- **API** (`src/api/`) — gateway config (`gateway.js`), REST client (`rest.js`), WebSocket client (`websocket.js`)
+- **Pages** (`src/pages/`) — route targets, compose components into full views (lazy-loaded except IdlePage)
+- **Components** (`src/components/`) — reusable UI: charts, inputs, dialogs, settings tabs
+- **Composables** (`src/composables/`) — WebSocket/API connections, state management, and behavior
+- **Router** (`src/router/`) — hash-based routing with 300ms navigation debounce
 - **Settings** persist via ReaPrime's key-value store (`/api/v1/store/decenza-js/{key}`), managed by the `useSettings` composable with auto-load and debounced auto-save
 
-## 1.0 Feature Scope
+## Feature Scope
 
-**Included in 1.0:**
-- Core brewing flow: idle dashboard, espresso (live shot graph), steam, hot water, flush
-- Profile management: browse, search, favorites, read-only detail, visual editor, recipe editor
-- Shot history: paginated list, search, detail view, comparison overlay, post-shot review
-- Visualizer: share code import, batch import from visualizer.coffee
-- Layout customization: configurable home screen zones
-- Bean info: workflow editor for coffee/grinder/dose with presets
-- Screensaver, descaling wizard, settings (10 tabs)
+Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor), shot history (list/detail/comparison/post-shot review), Visualizer import, layout customization, bean info, screensaver, descaling wizard, settings.
 
-**Deferred to 2.0:**
-- AI shot analysis and dialing assistant
-- Internationalization (i18n/translations)
+**Deferred:** AI shot analysis and dialing assistant.
 
 ## Design Principles
 
@@ -105,24 +100,25 @@ The core real-time data structure (~10Hz via WebSocket):
 
 ## Build & Development
 
-### Development
+### Commands
 
 ```bash
 npm install
-npm run dev          # Vite dev server with HMR
+npm run dev          # Vite dev server with HMR + API/WS proxy
+npm run build        # Static output in dist/
+npm run test:e2e     # Playwright end-to-end tests
+npm run preview      # Preview production build
 ```
 
-Configure gateway in `.env.local`:
+### Dev Proxy
+
+Vite proxies `/api` → `VITE_GATEWAY_URL` and `/ws` → `VITE_WS_URL` (default: `localhost:8080`). Configure in `.env.local`:
 ```
 VITE_GATEWAY_URL=http://192.168.1.100:8080
 VITE_WS_URL=ws://192.168.1.100:8080
 ```
 
-### Production Build
-
-```bash
-npm run build        # Static output in dist/
-```
+App code uses relative paths (`/api/v1/...`, `/ws/v1/...`) — the proxy handles routing to the gateway in dev mode.
 
 ### Skin Deployment
 
@@ -142,3 +138,20 @@ curl -X POST http://localhost:8080/api/v1/webui/skins/install/github-branch \
   -H "Content-Type: application/json" \
   -d '{"repo": "owner/passione", "branch": "main"}'
 ```
+
+## Design Context
+
+### Brand Personality
+**Warm, inviting, confident.** "What would a coffee machine UI look like if Apple designed it?" Dark mode only, Apple Home/Watch as the primary reference — clean dark surfaces, purposeful information density, confident typography.
+
+### Design Principles
+1. **Purposeful density** — Show the right information at the right time. Never show everything at once; never hide what matters now.
+2. **Confidence through clarity** — Large, readable values. Unambiguous states. Machine state drives the UI.
+3. **Warmth without whimsy** — Soft transitions, comfortable spacing, inviting colors. No bouncy animations, no gamification.
+4. **Touch-native feel** — Press-and-hold, drag-to-adjust, two-step confirms. Fingers first, mouse second, keyboard as power-user bonus.
+5. **Invisible complexity** — Progressive disclosure, not feature walls. Casual use is effortless, advanced use is discoverable.
+
+### Accessibility
+Target WCAG AAA where practical — enhanced contrast, comprehensive ARIA, keyboard navigation, 44–56px minimum touch targets.
+
+Full design system details in `.impeccable.md`.
