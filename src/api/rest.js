@@ -302,12 +302,8 @@ export function getDisplayState() {
   return sendCommand('/api/v1/display')
 }
 
-export function dimDisplay() {
-  return sendCommand('/api/v1/display/dim', 'POST')
-}
-
-export function restoreDisplay() {
-  return sendCommand('/api/v1/display/restore', 'POST')
+export function setDisplayBrightness(brightness) {
+  return sendCommand('/api/v1/display/brightness', 'PUT', { brightness })
 }
 
 export function requestWakeLock() {

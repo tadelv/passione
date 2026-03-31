@@ -2,7 +2,7 @@
  * Composable for display state via ws/v1/display.
  *
  * Provides reactive display state (brightness, wake-lock) and commands
- * to dim/restore the display and request/release wake-lock.
+ * to control brightness and request/release wake-lock.
  * Wake-lock is auto-released by the server on WebSocket disconnect.
  */
 
@@ -11,7 +11,9 @@ import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
 
 export function useDisplay() {
-  const brightness = ref('normal')       // 'normal' | 'dimmed'
+  const brightness = ref(100)                    // 0-100 actual applied brightness
+  const requestedBrightness = ref(100)           // 0-100 what was requested
+  const lowBatteryBrightnessActive = ref(false)
   const wakeLockEnabled = ref(false)
   const wakeLockOverride = ref(false)
   const platformSupported = ref(false)
@@ -21,17 +23,23 @@ export function useDisplay() {
 
   function onMessage(data) {
     if (data.brightness != null) brightness.value = data.brightness
+    if (data.requestedBrightness != null) requestedBrightness.value = data.requestedBrightness
+    if (data.lowBatteryBrightnessActive != null) lowBatteryBrightnessActive.value = data.lowBatteryBrightnessActive
     if (data.wakeLockEnabled != null) wakeLockEnabled.value = data.wakeLockEnabled
     if (data.wakeLockOverride != null) wakeLockOverride.value = data.wakeLockOverride
     if (data.platformSupported != null) platformSupported.value = data.platformSupported
   }
 
+  function setBrightness(level) {
+    ws?.send({ command: 'setBrightness', brightness: level })
+  }
+
   function dim() {
-    ws?.send({ command: 'dim' })
+    setBrightness(5)
   }
 
   function restore() {
-    ws?.send({ command: 'restore' })
+    setBrightness(100)
   }
 
   function requestWakeLock() {
@@ -68,10 +76,13 @@ export function useDisplay() {
 
   return {
     brightness,
+    requestedBrightness,
+    lowBatteryBrightnessActive,
     wakeLockEnabled,
     wakeLockOverride,
     platformSupported,
     isConnected,
+    setBrightness,
     dim,
     restore,
     requestWakeLock,
