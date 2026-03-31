@@ -1,4 +1,16 @@
 <script setup>
+import { ref, onMounted } from 'vue'
+import { getBuildInfo } from '../../api/rest.js'
+
+const buildInfo = ref(null)
+
+onMounted(async () => {
+  try {
+    buildInfo.value = await getBuildInfo()
+  } catch {
+    // Gateway may not support /info yet
+  }
+})
 </script>
 
 <template>
@@ -31,6 +43,17 @@
       <p class="about-tab__credits">
         Thanks to Michael, the Decent community, and the de1app developers for inspiration.
       </p>
+
+      <template v-if="buildInfo">
+        <div class="about-tab__divider" />
+        <div class="about-tab__section">
+          <p class="about-tab__label">Streamline-Bridge</p>
+          <p class="about-tab__text about-tab__text--small">
+            {{ buildInfo.fullVersion ?? buildInfo.version ?? 'unknown' }}
+            <span v-if="buildInfo.commitShort"> ({{ buildInfo.commitShort }})</span>
+          </p>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -86,6 +109,14 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+.about-tab__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .about-tab__credits {

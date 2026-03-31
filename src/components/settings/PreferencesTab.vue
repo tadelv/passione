@@ -118,6 +118,25 @@ function getDayTime(isoDay) {
   return s?.time ?? '07:00'
 }
 
+function getKeepAwakeFor(isoDay) {
+  const s = findScheduleForDay(isoDay)
+  return s?.keepAwakeFor ?? null
+}
+
+async function setKeepAwakeFor(isoDay, minutes) {
+  const existing = findScheduleForDay(isoDay)
+  if (existing) {
+    const keepAwakeFor = minutes > 0 ? minutes : null
+    try {
+      const updated = await updatePresenceSchedule(existing.id, {
+        ...existing,
+        keepAwakeFor,
+      })
+      schedules.value = { ...schedules.value, [existing.id]: updated ?? { ...existing, keepAwakeFor } }
+    } catch { /* ignore */ }
+  }
+}
+
 async function toggleAutoWake() {
   settings.autoWakeEnabled = !settings.autoWakeEnabled
   try {
@@ -185,7 +204,25 @@ onMounted(loadSchedules)
               :disabled="!isDayEnabled(day.iso)"
               @change="e => setDayTime(day.iso, e.target.value)"
             />
+            <select
+              class="preferences-tab__awake-select"
+              :value="getKeepAwakeFor(day.iso) ?? ''"
+              :disabled="!isDayEnabled(day.iso)"
+              @change="e => setKeepAwakeFor(day.iso, Number(e.target.value) || 0)"
+            >
+              <option value="">wake only</option>
+              <option :value="30">30 min</option>
+              <option :value="60">1 hr</option>
+              <option :value="90">1.5 hr</option>
+              <option :value="120">2 hr</option>
+              <option :value="180">3 hr</option>
+              <option :value="240">4 hr</option>
+              <option :value="360">6 hr</option>
+              <option :value="480">8 hr</option>
+              <option :value="720">12 hr</option>
+            </select>
           </div>
+          <span class="preferences-tab__hint">Keep-awake prevents auto-sleep after waking</span>
         </div>
       </div>
 
@@ -375,6 +412,23 @@ onMounted(loadSchedules)
 }
 
 .preferences-tab__time-input:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.preferences-tab__awake-select {
+  height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.preferences-tab__awake-select:disabled {
   opacity: 0.4;
   cursor: default;
 }

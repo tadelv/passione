@@ -123,6 +123,23 @@ onMounted(loadSettings)
           </div>
         </div>
       </div>
+
+      <!-- Column 4: Display -->
+      <div class="gateway-tab__column">
+        <h4 class="gateway-tab__section-title">Display</h4>
+
+        <div class="gateway-tab__field">
+          <label class="gateway-tab__label">Low battery brightness limit</label>
+          <button
+            class="gateway-tab__toggle"
+            :class="{ 'gateway-tab__toggle--on': reaSettings.lowBatteryBrightnessLimit }"
+            @click="saveField('lowBatteryBrightnessLimit', !reaSettings.lowBatteryBrightnessLimit)"
+          >
+            {{ reaSettings.lowBatteryBrightnessLimit ? 'ON' : 'OFF' }}
+          </button>
+          <span class="gateway-tab__hint">Cap brightness at 20% when battery drops below 30%</span>
+        </div>
+      </div>
     </div>
 
     <span v-if="saving" class="gateway-tab__saving">Saving...</span>
@@ -221,6 +238,32 @@ onMounted(loadSettings)
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.gateway-tab__toggle {
+  width: 80px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gateway-tab__toggle--on {
+  background: var(--color-success);
+  color: var(--color-text);
+  border-color: var(--color-success);
+}
+
+.gateway-tab__hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
 }
 
 .gateway-tab__saving {
