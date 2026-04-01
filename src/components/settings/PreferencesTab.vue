@@ -1,5 +1,5 @@
 <script setup>
-import { ref, inject, computed, onMounted } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
 import { updateWaterLevelThreshold } from '../../api/rest.js'
 import {
@@ -8,12 +8,14 @@ import {
   updatePresenceSettings,
   createPresenceSchedule,
   updatePresenceSchedule,
+  deletePresenceSchedule,
 } from '../../api/rest.js'
 
 const WATER_ML_PER_MM = 12.45
 
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
+const toast = inject('toast', null)
 
 // ---- Water level ----
 
@@ -28,226 +30,323 @@ const refillThresholdDisplay = computed({
   },
 })
 
-// ---- Auto-Wake Schedule (server-backed) ----
+// ---- Power & Sleep (server-backed) ----
 
 const DAYS = [
-  { key: 'mon', label: 'Mon', iso: 1 },
-  { key: 'tue', label: 'Tue', iso: 2 },
-  { key: 'wed', label: 'Wed', iso: 3 },
-  { key: 'thu', label: 'Thu', iso: 4 },
-  { key: 'fri', label: 'Fri', iso: 5 },
-  { key: 'sat', label: 'Sat', iso: 6 },
-  { key: 'sun', label: 'Sun', iso: 7 },
+  { key: 'M', iso: 1 },
+  { key: 'T', iso: 2 },
+  { key: 'W', iso: 3 },
+  { key: 'T', iso: 4 },
+  { key: 'F', iso: 5 },
+  { key: 'S', iso: 6 },
+  { key: 'S', iso: 7 },
 ]
 
-const schedules = ref({})
-const schedulesLoading = ref(true)
+const KEEP_AWAKE_OPTIONS = [
+  { value: null, label: 'wake only' },
+  { value: 30, label: '30 min' },
+  { value: 60, label: '1 hr' },
+  { value: 120, label: '2 hr' },
+  { value: 240, label: '4 hr' },
+]
 
-function findScheduleForDay(isoDay) {
-  return Object.values(schedules.value).find(
-    s => Array.isArray(s.daysOfWeek) && s.daysOfWeek.includes(isoDay)
-  )
-}
+const schedules = ref([])
+const loading = ref(true)
+const sleepTimeoutMinutes = ref(30)
+const confirmDeleteId = ref(null)
+let confirmDeleteTimer = null
 
-async function loadSchedules() {
-  schedulesLoading.value = true
+async function loadAll() {
+  loading.value = true
   try {
     const [scheduleData, presenceData] = await Promise.all([
       getPresenceSchedules(),
       getPresenceSettings(),
     ])
-    const byId = {}
     const list = Array.isArray(scheduleData) ? scheduleData : (scheduleData?.schedules ?? [])
-    for (const s of list) {
-      if (s.id != null) byId[s.id] = s
-    }
-    schedules.value = byId
-    if (presenceData?.userPresenceEnabled != null) {
-      settings.autoWakeEnabled = presenceData.userPresenceEnabled
+    schedules.value = list.filter(s => s.id != null)
+    if (presenceData?.sleepTimeoutMinutes != null) {
+      sleepTimeoutMinutes.value = presenceData.sleepTimeoutMinutes
     }
   } catch {
-    // Server may not support schedules API yet
+    // Server may not support presence API
   }
-  schedulesLoading.value = false
+  loading.value = false
 }
 
-async function toggleDay(isoDay) {
-  const existing = findScheduleForDay(isoDay)
-  if (existing) {
-    try {
-      const updated = await updatePresenceSchedule(existing.id, {
-        ...existing,
-        enabled: !existing.enabled,
-      })
-      schedules.value = { ...schedules.value, [existing.id]: updated ?? { ...existing, enabled: !existing.enabled } }
-    } catch { /* ignore */ }
-  } else {
-    try {
-      const created = await createPresenceSchedule({
-        daysOfWeek: [isoDay],
-        time: '07:00',
-        enabled: true,
-      })
-      if (created?.id != null) {
-        schedules.value = { ...schedules.value, [created.id]: created }
-      }
-    } catch { /* ignore */ }
-  }
-}
+// ---- Auto-sleep ----
 
-async function setDayTime(isoDay, time) {
-  const existing = findScheduleForDay(isoDay)
-  if (existing) {
-    try {
-      const updated = await updatePresenceSchedule(existing.id, {
-        ...existing,
-        time,
-      })
-      schedules.value = { ...schedules.value, [existing.id]: updated ?? { ...existing, time } }
-    } catch { /* ignore */ }
-  }
-}
-
-function isDayEnabled(isoDay) {
-  const s = findScheduleForDay(isoDay)
-  return s?.enabled ?? false
-}
-
-function getDayTime(isoDay) {
-  const s = findScheduleForDay(isoDay)
-  return s?.time ?? '07:00'
-}
-
-function getKeepAwakeFor(isoDay) {
-  const s = findScheduleForDay(isoDay)
-  return s?.keepAwakeFor ?? null
-}
-
-async function setKeepAwakeFor(isoDay, minutes) {
-  const existing = findScheduleForDay(isoDay)
-  if (existing) {
-    const keepAwakeFor = minutes > 0 ? minutes : null
-    try {
-      const updated = await updatePresenceSchedule(existing.id, {
-        ...existing,
-        keepAwakeFor,
-      })
-      schedules.value = { ...schedules.value, [existing.id]: updated ?? { ...existing, keepAwakeFor } }
-    } catch { /* ignore */ }
-  }
-}
-
-async function toggleAutoWake() {
-  settings.autoWakeEnabled = !settings.autoWakeEnabled
+async function setSleepTimeout(minutes) {
+  const prev = sleepTimeoutMinutes.value
+  sleepTimeoutMinutes.value = minutes
   try {
-    await updatePresenceSettings({ userPresenceEnabled: settings.autoWakeEnabled })
-  } catch { /* ignore */ }
+    await updatePresenceSettings({ sleepTimeoutMinutes: minutes })
+    // Also update the setting that useAutoSleep watches, so it stays in sync
+    if (settings) settings.autoSleepMinutes = minutes
+  } catch {
+    sleepTimeoutMinutes.value = prev
+    toast?.error('Failed to update auto-sleep')
+  }
 }
 
-onMounted(loadSchedules)
+// ---- Schedule CRUD ----
+
+function findIndex(id) {
+  return schedules.value.findIndex(s => s.id === id)
+}
+
+async function addSchedule() {
+  try {
+    const created = await createPresenceSchedule({
+      time: '07:00',
+      daysOfWeek: [],
+      enabled: true,
+    })
+    if (created?.id) {
+      schedules.value = [...schedules.value, created]
+    }
+  } catch {
+    toast?.error('Failed to create schedule')
+  }
+}
+
+async function updateScheduleField(id, fields) {
+  const idx = findIndex(id)
+  if (idx < 0) return
+  const prev = schedules.value[idx]
+  // Optimistic update
+  const updated = { ...prev, ...fields }
+  const next = [...schedules.value]
+  next[idx] = updated
+  schedules.value = next
+  try {
+    const result = await updatePresenceSchedule(id, fields)
+    if (result) {
+      const next2 = [...schedules.value]
+      next2[findIndex(id)] = result
+      schedules.value = next2
+    }
+  } catch {
+    // Revert
+    const revert = [...schedules.value]
+    const ri = findIndex(id)
+    if (ri >= 0) revert[ri] = prev
+    schedules.value = revert
+    toast?.error('Failed to update schedule')
+  }
+}
+
+async function removeSchedule(id) {
+  const idx = findIndex(id)
+  if (idx < 0) return
+  const prev = schedules.value[idx]
+  schedules.value = schedules.value.filter(s => s.id !== id)
+  confirmDeleteId.value = null
+  try {
+    await deletePresenceSchedule(id)
+  } catch {
+    // Revert
+    schedules.value = [...schedules.value, prev]
+    toast?.error('Failed to delete schedule')
+  }
+}
+
+// ---- Interactions ----
+
+function toggleDay(scheduleId, isoDay) {
+  const schedule = schedules.value.find(s => s.id === scheduleId)
+  if (!schedule) return
+  const days = Array.isArray(schedule.daysOfWeek) ? [...schedule.daysOfWeek] : []
+  const idx = days.indexOf(isoDay)
+  if (idx >= 0) {
+    // Don't remove last day — use delete instead
+    if (days.length <= 1) return
+    days.splice(idx, 1)
+  } else {
+    days.push(isoDay)
+    days.sort()
+  }
+  updateScheduleField(scheduleId, { daysOfWeek: days })
+}
+
+function isDayActive(schedule, isoDay) {
+  if (!Array.isArray(schedule.daysOfWeek) || schedule.daysOfWeek.length === 0) return true // empty = every day
+  return schedule.daysOfWeek.includes(isoDay)
+}
+
+function isLastActiveDay(schedule, isoDay) {
+  if (!Array.isArray(schedule.daysOfWeek) || schedule.daysOfWeek.length === 0) return false
+  return schedule.daysOfWeek.length === 1 && schedule.daysOfWeek[0] === isoDay
+}
+
+function setTime(scheduleId, time) {
+  updateScheduleField(scheduleId, { time })
+}
+
+function setKeepAwakeFor(scheduleId, value) {
+  const keepAwakeFor = value > 0 ? value : null
+  updateScheduleField(scheduleId, { keepAwakeFor })
+}
+
+function toggleEnabled(scheduleId) {
+  const schedule = schedules.value.find(s => s.id === scheduleId)
+  if (!schedule) return
+  updateScheduleField(scheduleId, { enabled: !schedule.enabled })
+}
+
+// ---- Long-press delete ----
+
+let longPressTimer = null
+
+function onCardPointerDown(id) {
+  longPressTimer = setTimeout(() => {
+    confirmDeleteId.value = id
+    clearTimeout(confirmDeleteTimer)
+    confirmDeleteTimer = setTimeout(() => {
+      confirmDeleteId.value = null
+    }, 4000)
+  }, 500)
+}
+
+function onCardPointerUp() {
+  clearTimeout(longPressTimer)
+}
+
+onMounted(loadAll)
 </script>
 
 <template>
-  <div class="preferences-tab" v-if="settings">
-    <div class="preferences-tab__grid">
+  <div class="pref" v-if="settings">
+    <div class="pref__grid">
       <!-- Column 1: Power & Sleep -->
-      <div class="preferences-tab__column preferences-tab__column--wide">
-        <h4 class="preferences-tab__section-title">Power &amp; Sleep</h4>
+      <div class="pref__column pref__column--wide">
+        <h4 class="pref__section-title">Power &amp; Sleep</h4>
 
-        <div class="preferences-tab__field">
-          <label class="preferences-tab__label">Auto-sleep timeout</label>
+        <!-- Auto-sleep row -->
+        <div class="pref__sleep-row">
+          <div>
+            <div class="pref__label">Auto-sleep</div>
+            <div class="pref__hint">Sleep after inactivity</div>
+          </div>
           <select
-            class="preferences-tab__select"
-            :value="settings.autoSleepMinutes"
-            @change="settings.autoSleepMinutes = Number($event.target.value)"
+            class="pref__select"
+            :value="sleepTimeoutMinutes"
+            @change="setSleepTimeout(Number($event.target.value))"
           >
             <option :value="0">Disabled</option>
-            <option :value="15">15 minutes</option>
-            <option :value="30">30 minutes</option>
-            <option :value="45">45 minutes</option>
-            <option :value="60">60 minutes</option>
+            <option :value="15">15 min</option>
+            <option :value="30">30 min</option>
+            <option :value="45">45 min</option>
+            <option :value="60">60 min</option>
           </select>
         </div>
 
-        <div class="preferences-tab__field">
-          <label class="preferences-tab__label">Enable auto-wake</label>
-          <button
-            class="preferences-tab__toggle"
-            :class="{ 'preferences-tab__toggle--on': settings.autoWakeEnabled }"
-            @click="toggleAutoWake"
-          >
-            {{ settings.autoWakeEnabled ? 'ON' : 'OFF' }}
-          </button>
+        <!-- Wake Schedules -->
+        <div class="pref__schedules-header">
+          <div class="pref__label">Wake Schedules</div>
         </div>
 
-        <div v-if="schedulesLoading && settings.autoWakeEnabled" class="preferences-tab__hint">
-          Loading schedules...
-        </div>
+        <div v-if="loading" class="pref__hint">Loading schedules...</div>
 
-        <div class="preferences-tab__schedule" v-if="settings.autoWakeEnabled && !schedulesLoading">
+        <template v-if="!loading">
           <div
-            v-for="day in DAYS"
-            :key="day.key"
-            class="preferences-tab__day-row"
+            v-for="schedule in schedules"
+            :key="schedule.id"
+            class="pref__card"
+            :class="{ 'pref__card--disabled': !schedule.enabled }"
+            @pointerdown.prevent="onCardPointerDown(schedule.id)"
+            @pointerup="onCardPointerUp()"
+            @pointerleave="onCardPointerUp()"
           >
-            <button
-              class="preferences-tab__day-toggle"
-              :class="{ 'preferences-tab__day-toggle--on': isDayEnabled(day.iso) }"
-              @click="toggleDay(day.iso)"
-            >
-              {{ day.label }}
-            </button>
-            <input
-              type="time"
-              class="preferences-tab__time-input"
-              :value="getDayTime(day.iso)"
-              :disabled="!isDayEnabled(day.iso)"
-              @change="e => setDayTime(day.iso, e.target.value)"
-            />
-            <select
-              class="preferences-tab__awake-select"
-              :value="getKeepAwakeFor(day.iso) ?? ''"
-              :disabled="!isDayEnabled(day.iso)"
-              @change="e => setKeepAwakeFor(day.iso, Number(e.target.value) || 0)"
-            >
-              <option value="">wake only</option>
-              <option :value="30">30 min</option>
-              <option :value="60">1 hr</option>
-              <option :value="90">1.5 hr</option>
-              <option :value="120">2 hr</option>
-              <option :value="180">3 hr</option>
-              <option :value="240">4 hr</option>
-              <option :value="360">6 hr</option>
-              <option :value="480">8 hr</option>
-              <option :value="720">12 hr</option>
-            </select>
+            <!-- Delete confirm overlay -->
+            <div v-if="confirmDeleteId === schedule.id" class="pref__delete-confirm">
+              <button class="pref__delete-btn" @click="removeSchedule(schedule.id)">
+                Delete this schedule
+              </button>
+              <button class="pref__delete-cancel" @click="confirmDeleteId = null">
+                Cancel
+              </button>
+            </div>
+
+            <!-- Card content -->
+            <template v-else>
+              <div class="pref__card-top">
+                <div class="pref__card-left">
+                  <label class="pref__time-wrapper">
+                    <span class="pref__time">{{ schedule.time || '07:00' }}</span>
+                    <input
+                      type="time"
+                      class="pref__time-input"
+                      :value="schedule.time || '07:00'"
+                      @change="e => setTime(schedule.id, e.target.value)"
+                    />
+                  </label>
+                  <select
+                    class="pref__awake-badge"
+                    :value="schedule.keepAwakeFor ?? ''"
+                    @change="e => setKeepAwakeFor(schedule.id, Number(e.target.value) || 0)"
+                  >
+                    <option v-for="opt in KEEP_AWAKE_OPTIONS" :key="String(opt.value)" :value="opt.value ?? ''">
+                      {{ opt.label }}
+                    </option>
+                  </select>
+                </div>
+                <button
+                  class="pref__toggle-switch"
+                  :class="{ 'pref__toggle-switch--on': schedule.enabled }"
+                  @click.stop="toggleEnabled(schedule.id)"
+                  :aria-label="schedule.enabled ? 'Disable schedule' : 'Enable schedule'"
+                >
+                  <span class="pref__toggle-knob" />
+                </button>
+              </div>
+
+              <div class="pref__day-pills">
+                <button
+                  v-for="day in DAYS"
+                  :key="day.iso"
+                  class="pref__pill"
+                  :class="{
+                    'pref__pill--active': isDayActive(schedule, day.iso),
+                    'pref__pill--last': isLastActiveDay(schedule, day.iso),
+                  }"
+                  @click.stop="toggleDay(schedule.id, day.iso)"
+                >
+                  {{ day.key }}
+                </button>
+              </div>
+            </template>
           </div>
-          <span class="preferences-tab__hint">Keep-awake prevents auto-sleep after waking</span>
-        </div>
+
+          <!-- Add schedule -->
+          <button class="pref__add-btn" @click="addSchedule">
+            <span class="pref__add-icon">+</span> Add schedule
+          </button>
+        </template>
       </div>
 
-      <!-- Column 2: Water -->
-      <div class="preferences-tab__column">
-        <h4 class="preferences-tab__section-title">Water</h4>
+      <!-- Column 2: Water (unchanged) -->
+      <div class="pref__column">
+        <h4 class="pref__section-title">Water</h4>
 
-        <div class="preferences-tab__field">
-          <label class="preferences-tab__label">Water level display</label>
-          <div class="preferences-tab__toggle-group">
+        <div class="pref__field">
+          <label class="pref__label">Water level display</label>
+          <div class="pref__seg-group">
             <button
-              class="preferences-tab__seg"
-              :class="{ 'preferences-tab__seg--active': settings.waterLevelDisplayUnit === 'mm' }"
+              class="pref__seg"
+              :class="{ 'pref__seg--active': settings.waterLevelDisplayUnit === 'mm' }"
               @click="settings.waterLevelDisplayUnit = 'mm'"
             >mm</button>
             <button
-              class="preferences-tab__seg"
-              :class="{ 'preferences-tab__seg--active': settings.waterLevelDisplayUnit === 'ml' }"
+              class="pref__seg"
+              :class="{ 'pref__seg--active': settings.waterLevelDisplayUnit === 'ml' }"
               @click="settings.waterLevelDisplayUnit = 'ml'"
             >mL</button>
           </div>
         </div>
 
-        <div class="preferences-tab__field">
-          <label class="preferences-tab__label">Refill threshold</label>
+        <div class="pref__field">
+          <label class="pref__label">Refill threshold</label>
           <ValueInput
             :model-value="refillThresholdDisplay"
             @update:model-value="v => refillThresholdDisplay = v"
@@ -256,38 +355,38 @@ onMounted(loadSchedules)
             :step="isML ? 50 : 5"
             :suffix="isML ? ' ml' : ' mm'"
           />
-          <span class="preferences-tab__hint">Warn when water drops below this level</span>
+          <span class="pref__hint">Warn when water drops below this level</span>
         </div>
       </div>
     </div>
   </div>
-  <div v-else class="preferences-tab__empty">Settings not available.</div>
+  <div v-else class="pref__empty">Settings not available.</div>
 </template>
 
 <style scoped>
-.preferences-tab {
+.pref {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.preferences-tab__grid {
+.pref__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 24px;
 }
 
-.preferences-tab__column {
+.pref__column {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.preferences-tab__column--wide {
+.pref__column--wide {
   min-width: 280px;
 }
 
-.preferences-tab__section-title {
+.pref__section-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
@@ -295,65 +394,262 @@ onMounted(loadSchedules)
   border-bottom: 1px solid var(--color-border);
 }
 
-.preferences-tab__field {
+.pref__field {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.preferences-tab__label {
+.pref__label {
   font-size: 14px;
   color: var(--color-text-secondary);
 }
 
-.preferences-tab__hint {
+.pref__hint {
   font-size: 12px;
   color: var(--color-text-secondary);
   opacity: 0.7;
 }
 
-.preferences-tab__select {
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--color-border);
+/* ---- Auto-sleep row ---- */
+
+.pref__sleep-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
   background: var(--color-surface);
+  border-radius: 10px;
+}
+
+.pref__select {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
   color: var(--color-text);
   font-size: 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.preferences-tab__toggle {
-  width: 80px;
-  height: 40px;
-  border-radius: 20px;
+/* ---- Schedules header ---- */
+
+.pref__schedules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ---- Schedule card ---- */
+
+.pref__card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.pref__card--disabled {
+  opacity: 0.5;
+}
+
+.pref__card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.pref__card-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---- Time display/input ---- */
+
+.pref__time-wrapper {
+  position: relative;
+  cursor: pointer;
+}
+
+.pref__time {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+}
+
+.pref__time-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* ---- Keep-awake badge ---- */
+
+.pref__awake-badge {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- Toggle switch ---- */
+
+.pref__toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: none;
+  background: var(--color-border);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pref__toggle-switch--on {
+  background: var(--color-success);
+}
+
+.pref__toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.pref__toggle-switch--on .pref__toggle-knob {
+  transform: translateX(20px);
+}
+
+/* ---- Day pills ---- */
+
+.pref__day-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.pref__pill {
+  width: 32px;
+  height: 28px;
+  border-radius: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background-color 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.preferences-tab__toggle--on {
-  background: var(--color-success);
+.pref__pill--active {
+  background: var(--color-primary);
   color: var(--color-text);
-  border-color: var(--color-success);
+  border-color: var(--color-primary);
 }
 
-.preferences-tab__toggle-group {
+.pref__pill--last {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* ---- Delete confirm overlay ---- */
+
+.pref__delete-confirm {
   display: flex;
-  gap: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 72px;
+}
+
+.pref__delete-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-danger, #e94560);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pref__delete-cancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- Add button ---- */
+
+.pref__add-btn {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pref__add-btn:active {
+  background: var(--color-surface);
+}
+
+.pref__add-icon {
+  font-size: 18px;
+}
+
+/* ---- Segment group (water) ---- */
+
+.pref__seg-group {
+  display: flex;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--color-border);
   width: fit-content;
 }
 
-.preferences-tab__seg {
+.pref__seg {
   padding: 8px 20px;
   border: none;
   background: var(--color-surface);
@@ -364,76 +660,12 @@ onMounted(loadSchedules)
   -webkit-tap-highlight-color: transparent;
 }
 
-.preferences-tab__seg--active {
+.pref__seg--active {
   background: var(--color-primary);
   color: var(--color-text);
 }
 
-.preferences-tab__schedule {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.preferences-tab__day-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.preferences-tab__day-toggle {
-  width: 48px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.preferences-tab__day-toggle--on {
-  background: var(--color-primary);
-  color: var(--color-text);
-  border-color: var(--color-primary);
-}
-
-.preferences-tab__time-input {
-  height: 36px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-background);
-  color: var(--color-text);
-  font-size: 14px;
-}
-
-.preferences-tab__time-input:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.preferences-tab__awake-select {
-  height: 36px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-background);
-  color: var(--color-text);
-  font-size: 13px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.preferences-tab__awake-select:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.preferences-tab__empty {
+.pref__empty {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
