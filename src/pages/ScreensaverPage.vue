@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
-import { setMachineState } from '../api/rest.js'
+import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
+import HistoryShotGraph from '../components/HistoryShotGraph.vue'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
@@ -53,10 +55,42 @@ function wake() {
   setMachineState('idle').catch(() => {})
 }
 
+// Last Shot data
+const lastShotData = ref(null)
+const lastShotInfo = computed(() => {
+  const raw = lastShotData.value
+  if (!raw) return null
+  const s = normalizeShot(raw)
+  const w = s.workflow ?? {}
+
+  const profile = w.profile?.title ?? w.name ?? null
+  const coffee = [s.coffeeRoaster, s.coffeeName].filter(Boolean).join(' — ') || null
+  const doseIn = s.doseIn ? Number(s.doseIn).toFixed(1) : null
+  const doseOut = s.doseOut ? Number(s.doseOut).toFixed(1) : null
+  const ratio = (s.doseIn && s.doseOut) ? (s.doseOut / s.doseIn).toFixed(1) : null
+  const duration = s.duration ? Number(s.duration).toFixed(1) : null
+
+  return { profile, coffee, doseIn, doseOut, ratio, duration }
+})
+
+async function fetchLastShot() {
+  try {
+    const summary = await getLatestShot()
+    if (summary?.id) {
+      lastShotData.value = await getShot(summary.id)
+    }
+  } catch {
+    lastShotData.value = null
+  }
+}
+
 onMounted(() => {
   updateClock()
   clockTimer = setInterval(updateClock, 1000)
   display?.dim()
+  if (ssType.value === 'lastShot') {
+    fetchLastShot()
+  }
 })
 
 onUnmounted(() => {
@@ -92,6 +126,26 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Last Shot Recap Mode -->
+    <div v-else-if="ssType === 'lastShot'" class="screensaver__last-shot">
+      <template v-if="lastShotInfo">
+        <div class="screensaver__shot-graph">
+          <HistoryShotGraph :shot="lastShotData" />
+        </div>
+        <div class="screensaver__shot-stats">
+          <span v-if="lastShotInfo.duration" class="screensaver__shot-time">{{ lastShotInfo.duration }}s</span>
+          <span v-if="lastShotInfo.doseIn && lastShotInfo.doseOut" class="screensaver__shot-dose">
+            {{ lastShotInfo.doseIn }}g &rarr; {{ lastShotInfo.doseOut }}g
+          </span>
+          <span v-if="lastShotInfo.ratio" class="screensaver__shot-ratio">1:{{ lastShotInfo.ratio }}</span>
+        </div>
+        <div v-if="lastShotInfo.profile" class="screensaver__shot-profile">{{ lastShotInfo.profile }}</div>
+        <div v-if="lastShotInfo.coffee" class="screensaver__shot-coffee">{{ lastShotInfo.coffee }}</div>
+      </template>
+      <div v-else class="screensaver__shot-empty">No shots yet</div>
+      <span class="screensaver__shot-clock">{{ hours }}:{{ minutes }}</span>
     </div>
 
     <!-- Ambient Glow Mode -->
@@ -213,6 +267,76 @@ onUnmounted(() => {
   100% {
     transform: rotateX(0);
   }
+}
+
+/* Last Shot Recap */
+.screensaver__last-shot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  opacity: 0;
+  animation: fadeIn 2s ease forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.screensaver__shot-graph {
+  width: min(80vw, 500px);
+  height: 160px;
+  opacity: 0.6;
+}
+
+.screensaver__shot-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+
+.screensaver__shot-time {
+  font-size: 36px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.screensaver__shot-dose {
+  font-size: 18px;
+  color: #a2693d;
+  opacity: 0.7;
+}
+
+.screensaver__shot-ratio {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.screensaver__shot-profile {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.25);
+  letter-spacing: 1px;
+}
+
+.screensaver__shot-coffee {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.5px;
+}
+
+.screensaver__shot-empty {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.screensaver__shot-clock {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.15);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Ambient Glow */
