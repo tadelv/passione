@@ -49,7 +49,7 @@ async function saveNewBean() {
       name: newBean.name.trim(),
       country: newBean.country.trim() || undefined,
       processing: newBean.processing.trim() || undefined,
-      variety: newBean.variety.trim() || undefined,
+      variety: newBean.variety.trim() ? newBean.variety.split(',').map(v => v.trim()).filter(Boolean) : undefined,
     }
     const altMin = newBean.altitudeMin ? Number(newBean.altitudeMin) : null
     const altMax = newBean.altitudeMax ? Number(newBean.altitudeMax) : null
@@ -58,9 +58,9 @@ async function saveNewBean() {
     }
     await beansApi.create(payload)
     creatingBean.value = false
-    toast?.({ message: 'Bean created', type: 'success' })
+    toast?.success('Bean created')
   } catch (e) {
-    toast?.({ message: `Failed to create bean: ${e.message}`, type: 'error' })
+    toast?.error(`Failed to create bean: ${e.message}`)
   }
 }
 
@@ -77,7 +77,7 @@ async function toggleBean(bean) {
     name: bean.name || '',
     country: bean.country || '',
     processing: bean.processing || '',
-    variety: bean.variety || '',
+    variety: Array.isArray(bean.variety) ? bean.variety.join(', ') : (bean.variety || ''),
     altitudeMin: bean.altitude?.[0] ?? '',
     altitudeMax: bean.altitude?.[1] ?? '',
   })
@@ -99,7 +99,7 @@ async function saveEditBean(bean) {
       name: editBean.name.trim(),
       country: editBean.country.trim() || undefined,
       processing: editBean.processing.trim() || undefined,
-      variety: editBean.variety.trim() || undefined,
+      variety: editBean.variety.trim() ? editBean.variety.split(',').map(v => v.trim()).filter(Boolean) : undefined,
     }
     const altMin = editBean.altitudeMin ? Number(editBean.altitudeMin) : null
     const altMax = editBean.altitudeMax ? Number(editBean.altitudeMax) : null
@@ -107,9 +107,9 @@ async function saveEditBean(bean) {
       payload.altitude = [altMin ?? altMax, altMax ?? altMin]
     }
     await beansApi.update(bean.id, payload)
-    toast?.({ message: 'Bean updated', type: 'success' })
+    toast?.success('Bean updated')
   } catch (e) {
-    toast?.({ message: `Failed to update bean: ${e.message}`, type: 'error' })
+    toast?.error(`Failed to update bean: ${e.message}`)
   }
 }
 
@@ -119,9 +119,9 @@ async function deleteBean(bean) {
     await beansApi.remove(bean.id)
     if (expandedBeanId.value === bean.id) expandedBeanId.value = null
     delete batchesByBean[bean.id]
-    toast?.({ message: 'Bean deleted', type: 'success' })
+    toast?.success('Bean deleted')
   } catch (e) {
-    toast?.({ message: `Failed to delete bean: ${e.message}`, type: 'error' })
+    toast?.error(`Failed to delete bean: ${e.message}`)
   }
 }
 
@@ -131,6 +131,16 @@ function daysSinceRoast(roastDate) {
   if (!roastDate) return null
   const diff = Date.now() - new Date(roastDate).getTime()
   return Math.floor(diff / 86400000)
+}
+
+function formatRoastDate(roastDate) {
+  if (!roastDate) return 'No date'
+  const days = daysSinceRoast(roastDate)
+  if (days != null && days >= 0 && days < 30) {
+    return days === 0 ? 'Today' : days === 1 ? '1 day ago' : `${days} days ago`
+  }
+  const d = new Date(roastDate)
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })
 }
 
 function startAddBatch(beanId) {
@@ -155,9 +165,9 @@ async function saveNewBatch(beanId) {
     if (!batchesByBean[beanId]) batchesByBean[beanId] = []
     batchesByBean[beanId].push(created)
     addingBatchForBean.value = null
-    toast?.({ message: 'Batch added', type: 'success' })
+    toast?.success('Batch added')
   } catch (e) {
-    toast?.({ message: `Failed to create batch: ${e.message}`, type: 'error' })
+    toast?.error(`Failed to create batch: ${e.message}`)
   }
 }
 
@@ -192,9 +202,9 @@ async function saveEditBatchItem(beanId, batch) {
       if (idx !== -1) list[idx] = updated ?? { ...batch, ...payload }
     }
     editingBatchId.value = null
-    toast?.({ message: 'Batch updated', type: 'success' })
+    toast?.success('Batch updated')
   } catch (e) {
-    toast?.({ message: `Failed to update batch: ${e.message}`, type: 'error' })
+    toast?.error(`Failed to update batch: ${e.message}`)
   }
 }
 
@@ -206,9 +216,9 @@ async function deleteBatch(beanId, batch) {
     if (list) {
       batchesByBean[beanId] = list.filter(b => b.id !== batch.id)
     }
-    toast?.({ message: 'Batch deleted', type: 'success' })
+    toast?.success('Batch deleted')
   } catch (e) {
-    toast?.({ message: `Failed to delete batch: ${e.message}`, type: 'error' })
+    toast?.error(`Failed to delete batch: ${e.message}`)
   }
 }
 </script>
@@ -404,10 +414,7 @@ async function deleteBatch(beanId, batch) {
               <template v-else>
                 <div class="beans-tab__batch-row" @click="startEditBatch(batch)">
                   <div class="beans-tab__batch-info">
-                    <span class="beans-tab__batch-date">{{ batch.roastDate || 'No date' }}</span>
-                    <span v-if="daysSinceRoast(batch.roastDate) != null" class="beans-tab__batch-age">
-                      {{ daysSinceRoast(batch.roastDate) }}d ago
-                    </span>
+                    <span class="beans-tab__batch-date">{{ formatRoastDate(batch.roastDate) }}</span>
                     <span v-if="batch.weight" class="beans-tab__batch-weight">{{ batch.weight }}g</span>
                     <span v-if="batch.frozen" class="beans-tab__batch-frozen">Frozen</span>
                   </div>

@@ -67,9 +67,9 @@ async function submitCreate() {
   try {
     await grindersApi?.create(newGrinder.value)
     creating.value = false
-    toast?.show?.('Grinder created')
+    toast?.success('Grinder created')
   } catch {
-    toast?.show?.('Failed to create grinder', 'error')
+    toast?.error('Failed to create grinder')
   }
 }
 
@@ -94,9 +94,9 @@ function removeEditPresetValue(grinder, index) {
 async function saveGrinder(grinder) {
   try {
     await grindersApi?.update(grinder.id, grinder)
-    toast?.show?.('Grinder saved')
+    toast?.success('Grinder saved')
   } catch {
-    toast?.show?.('Failed to save grinder', 'error')
+    toast?.error('Failed to save grinder')
   }
 }
 
@@ -107,9 +107,9 @@ async function deleteGrinder(grinder) {
   try {
     await grindersApi?.remove(grinder.id)
     if (expandedId.value === grinder.id) expandedId.value = null
-    toast?.show?.('Grinder deleted')
+    toast?.success('Grinder deleted')
   } catch {
-    toast?.show?.('Failed to delete grinder', 'error')
+    toast?.error('Failed to delete grinder')
   }
 }
 
@@ -118,9 +118,9 @@ async function deleteGrinder(grinder) {
 async function toggleArchive(grinder) {
   try {
     await grindersApi?.update(grinder.id, { ...grinder, archived: !grinder.archived })
-    toast?.show?.(grinder.archived ? 'Grinder unarchived' : 'Grinder archived')
+    toast?.success(grinder.archived ? 'Grinder unarchived' : 'Grinder archived')
   } catch {
-    toast?.show?.('Failed to update grinder', 'error')
+    toast?.error('Failed to update grinder')
   }
 }
 </script>
