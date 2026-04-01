@@ -1,8 +1,8 @@
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
-import { updateWaterLevelThreshold } from '../../api/rest.js'
 import {
+  updateWaterLevelThreshold,
   getPresenceSchedules,
   getPresenceSettings,
   updatePresenceSettings,
@@ -33,13 +33,13 @@ const refillThresholdDisplay = computed({
 // ---- Power & Sleep (server-backed) ----
 
 const DAYS = [
-  { key: 'M', iso: 1 },
-  { key: 'T', iso: 2 },
-  { key: 'W', iso: 3 },
-  { key: 'T', iso: 4 },
-  { key: 'F', iso: 5 },
-  { key: 'S', iso: 6 },
-  { key: 'S', iso: 7 },
+  { key: 'Mo', name: 'Monday', iso: 1 },
+  { key: 'Tu', name: 'Tuesday', iso: 2 },
+  { key: 'We', name: 'Wednesday', iso: 3 },
+  { key: 'Th', name: 'Thursday', iso: 4 },
+  { key: 'Fr', name: 'Friday', iso: 5 },
+  { key: 'Sa', name: 'Saturday', iso: 6 },
+  { key: 'Su', name: 'Sunday', iso: 7 },
 ]
 
 const KEEP_AWAKE_OPTIONS = [
@@ -99,7 +99,7 @@ async function addSchedule() {
   try {
     const created = await createPresenceSchedule({
       time: '07:00',
-      daysOfWeek: [],
+      daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
       enabled: true,
     })
     if (created?.id) {
@@ -145,8 +145,10 @@ async function removeSchedule(id) {
   try {
     await deletePresenceSchedule(id)
   } catch {
-    // Revert
-    schedules.value = [...schedules.value, prev]
+    // Revert — splice back at original position
+    const list = [...schedules.value]
+    list.splice(Math.min(idx, list.length), 0, prev)
+    schedules.value = list
     toast?.error('Failed to delete schedule')
   }
 }
@@ -170,13 +172,15 @@ function toggleDay(scheduleId, isoDay) {
 }
 
 function isDayActive(schedule, isoDay) {
-  if (!Array.isArray(schedule.daysOfWeek) || schedule.daysOfWeek.length === 0) return true // empty = every day
-  return schedule.daysOfWeek.includes(isoDay)
+  const days = schedule.daysOfWeek
+  if (!Array.isArray(days) || days.length === 0) return true // legacy: empty = every day
+  return days.includes(isoDay)
 }
 
 function isLastActiveDay(schedule, isoDay) {
-  if (!Array.isArray(schedule.daysOfWeek) || schedule.daysOfWeek.length === 0) return false
-  return schedule.daysOfWeek.length === 1 && schedule.daysOfWeek[0] === isoDay
+  const days = schedule.daysOfWeek
+  if (!Array.isArray(days)) return false
+  return days.length === 1 && days[0] === isoDay
 }
 
 function setTime(scheduleId, time) {
@@ -213,6 +217,11 @@ function onCardPointerUp() {
 }
 
 onMounted(loadAll)
+
+onUnmounted(() => {
+  clearTimeout(longPressTimer)
+  clearTimeout(confirmDeleteTimer)
+})
 </script>
 
 <template>
@@ -254,7 +263,7 @@ onMounted(loadAll)
             :key="schedule.id"
             class="pref__card"
             :class="{ 'pref__card--disabled': !schedule.enabled }"
-            @pointerdown.prevent="onCardPointerDown(schedule.id)"
+            @pointerdown="onCardPointerDown(schedule.id)"
             @pointerup="onCardPointerUp()"
             @pointerleave="onCardPointerUp()"
           >
@@ -310,6 +319,7 @@ onMounted(loadAll)
                     'pref__pill--active': isDayActive(schedule, day.iso),
                     'pref__pill--last': isLastActiveDay(schedule, day.iso),
                   }"
+                  :aria-label="'Toggle ' + day.name"
                   @click.stop="toggleDay(schedule.id, day.iso)"
                 >
                   {{ day.key }}
@@ -553,7 +563,7 @@ onMounted(loadAll)
 }
 
 .pref__pill {
-  width: 32px;
+  width: 34px;
   height: 28px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
