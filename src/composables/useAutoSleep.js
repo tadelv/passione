@@ -54,6 +54,7 @@ export function useAutoSleep(machine, settings, display) {
 
   async function _syncSettingsToServer() {
     const minutes = settings.settings.autoSleepMinutes
+    if (minutes == null) return  // Not yet loaded from server
     try {
       await updatePresenceSettings({
         sleepTimeoutMinutes: minutes,

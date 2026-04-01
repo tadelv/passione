@@ -20,9 +20,6 @@ const SAVE_DEBOUNCE_MS = 800
 // ---- Defaults ---------------------------------------------------------------
 
 const DEFAULT_SETTINGS = {
-  // Auto-sleep
-  autoSleepMinutes: 60,
-
   // Steam
   steamDuration: 30,
   steamFlow: 1.5,           // mL/s (actual value)
@@ -63,6 +60,7 @@ const DEFAULT_SETTINGS = {
   visualizerMinDuration: 8,
   visualizerExtendedMetadata: false,
   visualizerShowAfterShot: false,
+  lingerOnEspressoPage: true,
   defaultShotRating: 50,
 
   // Theme
@@ -76,7 +74,6 @@ const DEFAULT_SETTINGS = {
 
   // Options
   waterRefillThreshold: 10,
-  autoWakeEnabled: false,
 
   // Espresso / Brew Dialog
   showBrewDialog: false,
@@ -154,7 +151,7 @@ export function useSettings() {
 
   const GROUPS = {
     preferences: [
-      'autoSleepMinutes', 'keepSteamHeaterOn', 'steamDisabled',
+      'keepSteamHeaterOn', 'steamDisabled',
       'steamAutoFlushSeconds', 'waterLevelDisplayUnit',
     ],
     steam: [
@@ -175,7 +172,7 @@ export function useSettings() {
     visualizer: [
       'visualizerUsername', 'visualizerPassword', 'visualizerAutoUpload',
       'visualizerMinDuration', 'visualizerExtendedMetadata',
-      'visualizerShowAfterShot', 'defaultShotRating',
+      'visualizerShowAfterShot', 'lingerOnEspressoPage', 'defaultShotRating',
     ],
     theme: [
       'activeThemeName', 'customThemeColors',
@@ -185,7 +182,6 @@ export function useSettings() {
     ],
     options: [
       'waterRefillThreshold',
-      'autoWakeEnabled',
     ],
     espresso: [
       'showBrewDialog',
