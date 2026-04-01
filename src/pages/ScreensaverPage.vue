@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
-import HistoryShotGraph from '../components/HistoryShotGraph.vue'
+import ShotSilhouette from '../components/ShotSilhouette.vue'
 import { normalizeShot } from '../composables/useShotNormalize'
 
 const settingsInstance = inject('settings', null)
@@ -68,7 +68,23 @@ const lastShotInfo = computed(() => {
   const doseIn = s.doseIn ? Number(s.doseIn).toFixed(1) : null
   const doseOut = s.doseOut ? Number(s.doseOut).toFixed(1) : null
   const ratio = (s.doseIn && s.doseOut) ? (s.doseOut / s.doseIn).toFixed(1) : null
-  const duration = s.duration ? Number(s.duration).toFixed(1) : null
+
+  // Compute duration from measurements if not on the shot record
+  let duration = s.duration ? Number(s.duration).toFixed(1) : null
+  if (!duration && Array.isArray(raw.measurements) && raw.measurements.length > 1) {
+    const ms = raw.measurements
+    const parseTs = (m) => {
+      const t = m.elapsed ?? m.timestamp ?? m.machine?.timestamp ?? m.scale?.timestamp
+      if (t == null) return null
+      const v = typeof t === 'string' ? new Date(t).getTime() / 1000 : (Number(t) > 1e12 ? Number(t) / 1000 : Number(t))
+      return v
+    }
+    const first = parseTs(ms[0])
+    const last = parseTs(ms[ms.length - 1])
+    if (first != null && last != null) {
+      duration = (last - first).toFixed(1)
+    }
+  }
 
   return { profile, coffee, doseIn, doseOut, ratio, duration }
 })
@@ -132,7 +148,7 @@ onUnmounted(() => {
     <div v-else-if="ssType === 'lastShot'" class="screensaver__last-shot">
       <template v-if="lastShotInfo">
         <div class="screensaver__shot-graph">
-          <HistoryShotGraph :shot="lastShotData" />
+          <ShotSilhouette :shot="lastShotData" />
         </div>
         <div class="screensaver__shot-stats">
           <span v-if="lastShotInfo.duration" class="screensaver__shot-time">{{ lastShotInfo.duration }}s</span>
@@ -271,11 +287,13 @@ onUnmounted(() => {
 
 /* Last Shot Recap */
 .screensaver__last-shot {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
+  justify-content: flex-end;
+  padding: 0 24px 60px;
   opacity: 0;
   animation: fadeIn 2s ease forwards;
 }
@@ -285,58 +303,68 @@ onUnmounted(() => {
 }
 
 .screensaver__shot-graph {
-  width: min(80vw, 500px);
-  height: 160px;
-  opacity: 0.6;
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .screensaver__shot-stats {
   display: flex;
   align-items: baseline;
-  gap: 20px;
+  gap: 24px;
+  z-index: 1;
 }
 
 .screensaver__shot-time {
-  font-size: 36px;
+  font-size: 48px;
   font-weight: 300;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .screensaver__shot-dose {
-  font-size: 18px;
+  font-size: 22px;
   color: #a2693d;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .screensaver__shot-ratio {
-  font-size: 18px;
+  font-size: 22px;
   color: rgba(255, 255, 255, 0.3);
 }
 
 .screensaver__shot-profile {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.25);
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.3);
   letter-spacing: 1px;
+  z-index: 1;
 }
 
 .screensaver__shot-coffee {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.15);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.2);
   letter-spacing: 0.5px;
+  z-index: 1;
 }
 
 .screensaver__shot-empty {
   font-size: 16px;
   color: rgba(255, 255, 255, 0.2);
+  z-index: 1;
 }
 
 .screensaver__shot-clock {
   position: absolute;
-  top: 16px;
-  right: 20px;
-  font-size: 14px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 64px;
+  font-weight: 200;
   color: rgba(255, 255, 255, 0.15);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 4px;
+  z-index: 2;
 }
 
 /* Ambient Glow */
@@ -349,50 +377,50 @@ onUnmounted(() => {
 .screensaver__blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(50px);
+  filter: blur(60px);
   will-change: transform;
 }
 
 .screensaver__blob--green {
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(24, 195, 126, 0.15), transparent 70%);
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(24, 195, 126, 0.45), transparent 70%);
   top: 15%;
   left: 10%;
   animation: drift1 45s ease-in-out infinite;
 }
 
 .screensaver__blob--blue {
-  width: 260px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(78, 133, 244, 0.12), transparent 70%);
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(78, 133, 244, 0.35), transparent 70%);
   top: 40%;
   left: 55%;
   animation: drift2 55s ease-in-out infinite;
 }
 
 .screensaver__blob--red {
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(233, 69, 96, 0.13), transparent 70%);
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(233, 69, 96, 0.4), transparent 70%);
   top: 60%;
   left: 25%;
   animation: drift3 50s ease-in-out infinite;
 }
 
 .screensaver__blob--brown {
-  width: 180px;
-  height: 180px;
-  background: radial-gradient(circle, rgba(162, 105, 61, 0.14), transparent 70%);
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(162, 105, 61, 0.4), transparent 70%);
   top: 20%;
   left: 65%;
   animation: drift4 40s ease-in-out infinite;
 }
 
 .screensaver__blob--green2 {
-  width: 190px;
-  height: 190px;
-  background: radial-gradient(circle, rgba(24, 195, 126, 0.1), transparent 70%);
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(24, 195, 126, 0.3), transparent 70%);
   top: 70%;
   left: 70%;
   animation: drift1 60s ease-in-out infinite reverse;
