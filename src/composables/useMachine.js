@@ -8,7 +8,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
-import { setMachineState } from '../api/rest'
+import { setMachineState, getMachineState } from '../api/rest'
 
 // States where the machine is actively performing an operation
 const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush', 'descaling', 'cleaning'])
@@ -190,6 +190,10 @@ export function useMachine() {
   // ---- Connection management ------------------------------------------------
 
   function connect() {
+    // Fetch current state via REST so the UI reflects the machine's state
+    // immediately, without waiting for the first WebSocket frame.
+    getMachineState().then(onMessage).catch(() => {})
+
     ws = new ReconnectingWebSocket(
       `${WS_URL}/ws/v1/machine/snapshot`,
       onMessage
