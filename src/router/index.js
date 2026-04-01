@@ -49,6 +49,8 @@ const router = createRouter({
 })
 
 // P0-9: Navigation guard — 300ms debounce to prevent double-tap
+// Machine-state-driven navigation (router.replace from App.vue watcher) bypasses
+// the debounce via router._skipDebounce so state transitions are never swallowed.
 let lastNavTime = 0
 const NAV_DEBOUNCE_MS = 300
 
@@ -57,6 +59,12 @@ router.beforeEach((to, from, next) => {
   // Allow the initial navigation (START_LOCATION has no matched routes)
   if (to.path === from.path && from.matched.length > 0) {
     next(false)
+    return
+  }
+  if (router._skipDebounce) {
+    router._skipDebounce = false
+    lastNavTime = now
+    next()
     return
   }
   if (now - lastNavTime < NAV_DEBOUNCE_MS) {

@@ -149,10 +149,12 @@ function onDevicePickerCancel() {
 const transitionName = ref('')
 let autoNavActive = false
 
-// Mark auto-navigation before router.replace
+// Mark auto-navigation before router.replace — also bypass the 300ms debounce
+// guard so machine-state-driven navigation is never silently swallowed.
 const origReplace = router.replace.bind(router)
 router.replace = function (...args) {
   autoNavActive = true
+  router._skipDebounce = true
   return origReplace(...args)
 }
 
@@ -236,8 +238,10 @@ watch(machine.state, (newState, oldState) => {
     return
   }
   if (oldState === 'sleeping' && route.path === '/screensaver') {
-    router.replace('/')
-    return
+    const wakeTarget = STATE_ROUTES[newState] || '/'
+    router.replace(wakeTarget)
+    // If waking into idle, skip remaining logic (no operation to set up)
+    if (wakeTarget === '/') return
   }
 
   const targetRoute = STATE_ROUTES[newState]
