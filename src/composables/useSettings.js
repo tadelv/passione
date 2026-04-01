@@ -68,7 +68,7 @@ const DEFAULT_SETTINGS = {
   customThemeColors: {},
 
   // Screensaver
-  screensaverType: 'flipClock',    // 'disabled', 'flipClock'
+  screensaverType: 'flipClock',    // 'disabled', 'flipClock', 'lastShot', 'ambientGlow'
   flipClock24h: true,
   flipClock3d: false,
 

@@ -5,8 +5,10 @@ const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
 
 const TYPES = [
-  { value: 'disabled', label: 'Disabled' },
-  { value: 'flipClock', label: 'Flip Clock' },
+  { value: 'disabled', label: 'Disabled', desc: 'Screen goes black' },
+  { value: 'flipClock', label: 'Flip Clock', desc: 'Classic flip clock display' },
+  { value: 'lastShot', label: 'Last Shot', desc: 'Stats and graph from your last espresso' },
+  { value: 'ambientGlow', label: 'Ambient Glow', desc: 'Slow-drifting colors' },
 ]
 </script>
 
@@ -19,15 +21,16 @@ const TYPES = [
 
         <div class="ss-tab__field">
           <label class="ss-tab__label">Type</label>
-          <div class="ss-tab__seg-group">
+          <div class="ss-tab__type-list">
             <button
               v-for="t in TYPES"
               :key="t.value"
-              class="ss-tab__seg"
-              :class="{ 'ss-tab__seg--active': settings.screensaverType === t.value }"
+              class="ss-tab__type-option"
+              :class="{ 'ss-tab__type-option--active': settings.screensaverType === t.value }"
               @click="settings.screensaverType = t.value"
             >
-              {{ t.label }}
+              <span class="ss-tab__type-name">{{ t.label }}</span>
+              <span class="ss-tab__type-desc">{{ t.desc }}</span>
             </button>
           </div>
         </div>
@@ -109,29 +112,46 @@ const TYPES = [
   opacity: 0.7;
 }
 
-.ss-tab__seg-group {
+.ss-tab__type-list {
   display: flex;
-  gap: 0;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  width: fit-content;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.ss-tab__seg {
-  padding: 8px 20px;
-  border: none;
+.ss-tab__type-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
   background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 600;
+  text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.ss-tab__seg--active {
+.ss-tab__type-option--active {
   background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.ss-tab__type-name {
+  font-size: 14px;
+  font-weight: 600;
   color: var(--color-text);
+}
+
+.ss-tab__type-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.ss-tab__type-option--active .ss-tab__type-desc {
+  color: var(--color-text);
+  opacity: 0.8;
 }
 
 .ss-tab__toggle {
