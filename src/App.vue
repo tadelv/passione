@@ -161,10 +161,24 @@ router.beforeEach(() => {
   autoNavActive = false
 })
 
-// Feed machine + scale snapshots into shot data buffer during espresso
+// Feed machine + scale snapshots into shot data buffer during espresso.
+// Check state from the snapshot itself (not machine.state ref) to avoid
+// race with the state watcher — both refs are set in the same onMessage call,
+// but this watcher may fire before shotData.start() runs in the state watcher.
+// Only start recording once past preheat (preinfusion/pouring) so the chart
+// doesn't show data while the PREHEATING banner is visible.
+const RECORDING_SUBSTATES = new Set(['preinfusion', 'pouring', 'pouringDone'])
+
 watch(machine.snapshot, (snap) => {
   if (!snap) return
-  if (machine.state.value === 'espresso' && shotData.isRecording.value) {
+  const snapState = snap.state?.state
+  const snapSubstate = snap.state?.substate
+  if (snapState === 'espresso') {
+    if (!shotData.isRecording.value) {
+      // Don't start recording during preheat — wait for actual brewing
+      if (!RECORDING_SUBSTATES.has(snapSubstate)) return
+      shotData.start()
+    }
     shotData.addPoint(snap, { weight: scale.weight.value })
   }
 })
@@ -228,12 +242,16 @@ watch(machine.state, (newState, oldState) => {
 
   const targetRoute = STATE_ROUTES[newState]
 
+  // Reset espresso tracking on any transition into espresso state
+  if (newState === 'espresso' && oldState !== 'espresso') {
+    userRequestedStop = false
+    lastTargetWeight = workflow.context?.targetYield ?? 36
+  }
+
   if (targetRoute && route.path !== targetRoute) {
     // Starting an operation -- navigate to its page
-    if (newState === 'espresso') {
+    if (newState === 'espresso' && !shotData.isRecording.value) {
       shotData.start()
-      userRequestedStop = false
-      lastTargetWeight = workflow.context?.targetYield ?? 36
     }
     router.replace(targetRoute)
   } else if (!targetRoute && oldState && OPERATION_STATES.has(oldState)) {
@@ -251,17 +269,11 @@ watch(machine.state, (newState, oldState) => {
       }
       stopReasonVisible.value = true
       userRequestedStop = false
-      // Navigate to shot review if enabled, otherwise to idle
-      if (settings.settings.visualizerShowAfterShot) {
-        getLatestShot().then(shot => {
-          if (shot?.id) router.push(`/shot-review/${encodeURIComponent(shot.id)}`)
-          else if (route.path !== '/') router.push('/')
-        }).catch(() => {
-          if (route.path !== '/') router.push('/')
-        })
-      } else {
+      // Linger on espresso page (user can see final shot graph), or go home
+      if (!settings.settings.lingerOnEspressoPage) {
         if (route.path !== '/') router.push('/')
       }
+      // When lingering, navigation happens on StopReasonOverlay dismiss
     } else {
       // P0-5: Show completion overlay for steam/hotwater/flush
       const messages = {
@@ -290,6 +302,17 @@ function onCompletionDismiss() {
 
 function onStopReasonDismiss() {
   stopReasonVisible.value = false
+  // If visualizer credentials are configured, navigate to shot review; otherwise go home
+  if (settings.settings.visualizerUsername) {
+    getLatestShot().then(shot => {
+      if (shot?.id) router.push(`/shot-review/${encodeURIComponent(shot.id)}`)
+      else if (route.path !== '/') router.push('/')
+    }).catch(() => {
+      if (route.path !== '/') router.push('/')
+    })
+  } else {
+    if (route.path !== '/') router.push('/')
+  }
 }
 
 // ---- P0-7: Keyboard Shortcuts ----

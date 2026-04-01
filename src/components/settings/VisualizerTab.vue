@@ -235,18 +235,6 @@ watch(
         <h4 class="vis-tab__section-title">After Shot</h4>
 
         <div class="vis-tab__field">
-          <label class="vis-tab__label">Show edit dialog</label>
-          <button
-            class="vis-tab__toggle"
-            :class="{ 'vis-tab__toggle--on': settings.visualizerShowAfterShot }"
-            @click="settings.visualizerShowAfterShot = !settings.visualizerShowAfterShot"
-          >
-            {{ settings.visualizerShowAfterShot ? 'ON' : 'OFF' }}
-          </button>
-          <span class="vis-tab__hint">Prompt to add notes after each shot</span>
-        </div>
-
-        <div class="vis-tab__field">
           <label class="vis-tab__label">Default rating</label>
           <ValueInput
             :model-value="settings.defaultShotRating"

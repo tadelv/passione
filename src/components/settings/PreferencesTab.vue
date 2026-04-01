@@ -368,6 +368,27 @@ onUnmounted(() => {
           <span class="pref__hint">Warn when water drops below this level</span>
         </div>
       </div>
+
+      <!-- Column 3: Espresso -->
+      <div class="pref__column">
+        <h4 class="pref__section-title">Espresso</h4>
+
+        <div class="pref__sleep-row">
+          <div>
+            <div class="pref__label">Linger on shot graph</div>
+            <div class="pref__hint">Stay on espresso page after shot ends</div>
+          </div>
+          <button
+            class="pref__toggle-switch"
+            :class="{ 'pref__toggle-switch--on': settings.lingerOnEspressoPage }"
+            @click="settings.lingerOnEspressoPage = !settings.lingerOnEspressoPage"
+            :aria-label="settings.lingerOnEspressoPage ? 'Disable linger' : 'Enable linger'"
+          >
+            <span class="pref__toggle-knob" />
+          </button>
+        </div>
+
+      </div>
     </div>
   </div>
   <div v-else class="pref__empty">Settings not available.</div>

@@ -5,7 +5,7 @@
  * Used by IdlePage to render each widget in the layout grid.
  * All machine/scale/settings data is injected from App.vue provides.
  */
-import { ref, computed, inject, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, inject, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import CircularGauge from './CircularGauge.vue'
@@ -129,6 +129,8 @@ onUnmounted(() => {
 
 // ---- Last Shot ----
 const lastShot = ref(null)
+const machineState = inject('machineState', ref(''))
+let lastShotRefreshTimer = null
 
 async function fetchLastShot() {
   try {
@@ -143,6 +145,19 @@ async function fetchLastShot() {
     lastShot.value = null
   }
 }
+
+// Re-fetch last shot when espresso ends — delay to allow ReaPrime to save it
+watch(machineState, (newState, oldState) => {
+  if (props.type !== 'lastShot') return
+  if (oldState === 'espresso' && (newState === 'idle' || newState === 'ready')) {
+    clearTimeout(lastShotRefreshTimer)
+    lastShotRefreshTimer = setTimeout(fetchLastShot, 3000)
+  }
+})
+
+onUnmounted(() => {
+  clearTimeout(lastShotRefreshTimer)
+})
 
 const lastShotInfo = computed(() => {
   const raw = lastShot.value

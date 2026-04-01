@@ -172,7 +172,7 @@ export function useSettings() {
     visualizer: [
       'visualizerUsername', 'visualizerPassword', 'visualizerAutoUpload',
       'visualizerMinDuration', 'visualizerExtendedMetadata',
-      'visualizerShowAfterShot', 'lingerOnEspressoPage', 'defaultShotRating',
+      'visualizerShowAfterShot', 'defaultShotRating',
     ],
     theme: [
       'activeThemeName', 'customThemeColors',
@@ -184,7 +184,7 @@ export function useSettings() {
       'waterRefillThreshold',
     ],
     espresso: [
-      'showBrewDialog',
+      'showBrewDialog', 'lingerOnEspressoPage',
     ],
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',
