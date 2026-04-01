@@ -94,6 +94,22 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <!-- Ambient Glow Mode -->
+    <div v-else-if="ssType === 'ambientGlow'" class="screensaver__glow">
+      <div class="screensaver__blob screensaver__blob--green" />
+      <div class="screensaver__blob screensaver__blob--blue" />
+      <div class="screensaver__blob screensaver__blob--red" />
+      <div class="screensaver__blob screensaver__blob--brown" />
+      <div class="screensaver__blob screensaver__blob--green2" />
+      <div class="screensaver__particle screensaver__particle--1" />
+      <div class="screensaver__particle screensaver__particle--2" />
+      <div class="screensaver__particle screensaver__particle--3" />
+      <div class="screensaver__particle screensaver__particle--4" />
+      <div class="screensaver__particle screensaver__particle--5" />
+      <div class="screensaver__particle screensaver__particle--6" />
+      <span class="screensaver__glow-clock">{{ hours }}:{{ minutes }}</span>
+    </div>
+
     <!-- Black Screen Mode (disabled type or fallback) -->
     <div v-else class="screensaver__black" />
 
@@ -197,6 +213,155 @@ onUnmounted(() => {
   100% {
     transform: rotateX(0);
   }
+}
+
+/* Ambient Glow */
+.screensaver__glow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.screensaver__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  will-change: transform;
+}
+
+.screensaver__blob--green {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(24, 195, 126, 0.15), transparent 70%);
+  top: 15%;
+  left: 10%;
+  animation: drift1 45s ease-in-out infinite;
+}
+
+.screensaver__blob--blue {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(78, 133, 244, 0.12), transparent 70%);
+  top: 40%;
+  left: 55%;
+  animation: drift2 55s ease-in-out infinite;
+}
+
+.screensaver__blob--red {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(233, 69, 96, 0.13), transparent 70%);
+  top: 60%;
+  left: 25%;
+  animation: drift3 50s ease-in-out infinite;
+}
+
+.screensaver__blob--brown {
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(162, 105, 61, 0.14), transparent 70%);
+  top: 20%;
+  left: 65%;
+  animation: drift4 40s ease-in-out infinite;
+}
+
+.screensaver__blob--green2 {
+  width: 190px;
+  height: 190px;
+  background: radial-gradient(circle, rgba(24, 195, 126, 0.1), transparent 70%);
+  top: 70%;
+  left: 70%;
+  animation: drift1 60s ease-in-out infinite reverse;
+}
+
+@keyframes drift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(60px, -40px) scale(1.1); }
+  50% { transform: translate(-30px, 50px) scale(0.95); }
+  75% { transform: translate(40px, 20px) scale(1.05); }
+}
+
+@keyframes drift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-50px, 30px) scale(1.08); }
+  50% { transform: translate(40px, -60px) scale(0.92); }
+  75% { transform: translate(-20px, -30px) scale(1.04); }
+}
+
+@keyframes drift3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(70px, -20px) scale(1.12); }
+  66% { transform: translate(-40px, 40px) scale(0.9); }
+}
+
+@keyframes drift4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-60px, 50px) scale(1.06); }
+  66% { transform: translate(30px, -40px) scale(0.96); }
+}
+
+/* Particles */
+.screensaver__particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  will-change: transform;
+}
+
+.screensaver__particle--1 {
+  width: 3px; height: 3px; top: 25%; left: 35%;
+  animation: float1 30s linear infinite;
+}
+.screensaver__particle--2 {
+  width: 2px; height: 2px; top: 55%; left: 70%;
+  opacity: 0.3;
+  animation: float2 25s linear infinite;
+}
+.screensaver__particle--3 {
+  width: 4px; height: 4px; top: 40%; left: 15%;
+  opacity: 0.15;
+  animation: float1 35s linear infinite reverse;
+}
+.screensaver__particle--4 {
+  width: 2px; height: 2px; top: 70%; left: 50%;
+  opacity: 0.25;
+  animation: float2 28s linear infinite reverse;
+}
+.screensaver__particle--5 {
+  width: 3px; height: 3px; top: 15%; left: 80%;
+  opacity: 0.2;
+  animation: float1 32s linear infinite;
+}
+.screensaver__particle--6 {
+  width: 2px; height: 2px; top: 80%; left: 30%;
+  opacity: 0.18;
+  animation: float2 22s linear infinite;
+}
+
+@keyframes float1 {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(40px, -60px); }
+  50% { transform: translate(-20px, -30px); }
+  75% { transform: translate(30px, 40px); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes float2 {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-30px, 50px); }
+  50% { transform: translate(50px, 20px); }
+  75% { transform: translate(-40px, -30px); }
+  100% { transform: translate(0, 0); }
+}
+
+.screensaver__glow-clock {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.1);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Black screen mode */
