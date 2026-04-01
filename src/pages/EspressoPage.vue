@@ -392,7 +392,7 @@ async function stopAndGoBack() {
 
 .espresso-page__chart {
   flex: 1;
-  padding: 50px 0 0 0;
+  padding: 44px 0 0 0;
   min-height: 0;
 }
 
@@ -412,7 +412,7 @@ async function stopAndGoBack() {
 .espresso-page__info-bar {
   display: flex;
   align-items: center;
-  height: 100px;
+  height: 72px;
   padding: 0 var(--spacing-medium);
   gap: var(--spacing-medium);
   background: color-mix(in srgb, var(--color-surface), black 20%);
@@ -465,13 +465,13 @@ async function stopAndGoBack() {
 }
 
 .espresso-page__metric-value {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 500;
   color: var(--color-text);
 }
 
 .espresso-page__metric-value--timer {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: bold;
 }
 

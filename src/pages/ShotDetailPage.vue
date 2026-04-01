@@ -217,6 +217,7 @@ async function uploadToVisualizer() {
 
 <template>
   <div class="shot-detail">
+    <div class="shot-detail__scroll">
     <div v-if="loading" class="shot-detail__loading">Loading shot...</div>
 
     <template v-else-if="shot">
@@ -337,6 +338,7 @@ async function uploadToVisualizer() {
     </template>
 
     <div v-else class="shot-detail__empty">Shot not found.</div>
+    </div>
 
     <BottomBar title="Shot Detail" />
   </div>
@@ -348,6 +350,11 @@ async function uploadToVisualizer() {
   flex-direction: column;
   height: 100%;
   background: var(--color-background);
+}
+
+.shot-detail__scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -363,7 +370,8 @@ async function uploadToVisualizer() {
 }
 
 .shot-detail__graph {
-  height: 250px;
+  height: 40vh;
+  min-height: 250px;
   flex-shrink: 0;
   padding: 8px 16px;
 }
