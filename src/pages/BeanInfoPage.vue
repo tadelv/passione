@@ -197,9 +197,9 @@ if (selectedIndex.value >= 0) {
     }
   }
 }
-// Always sync profile from workflow — it's the source of truth for the applied profile
-// (handles returning from ProfileSelectorPage where the preset's saved title is stale)
-if (workflow?.profile) {
+// Sync profile from workflow only when no preset is loaded — presets carry their own
+// profileId/profileTitle and must not be overwritten by the machine's current workflow.
+if (selectedIndex.value < 0 && workflow?.profile) {
   profileTitle.value = workflow.profile.title ?? ''
   profileId.value = workflow.profile.id ?? null
 }
@@ -288,6 +288,7 @@ function debouncedSaveToCombo() {
 // Watch all fields for auto-save
 watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
        selectedBeanId, selectedBatchId, selectedGrinderId,
+       profileId, profileTitle,
        includeSteam, steamDuration, steamFlow, steamTemperature,
        includeFlush, flushDuration, flushFlowRate,
        includeHotWater, hotWaterVolume, hotWaterTemperature], debouncedSaveToCombo)
@@ -388,6 +389,7 @@ watch(ratioValue, (val) => {
 watch(() => workflow?.profile, (newProfile) => {
   if (newProfile && !_updating) {
     profileTitle.value = newProfile.title ?? ''
+    profileId.value = newProfile.id ?? null
   }
 }, { deep: true })
 </script>

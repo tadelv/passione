@@ -188,23 +188,11 @@ async function loadShotProfile(shot) {
   }
 }
 
-// Double-tap support
-const DOUBLE_TAP_MS = 300
-let lastRowTapId = null
-let lastRowTapTime = 0
-
-function onRowClick(shot) {
-  const id = shot.id || shot.shotId
-  const now = Date.now()
-
-  if (id === lastRowTapId && now - lastRowTapTime < DOUBLE_TAP_MS) {
-    lastRowTapId = null
+function onRowClick(shot, event) {
+  if (event.detail >= 2) {
     openShot(shot)
     return
   }
-  lastRowTapId = id
-  lastRowTapTime = now
-
   if (compareMode.value) {
     toggleSelect(shot)
   } else {
@@ -289,7 +277,7 @@ onMounted(loadShotIds)
         :key="shot.id || shot.shotId"
         class="shot-history__row"
         :class="{ 'shot-history__row--selected': compareMode && selectedIds.has(shot.id || shot.shotId) }"
-        @click="onRowClick(shot)"
+        @click="onRowClick(shot, $event)"
       >
         <div v-if="compareMode" class="shot-history__checkbox" :class="{ checked: selectedIds.has(shot.id || shot.shotId) }">
           <svg v-if="selectedIds.has(shot.id || shot.shotId)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">

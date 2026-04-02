@@ -28,17 +28,11 @@ function onHome() {
 }
 
 // Double-tap home button → settings (escape hatch if layout removes settings button)
-const DOUBLE_TAP_MS = 300
-let lastHomeTapTime = 0
-
-function onHomeClick() {
-  const now = Date.now()
-  if (now - lastHomeTapTime < DOUBLE_TAP_MS) {
-    lastHomeTapTime = 0
+function onHomeClick(event) {
+  if (event.detail >= 2) {
     router.push('/settings')
     return
   }
-  lastHomeTapTime = now
   onHome()
 }
 </script>
@@ -59,7 +53,7 @@ function onHomeClick() {
     <button
       v-if="showHomeButton"
       class="bottom-bar__home"
-      @click="onHomeClick"
+      @click="onHomeClick($event)"
       aria-label="Home (double-tap for Settings)"
     >
       <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

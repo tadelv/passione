@@ -200,23 +200,14 @@ function toggleEnabled(scheduleId) {
 
 // ---- Double-tap delete ----
 
-const DOUBLE_TAP_MS = 300
-let lastCardTapId = null
-let lastCardTapTime = 0
-
-function onCardClick(id) {
-  const now = Date.now()
-  if (id === lastCardTapId && now - lastCardTapTime < DOUBLE_TAP_MS) {
-    lastCardTapId = null
+function onCardClick(id, event) {
+  if (event.detail >= 2) {
     confirmDeleteId.value = id
     clearTimeout(confirmDeleteTimer)
     confirmDeleteTimer = setTimeout(() => {
       confirmDeleteId.value = null
     }, 4000)
-    return
   }
-  lastCardTapId = id
-  lastCardTapTime = now
 }
 
 onMounted(loadAll)
@@ -265,7 +256,7 @@ onUnmounted(() => {
             :key="schedule.id"
             class="pref__card"
             :class="{ 'pref__card--disabled': !schedule.enabled }"
-            @click="onCardClick(schedule.id)"
+            @click="onCardClick(schedule.id, $event)"
           >
             <!-- Delete confirm overlay -->
             <div v-if="confirmDeleteId === schedule.id" class="pref__delete-confirm">

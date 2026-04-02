@@ -18,9 +18,6 @@ const emit = defineEmits([
   'long-press',
 ])
 
-const DOUBLE_TAP_MS = 300
-let lastTapIndex = -1
-let lastTapTime = 0
 // Track which index we last emitted 'select' for, to handle
 // the Vue re-render race (props.selectedIndex may not have updated yet)
 let lastEmittedSelectIndex = -1
@@ -35,17 +32,12 @@ const displayPresets = computed(() =>
   }))
 )
 
-function onClick(index) {
-  const now = Date.now()
-
-  // Double-tap on same preset → edit
-  if (props.longPressEnabled && index === lastTapIndex && now - lastTapTime < DOUBLE_TAP_MS) {
-    lastTapIndex = -1
+function onClick(index, event) {
+  // Double-tap → edit (event.detail is the native click count)
+  if (event.detail >= 2 && props.longPressEnabled) {
     emit('long-press', index)
     return
   }
-  lastTapIndex = index
-  lastTapTime = now
 
   // Check if this preset is already selected (either via props or our local tracking)
   const isSelected = index === props.selectedIndex || index === lastEmittedSelectIndex
@@ -53,7 +45,6 @@ function onClick(index) {
   if (isSelected) {
     // Tap on selected preset → activate (start operation)
     lastEmittedSelectIndex = -1
-    lastTapIndex = -1 // prevent double-tap detection after activate
     emit('activate', index)
     return
   }
@@ -75,7 +66,7 @@ function onClick(index) {
         :class="{ 'preset-pill-row__pill--selected': preset.index === selectedIndex }"
         role="option"
         :aria-selected="preset.index === selectedIndex"
-        @click="onClick(preset.index)"
+        @click="onClick(preset.index, $event)"
       >
         {{ preset.display }}
       </button>
