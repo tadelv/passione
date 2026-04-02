@@ -23,8 +23,11 @@ export function useAutoSleep(machine, settings, display) {
     // Signal presence to server (server throttles to 30s internally)
     sendHeartbeat().catch(() => {})
 
-    // Restore display if dimmed
-    display?.restore()
+    // Restore display if dimmed — but not while the machine is sleeping,
+    // where dim is intentional and controlled by the state watcher.
+    if (machine.state.value !== 'sleeping') {
+      display?.restore()
+    }
 
     // Reset local idle timer
     _resetIdleTimer()
@@ -33,8 +36,10 @@ export function useAutoSleep(machine, settings, display) {
   function _resetIdleTimer() {
     clearTimeout(_idleTimer)
     _idleTimer = setTimeout(() => {
-      // Dim display when user is idle locally
-      display?.dim()
+      // Dim display when user is idle locally (skip if already sleeping)
+      if (machine.state.value !== 'sleeping') {
+        display?.dim()
+      }
     }, LOCAL_DIM_TIMEOUT_MS)
   }
 

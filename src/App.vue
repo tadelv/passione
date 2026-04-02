@@ -212,6 +212,22 @@ const STATE_ROUTES = {
 
 const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush'])
 
+// One-shot: navigate to the correct page based on the machine's state at load
+// time. Waits for the state to arrive (not 'unknown') AND for the router to
+// finish its initial navigation, since router.replace is silently dropped
+// before router.isReady() resolves.
+const stopInitialNav = watch(machine.state, async (state) => {
+  if (state === 'unknown') return
+  stopInitialNav()
+  await router.isReady()
+  if (state === 'sleeping' && settings.settings.screensaverType !== 'disabled') {
+    if (route.path !== '/screensaver') router.replace('/screensaver')
+  } else {
+    const target = STATE_ROUTES[state]
+    if (target && route.path !== target) router.replace(target)
+  }
+})
+
 watch(machine.state, (newState, oldState) => {
   if (newState === oldState) return
 
@@ -375,14 +391,23 @@ function onKeyDown(e) {
 
 onMounted(async () => {
   document.addEventListener('keydown', onKeyDown)
+  // Suppress native context menu globally — this is a dedicated appliance UI,
+  // and the native menu interrupts long-press interactions (especially on macOS
+  // WKWebView where holding the mouse/trackpad triggers contextmenu + pointercancel).
+  document.addEventListener('contextmenu', onContextMenu)
 
   // Load persisted settings, then sync operation defaults from workflow
   await settings.load()
   operationSettings.syncFromWorkflow()
 })
 
+function onContextMenu(e) {
+  e.preventDefault()
+}
+
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('contextmenu', onContextMenu)
 })
 </script>
 
