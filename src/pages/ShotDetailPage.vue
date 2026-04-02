@@ -203,12 +203,12 @@ async function uploadToVisualizer() {
       shotId: shotId.value,
     })
     if (res?.visualizer_id) {
-      if (toast) toast(`Uploaded to Visualizer (${res.visualizer_id})`)
+      if (toast) toast.success(`Uploaded to Visualizer (${res.visualizer_id})`)
     } else {
-      if (toast) toast('Upload completed')
+      if (toast) toast.success('Upload completed')
     }
   } catch (e) {
-    if (toast) toast(e.message || 'Upload failed')
+    if (toast) toast.error(e.message || 'Upload failed')
   }
   uploading.value = false
 }
@@ -340,7 +340,7 @@ async function uploadToVisualizer() {
     <div v-else class="shot-detail__empty">Shot not found.</div>
     </div>
 
-    <BottomBar title="Shot Detail" />
+    <BottomBar title="Shot Detail" @back="router.back()" />
   </div>
 </template>
 

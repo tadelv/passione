@@ -336,7 +336,7 @@ onMounted(loadShotIds)
       </div>
     </div>
 
-    <BottomBar title="Shot History" />
+    <BottomBar title="Shot History" @back="router.back()" />
   </div>
 </template>
 

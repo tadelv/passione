@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
+import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
+
+const router = useRouter()
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { createProfile } from '../api/rest.js'
 
@@ -325,7 +328,7 @@ const frameCount = computed(() => {
       </div>
     </div>
 
-    <BottomBar title="Import from Visualizer" />
+    <BottomBar title="Import from Visualizer" @back="router.back()" />
   </div>
 </template>
 

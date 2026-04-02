@@ -14,7 +14,7 @@ const machineState = inject('machineState')
 const weight = inject('weight')
 const settings = inject('settings')
 const scale = inject('scale')
-const updateWorkflow = inject('updateWorkflow')
+
 
 const isDispensing = computed(() =>
   machineState.value === 'hotWater'
@@ -40,22 +40,8 @@ const weightProgress = computed(() =>
   volume.value > 0 ? Math.min(1, weight.value / volume.value) : 0
 )
 
-// Sync hot water settings to workflow API when any setting changes
-let _hotWaterSyncTimer = null
-function syncHotWaterToWorkflow() {
-  clearTimeout(_hotWaterSyncTimer)
-  _hotWaterSyncTimer = setTimeout(async () => {
-    await updateWorkflow({
-      hotWaterData: {
-        targetTemperature: temperature.value,
-        volume: volume.value,
-        duration: settings.settings.hotWaterDuration,
-        flow: settings.settings.hotWaterFlow,
-      },
-    }).catch(() => {})
-  }, 300)
-}
-watch([volume, temperature], syncHotWaterToWorkflow)
+// Hot water settings are synced to the workflow API by useOperationSettings
+// (watches settings.hotWaterVolume/hotWaterTemperature etc. with debounce).
 
 // ---- Presets ----
 const presets = computed(() => settings.settings.waterVesselPresets)

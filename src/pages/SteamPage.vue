@@ -8,7 +8,7 @@ import { setMachineState } from '../api/rest.js'
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
-const updateWorkflow = inject('updateWorkflow')
+
 
 const isSteaming = computed(() =>
   machineState.value === 'steam'
@@ -41,21 +41,8 @@ const timerProgress = computed(() =>
   duration.value > 0 ? Math.min(1, shotTime.value / duration.value) : 0
 )
 
-// Sync steam settings to workflow API when any setting changes
-let _steamSyncTimer = null
-function syncSteamToWorkflow() {
-  clearTimeout(_steamSyncTimer)
-  _steamSyncTimer = setTimeout(async () => {
-    await updateWorkflow({
-      steamSettings: {
-        targetTemperature: temperature.value,
-        duration: duration.value,
-        flow: steamFlow.value,
-      },
-    }).catch(() => {})
-  }, 300)
-}
-watch([duration, steamFlow, temperature], syncSteamToWorkflow)
+// Steam settings are synced to the workflow API by useOperationSettings
+// (watches settings.steamDuration/steamFlow/steamTemperature with debounce).
 
 // ---- Presets (for selecting during steaming) ----
 const presets = computed(() => settings.settings.steamPitcherPresets)

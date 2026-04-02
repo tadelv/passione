@@ -322,7 +322,15 @@ function onCompletionDismiss() {
   if (route.path !== '/') router.push('/')
 }
 
+// Clear overlays if the user manually navigates away (e.g. pressing ',' for settings)
+// so the auto-dismiss timer doesn't teleport them back.
+watch(() => route.path, () => {
+  stopReasonVisible.value = false
+  completionVisible.value = false
+})
+
 function onStopReasonDismiss() {
+  if (!stopReasonVisible.value) return // already dismissed by route change
   stopReasonVisible.value = false
   // If visualizer credentials are configured, navigate to shot review; otherwise go home
   if (settings.settings.visualizerUsername) {

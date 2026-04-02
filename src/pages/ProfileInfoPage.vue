@@ -155,7 +155,15 @@ onMounted(fetchProfile)
       </div>
     </div>
 
-    <BottomBar title="Profile Info" @back="goBack" />
+    <BottomBar title="Profile Info" @back="goBack">
+      <button
+        v-if="record?.id"
+        class="profile-info__edit-btn"
+        @click="router.push(`/recipe-editor/${encodeURIComponent(record.id)}`)"
+      >
+        Edit
+      </button>
+    </BottomBar>
   </div>
 </template>
 
@@ -320,5 +328,15 @@ onMounted(fetchProfile)
 .profile-info__frame-detail {
   font-size: var(--font-caption);
   color: var(--color-text-secondary);
+}
+
+.profile-info__edit-btn {
+  padding: 8px 24px;
+  border: none;
+  border-radius: var(--radius-button);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  cursor: pointer;
 }
 </style>

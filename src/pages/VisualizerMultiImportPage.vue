@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
+import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
+
+const router = useRouter()
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { createProfile, getProfiles } from '../api/rest.js'
 
@@ -436,7 +439,7 @@ function reset() {
       </div>
     </div>
 
-    <BottomBar title="Batch Import" />
+    <BottomBar title="Batch Import" @back="router.back()" />
   </div>
 </template>
 

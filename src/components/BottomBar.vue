@@ -16,9 +16,6 @@ const emit = defineEmits(['back'])
 
 function onBack() {
   emit('back')
-  if (route.path !== '/') {
-    router.back()
-  }
 }
 
 function onHome() {

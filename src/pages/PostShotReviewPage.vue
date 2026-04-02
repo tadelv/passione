@@ -144,7 +144,7 @@ function populateFromShot(shot) {
   doseIn.value = s.doseIn ?? 0
   doseOut.value = s.doseOut ?? 0
   tds.value = meta.tds ?? 0
-  rating.value = s.rating ?? 0
+  rating.value = s.rating ?? settings?.settings?.defaultShotRating ?? 0
   notes.value = shot.shotNotes ?? ''
 }
 
@@ -199,12 +199,12 @@ async function uploadToVisualizer() {
       shotId: shotId.value,
     })
     if (res?.visualizer_id) {
-      if (toast) toast(`Uploaded to Visualizer (${res.visualizer_id})`)
+      if (toast) toast.success(`Uploaded to Visualizer (${res.visualizer_id})`)
     } else {
-      if (toast) toast('Upload completed')
+      if (toast) toast.success('Upload completed')
     }
   } catch (e) {
-    if (toast) toast(e.message || 'Upload failed')
+    if (toast) toast.error(e.message || 'Upload failed')
   }
   uploading.value = false
 }
@@ -238,7 +238,7 @@ async function save() {
     saveSticky()
     dirty.value = false
   } catch (e) {
-    if (toast) toast(e.message || 'Failed to save')
+    if (toast) toast.error(e.message || 'Failed to save')
   }
   saving.value = false
 }

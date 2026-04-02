@@ -13,7 +13,7 @@ const router = useRouter()
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
-const updateWorkflow = inject('updateWorkflow')
+
 
 const isFlushing = computed(() =>
   machineState.value === 'flush'
@@ -34,21 +34,8 @@ const timerProgress = computed(() =>
   flushSeconds.value > 0 ? Math.min(1, shotTime.value / flushSeconds.value) : 0
 )
 
-// Sync flush/rinse settings to workflow API when any setting changes
-let _flushSyncTimer = null
-function syncFlushToWorkflow() {
-  clearTimeout(_flushSyncTimer)
-  _flushSyncTimer = setTimeout(async () => {
-    await updateWorkflow({
-      rinseData: {
-        targetTemperature: settings.settings.flushTemperature,
-        duration: flushSeconds.value,
-        flow: flushFlow.value,
-      },
-    }).catch(() => {})
-  }, 300)
-}
-watch([flushSeconds, flushFlow], syncFlushToWorkflow)
+// Flush/rinse settings are synced to the workflow API by useOperationSettings
+// (watches settings.flushDuration/flushFlowRate/flushTemperature with debounce).
 
 // ---- Presets ----
 const presets = computed(() => settings.settings.flushPresets)

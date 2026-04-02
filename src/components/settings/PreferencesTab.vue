@@ -366,6 +366,21 @@ onUnmounted(() => {
 
         <div class="pref__sleep-row">
           <div>
+            <div class="pref__label">Show brew dialog</div>
+            <div class="pref__hint">Confirm dose, yield, and temperature before each shot</div>
+          </div>
+          <button
+            class="pref__toggle-switch"
+            :class="{ 'pref__toggle-switch--on': settings.showBrewDialog }"
+            @click="settings.showBrewDialog = !settings.showBrewDialog"
+            :aria-label="settings.showBrewDialog ? 'Disable brew dialog' : 'Enable brew dialog'"
+          >
+            <span class="pref__toggle-knob" />
+          </button>
+        </div>
+
+        <div class="pref__sleep-row">
+          <div>
             <div class="pref__label">Linger on shot graph</div>
             <div class="pref__hint">Stay on espresso page after shot ends</div>
           </div>

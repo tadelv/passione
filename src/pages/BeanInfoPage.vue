@@ -668,7 +668,7 @@ watch(() => workflow?.profile, (newProfile) => {
 
     </div><!-- end scroll -->
 
-    <BottomBar :title="selectedIndex >= 0 ? (workflowCombos[selectedIndex]?.name || 'Workflow Editor') : 'Workflow Editor'">
+    <BottomBar :title="selectedIndex >= 0 ? (workflowCombos[selectedIndex]?.name || 'Workflow Editor') : 'Workflow Editor'" @back="router.back()">
       <button class="bean-info__save-btn bean-info__save-btn--secondary" @click="saveToWorkflow">
         {{ selectedIndex >= 0 ? 'Apply & Save' : 'Apply' }}
       </button>

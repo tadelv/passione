@@ -79,6 +79,13 @@ const DEFAULT_SETTINGS = {
   // Espresso / Brew Dialog
   showBrewDialog: false,
 
+  // Accessibility
+  accessibilityEnabled: false,
+  voiceAnnouncements: false,
+  frameTickSounds: false,
+  announcementMode: 'milestones',
+  announcementInterval: 5,
+
   // DYE sticky metadata
   dyeBeanBrand: '',
   dyeBeanType: '',
@@ -187,6 +194,10 @@ export function useSettings() {
     ],
     espresso: [
       'showBrewDialog', 'lingerOnEspressoPage',
+    ],
+    accessibility: [
+      'accessibilityEnabled', 'voiceAnnouncements', 'frameTickSounds',
+      'announcementMode', 'announcementInterval',
     ],
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',

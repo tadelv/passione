@@ -82,7 +82,7 @@ async function testConnection() {
 // Save & sync: push skin settings to the plugin whenever credentials change
 async function onSaveCredentials() {
   await syncToPlugin()
-  if (toast) toast('Settings synced to Visualizer plugin')
+  if (toast) toast.success('Settings synced to Visualizer plugin')
 }
 
 onMounted(() => {
