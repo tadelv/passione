@@ -422,6 +422,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <a href="#main-content" class="skip-to-content">Skip to content</a>
   <StatusBar
     :machine-state="machine.state.value"
     :machine-connected="machine.isConnected.value"
@@ -430,7 +431,7 @@ onUnmounted(() => {
     :target-temperature="machine.targetMixTemperature.value"
     :profile-name="workflow.profile?.title ?? ''"
   />
-  <main class="app-main">
+  <main id="main-content" class="app-main">
     <router-view v-slot="{ Component }">
       <Transition :name="transitionName" mode="out-in">
         <component :is="Component" />
@@ -473,6 +474,23 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.skip-to-content {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  z-index: var(--z-debug);
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: var(--color-text);
+  border-radius: var(--radius-button);
+  font-size: var(--font-body);
+  text-decoration: none;
+}
+
+.skip-to-content:focus {
+  top: 8px;
+}
+
 .app-main {
   flex: 1;
   min-height: 0;

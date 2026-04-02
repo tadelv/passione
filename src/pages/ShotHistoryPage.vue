@@ -313,6 +313,7 @@ onMounted(loadShotIds)
             class="shot-history__action-btn shot-history__action-btn--load"
             @click.stop="loadShotProfile(shot)"
             title="Load profile"
+            aria-label="Load profile"
           >
             L
           </button>
@@ -321,6 +322,7 @@ onMounted(loadShotIds)
             class="shot-history__action-btn shot-history__action-btn--edit"
             @click.stop="editShot(shot)"
             title="Edit metadata"
+            aria-label="Edit metadata"
           >
             E
           </button>
