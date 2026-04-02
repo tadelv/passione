@@ -198,28 +198,30 @@ function toggleEnabled(scheduleId) {
   updateScheduleField(scheduleId, { enabled: !schedule.enabled })
 }
 
-// ---- Long-press delete ----
+// ---- Double-tap delete ----
 
-let longPressTimer = null
+const DOUBLE_TAP_MS = 300
+let lastCardTapId = null
+let lastCardTapTime = 0
 
-function onCardPointerDown(id) {
-  longPressTimer = setTimeout(() => {
+function onCardClick(id) {
+  const now = Date.now()
+  if (id === lastCardTapId && now - lastCardTapTime < DOUBLE_TAP_MS) {
+    lastCardTapId = null
     confirmDeleteId.value = id
     clearTimeout(confirmDeleteTimer)
     confirmDeleteTimer = setTimeout(() => {
       confirmDeleteId.value = null
     }, 4000)
-  }, 500)
-}
-
-function onCardPointerUp() {
-  clearTimeout(longPressTimer)
+    return
+  }
+  lastCardTapId = id
+  lastCardTapTime = now
 }
 
 onMounted(loadAll)
 
 onUnmounted(() => {
-  clearTimeout(longPressTimer)
   clearTimeout(confirmDeleteTimer)
 })
 </script>
@@ -263,9 +265,7 @@ onUnmounted(() => {
             :key="schedule.id"
             class="pref__card"
             :class="{ 'pref__card--disabled': !schedule.enabled }"
-            @pointerdown="onCardPointerDown(schedule.id)"
-            @pointerup="onCardPointerUp()"
-            @pointerleave="onCardPointerUp()"
+            @click="onCardClick(schedule.id)"
           >
             <!-- Delete confirm overlay -->
             <div v-if="confirmDeleteId === schedule.id" class="pref__delete-confirm">

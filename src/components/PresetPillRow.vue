@@ -6,7 +6,7 @@ const props = defineProps({
   presets: { type: Array, default: () => [] },
   /** Index of the currently selected preset (-1 = none) */
   selectedIndex: { type: Number, default: -1 },
-  /** Enable long-press interaction */
+  /** Enable double-tap interaction (opens edit popup) */
   longPressEnabled: { type: Boolean, default: false },
   /** P6-4: Accessible label for the preset list */
   ariaLabel: { type: String, default: 'Presets' },
@@ -18,8 +18,9 @@ const emit = defineEmits([
   'long-press',
 ])
 
-let longPressTimer = null
-let longPressTriggered = false
+const DOUBLE_TAP_MS = 300
+let lastTapIndex = -1
+let lastTapTime = 0
 // Track which index we last emitted 'select' for, to handle
 // the Vue re-render race (props.selectedIndex may not have updated yet)
 let lastEmittedSelectIndex = -1
@@ -34,28 +35,17 @@ const displayPresets = computed(() =>
   }))
 )
 
-function onPointerDown(index, e) {
-  longPressTriggered = false
-  if (props.longPressEnabled) {
-    longPressTimer = setTimeout(() => {
-      longPressTriggered = true
-      emit('long-press', index)
-    }, 500)
-  }
-}
-
-function onPointerUp(index) {
-  clearTimeout(longPressTimer)
-  longPressTimer = null
-}
-
-function onPointerLeave() {
-  clearTimeout(longPressTimer)
-  longPressTimer = null
-}
-
 function onClick(index) {
-  if (longPressTriggered) return
+  const now = Date.now()
+
+  // Double-tap on same preset → edit
+  if (props.longPressEnabled && index === lastTapIndex && now - lastTapTime < DOUBLE_TAP_MS) {
+    lastTapIndex = -1
+    emit('long-press', index)
+    return
+  }
+  lastTapIndex = index
+  lastTapTime = now
 
   // Check if this preset is already selected (either via props or our local tracking)
   const isSelected = index === props.selectedIndex || index === lastEmittedSelectIndex
@@ -63,6 +53,7 @@ function onClick(index) {
   if (isSelected) {
     // Tap on selected preset → activate (start operation)
     lastEmittedSelectIndex = -1
+    lastTapIndex = -1 // prevent double-tap detection after activate
     emit('activate', index)
     return
   }
@@ -85,11 +76,6 @@ function onClick(index) {
         role="option"
         :aria-selected="preset.index === selectedIndex"
         @click="onClick(preset.index)"
-        @pointerdown="onPointerDown(preset.index, $event)"
-        @pointerup="onPointerUp(preset.index)"
-        @pointerleave="onPointerLeave()"
-        @pointercancel="onPointerLeave()"
-        @contextmenu.prevent
       >
         {{ preset.display }}
       </button>

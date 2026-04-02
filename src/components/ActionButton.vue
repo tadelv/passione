@@ -17,8 +17,6 @@ const emit = defineEmits(['click'])
 // Two-step tap: first tap shows "confirm" state, second tap activates
 const confirmed = ref(false)
 let confirmTimer = null
-let longPressTimer = null
-let longPressTriggered = false
 
 function clearConfirmTimer() {
   if (confirmTimer) {
@@ -28,7 +26,7 @@ function clearConfirmTimer() {
 }
 
 function onClick() {
-  if (props.disabled || longPressTriggered) return
+  if (props.disabled) return
 
   if (!props.confirmTap) {
     emit('click')
@@ -51,32 +49,8 @@ function onClick() {
   }
 }
 
-function onPointerDown() {
-  if (props.disabled) return
-  longPressTriggered = false
-  longPressTimer = setTimeout(() => {
-    longPressTriggered = true
-    confirmed.value = false
-    clearConfirmTimer()
-    emit('click')
-  }, 500)
-}
-
-function onPointerUp() {
-  if (longPressTimer) {
-    clearTimeout(longPressTimer)
-    longPressTimer = null
-  }
-}
-
-function onPointerCancel() {
-  onPointerUp()
-  longPressTriggered = false
-}
-
 onUnmounted(() => {
   clearConfirmTimer()
-  if (longPressTimer) clearTimeout(longPressTimer)
 })
 </script>
 
@@ -88,11 +62,6 @@ onUnmounted(() => {
     :disabled="disabled"
     :aria-label="ariaLabel || label"
     @click="onClick"
-    @pointerdown="onPointerDown"
-    @pointerup="onPointerUp"
-    @pointercancel="onPointerCancel"
-    @pointerleave="onPointerUp"
-    @contextmenu.prevent
   >
     <span v-if="icon" class="action-button__icon">{{ icon }}</span>
     <span class="action-button__label">{{ confirmed ? 'Tap to start' : label }}</span>

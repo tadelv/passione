@@ -188,30 +188,23 @@ async function loadShotProfile(shot) {
   }
 }
 
-// Long-press support
-let longPressTimer = null
-let longPressTriggered = false
-
-function onRowPointerDown(shot) {
-  longPressTriggered = false
-  longPressTimer = setTimeout(() => {
-    longPressTriggered = true
-    openShot(shot)
-  }, 500)
-}
-
-function onRowPointerUp() {
-  clearTimeout(longPressTimer)
-  longPressTimer = null
-}
-
-function onRowPointerLeave() {
-  clearTimeout(longPressTimer)
-  longPressTimer = null
-}
+// Double-tap support
+const DOUBLE_TAP_MS = 300
+let lastRowTapId = null
+let lastRowTapTime = 0
 
 function onRowClick(shot) {
-  if (longPressTriggered) return
+  const id = shot.id || shot.shotId
+  const now = Date.now()
+
+  if (id === lastRowTapId && now - lastRowTapTime < DOUBLE_TAP_MS) {
+    lastRowTapId = null
+    openShot(shot)
+    return
+  }
+  lastRowTapId = id
+  lastRowTapTime = now
+
   if (compareMode.value) {
     toggleSelect(shot)
   } else {
@@ -297,11 +290,6 @@ onMounted(loadShotIds)
         class="shot-history__row"
         :class="{ 'shot-history__row--selected': compareMode && selectedIds.has(shot.id || shot.shotId) }"
         @click="onRowClick(shot)"
-        @pointerdown="onRowPointerDown(shot)"
-        @pointerup="onRowPointerUp()"
-        @pointerleave="onRowPointerLeave()"
-        @pointercancel="onRowPointerLeave()"
-        @contextmenu.prevent
       >
         <div v-if="compareMode" class="shot-history__checkbox" :class="{ checked: selectedIds.has(shot.id || shot.shotId) }">
           <svg v-if="selectedIds.has(shot.id || shot.shotId)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
