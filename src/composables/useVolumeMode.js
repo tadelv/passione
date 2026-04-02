@@ -103,9 +103,11 @@ export function useVolumeMode(machine, scale, workflow) {
     _lastTimestamp = null
   }
 
-  // Integrate flow during espresso
+  // Integrate flow during espresso — only after preheat ends, matching
+  // the same substates used by useShotData recording.
+  const VOLUME_SUBSTATES = new Set(['preinfusion', 'pouring', 'pouringDone'])
   watch(machine.snapshot, () => {
-    if (machine.state.value === 'espresso') {
+    if (machine.state.value === 'espresso' && VOLUME_SUBSTATES.has(machine.substate.value)) {
       _integrateFlow()
     }
   })

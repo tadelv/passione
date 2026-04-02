@@ -115,7 +115,7 @@ async function onComboSelect(index) {
 
   if (combo.flushSettings) {
     update.rinseData = {
-      targetTemperature: settings.settings.flushTemperature ?? 90,
+      targetTemperature: combo.flushSettings.temperature ?? settings.settings.flushTemperature ?? 90,
       duration: combo.flushSettings.duration ?? settings.settings.flushDuration ?? 5,
       flow: combo.flushSettings.flow ?? settings.settings.flushFlowRate ?? 6.0,
     }

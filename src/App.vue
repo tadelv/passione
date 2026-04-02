@@ -200,6 +200,7 @@ let lastTargetWeight = 0
 function markUserStop() {
   userRequestedStop = true
 }
+provide('markUserStop', markUserStop)
 
 // Auto-navigation based on machine state transitions
 const STATE_ROUTES = {
@@ -270,9 +271,8 @@ watch(machine.state, (newState, oldState) => {
 
   if (targetRoute && route.path !== targetRoute) {
     // Starting an operation -- navigate to its page
-    if (newState === 'espresso' && !shotData.isRecording.value) {
-      shotData.start()
-    }
+    // Note: shotData.start() is handled by the snapshot watcher (line 174+)
+    // which correctly waits for RECORDING_SUBSTATES (past preheat).
     router.replace(targetRoute)
   } else if (!targetRoute && oldState && OPERATION_STATES.has(oldState)) {
     // Operation ended -- determine overlay/reason

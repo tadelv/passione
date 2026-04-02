@@ -92,7 +92,7 @@ function onBatchSelect(batchId) {
 }
 
 // ---- Grinder selection ----
-function onGrinderSelect(grinderId) {
+function onGrinderSelect(grinderId, { resetSetting = true } = {}) {
   selectedGrinderId.value = grinderId || null
   if (!grinderId) {
     grinder.value = ''
@@ -102,7 +102,7 @@ function onGrinderSelect(grinderId) {
   const g = grinders.value.find(g => g.id === grinderId)
   if (g) {
     grinder.value = g.model ?? ''
-    grinderSetting.value = ''  // Reset setting when switching grinders
+    if (resetSetting) grinderSetting.value = ''
   }
 }
 
@@ -114,7 +114,14 @@ function daysSinceRoast(batch) {
 }
 
 // ---- Populate from selected preset ----
-function loadFromPreset(index) {
+// Cancel any pending batch-restore watcher from a previous load
+let _pendingBatchWatch = null
+
+async function loadFromPreset(index) {
+  // Cancel stale batch watcher from a previous combo switch
+  _pendingBatchWatch?.()
+  _pendingBatchWatch = null
+
   const preset = workflowCombos.value[index]
   if (!preset) return
   _updating = true
@@ -128,27 +135,28 @@ function loadFromPreset(index) {
   ratioValue.value = doseIn.value > 0 ? +(doseOut.value / doseIn.value).toFixed(1) : 2.0
   profileId.value = preset.profileId ?? null
   profileTitle.value = preset.profileTitle ?? ''
-  // Operation settings
+  // Operation settings — always restore sub-field values so they survive
+  // a toggle-off/toggle-on cycle (user disables steam, re-enables later)
   includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
-  if (preset.steamSettings && includeSteam.value) {
+  if (preset.steamSettings) {
     steamDuration.value = preset.steamSettings.duration ?? 30
     steamFlow.value = preset.steamSettings.flow ?? 1.5
     steamTemperature.value = preset.steamSettings.temperature ?? 160
   }
   includeFlush.value = preset.includeFlush ?? (preset.flushSettings?.duration > 0)
-  if (preset.flushSettings && includeFlush.value) {
+  if (preset.flushSettings) {
     flushDuration.value = preset.flushSettings.duration ?? 5
     flushFlowRate.value = preset.flushSettings.flow ?? 6.0
   }
   includeHotWater.value = preset.includeHotWater ?? (preset.hotWaterSettings?.volume > 0)
-  if (preset.hotWaterSettings && includeHotWater.value) {
+  if (preset.hotWaterSettings) {
     hotWaterVolume.value = preset.hotWaterSettings.volume ?? 200
     hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
   }
-  _updating = false
-  // Restore entity selections (async, after _updating flag cleared)
+  // Restore entity selections — keep _updating true through async work
+  // so the auto-save watcher doesn't fire with partially-loaded data
   if (preset.selectedBeanId) {
-    onBeanSelect(preset.selectedBeanId)
+    await onBeanSelect(preset.selectedBeanId)
   } else {
     selectedBeanId.value = null
     selectedBatchId.value = null
@@ -156,21 +164,27 @@ function loadFromPreset(index) {
     batchesForBean.value = []
   }
   if (preset.selectedGrinderId) {
-    onGrinderSelect(preset.selectedGrinderId)
+    onGrinderSelect(preset.selectedGrinderId, { resetSetting: false })
   } else {
     selectedGrinderId.value = null
   }
   // Restore batch if both IDs present (after bean batches load)
   if (preset.selectedBeanId && preset.selectedBatchId) {
     const batchId = preset.selectedBatchId
-    // Wait for onBeanSelect to finish loading batches, then select
-    const unwatchBatches = watch(batchesForBean, (batches) => {
-      if (batches.length > 0) {
-        onBatchSelect(batchId)
-        unwatchBatches()
-      }
-    })
+    if (batchesForBean.value.length > 0) {
+      onBatchSelect(batchId)
+    } else {
+      // Batches haven't loaded yet — wait for them
+      _pendingBatchWatch = watch(batchesForBean, (batches) => {
+        if (batches.length > 0) {
+          onBatchSelect(batchId)
+          _pendingBatchWatch?.()
+          _pendingBatchWatch = null
+        }
+      })
+    }
   }
+  _updating = false
 }
 
 // Load on mount if a preset is selected
@@ -387,7 +401,9 @@ watch(ratioValue, (val) => {
 
 // Sync profile title when returning from ProfileSelectorPage
 watch(() => workflow?.profile, (newProfile) => {
-  if (newProfile && !_updating) {
+  if (newProfile && !_updating && selectedIndex.value < 0) {
+    // Only sync from workflow when no combo is selected — combos carry
+    // their own profileId/profileTitle and must not be overwritten.
     profileTitle.value = newProfile.title ?? ''
     profileId.value = newProfile.id ?? null
   }

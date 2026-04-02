@@ -151,7 +151,7 @@ function populateFromShot(shot) {
 function populateFromSticky() {
   if (!settings) return
   const s = settings.settings
-  if (!roaster.value && s.dyeBeanBrand) beanBrand.value = s.dyeBeanBrand
+  if (!beanBrand.value && s.dyeBeanBrand) beanBrand.value = s.dyeBeanBrand
   if (!beanType.value && s.dyeBeanType) beanType.value = s.dyeBeanType
   if (!roastDate.value && s.dyeRoastDate) roastDate.value = s.dyeRoastDate
   if (!roastLevel.value && s.dyeRoastLevel) roastLevel.value = s.dyeRoastLevel

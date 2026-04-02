@@ -74,6 +74,7 @@ const DEFAULT_SETTINGS = {
 
   // Options
   waterRefillThreshold: 10,
+  autoSleepMinutes: 30,
 
   // Espresso / Brew Dialog
   showBrewDialog: false,
@@ -153,6 +154,7 @@ export function useSettings() {
     preferences: [
       'keepSteamHeaterOn', 'steamDisabled',
       'steamAutoFlushSeconds', 'waterLevelDisplayUnit',
+      'autoSleepMinutes',
     ],
     steam: [
       'steamDuration', 'steamFlow', 'steamTemperature',

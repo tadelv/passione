@@ -7,6 +7,7 @@ import ValueInput from '../components/ValueInput.vue'
 import {
   getProfile,
   createProfile,
+  updateProfile,
   uploadProfileToMachine,
 } from '../api/rest.js'
 
@@ -311,11 +312,14 @@ async function saveProfile() {
       payload.frames = payload.steps
       delete payload.steps
     }
-    const result = await createProfile(payload)
-    originalSnapshot = JSON.stringify(profile.value)
+    const existingId = record.value?.id || profile.value?.id
+    const result = existingId
+      ? await updateProfile(existingId, payload)
+      : await createProfile(payload)
     if (result?.id) {
       record.value = result
     }
+    originalSnapshot = JSON.stringify(result || profile.value)
     if (toast) toast.success('Profile saved')
   } catch (e) {
     console.warn('[ProfileEditorPage] Save failed:', e.message)

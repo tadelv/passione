@@ -29,9 +29,10 @@ const shotData = inject('shotData', null)
 
 // Volume mode composable (provided by App.vue)
 const volumeMode = inject('volumeMode', null)
+const markUserStop = inject('markUserStop', null)
 
 // P1-6: Brew Dialog integration
-const showBrewDialog = ref(settings?.settings?.showBrewDialog ?? false)
+const showBrewDialog = computed(() => settings?.settings?.showBrewDialog ?? false)
 const brewDialogVisible = ref(false)
 
 // Show brew dialog when navigated to espresso page if enabled and not already in espresso
@@ -83,10 +84,13 @@ async function onBrewDialogUpdateTemperature(temp) {
       // Update the target temperature in profile frames
       const frameKey = profile.frames ? 'frames' : profile.steps ? 'steps' : null
       if (frameKey && profile[frameKey].length > 0) {
-        profile[frameKey] = profile[frameKey].map(f => ({
-          ...f,
-          temperature: temp,
-        }))
+        // Only update frame 0's temperature — advanced profiles use per-frame
+        // temperature curves (e.g. turbo profiles that ramp down mid-shot).
+        // Flattening all frames would destroy intentional thermal variation.
+        profile[frameKey] = profile[frameKey].map((f, i) => i === 0
+          ? { ...f, temperature: temp }
+          : f
+        )
       }
       await updateWorkflow({ profile })
       if (toast) toast.success('Profile temperature updated')
@@ -149,9 +153,9 @@ async function onBrewDialogUseLastShot() {
   }
 }
 
-function onBrewDialogUpdateGrinder(grinder) {
+async function onBrewDialogUpdateGrinder(grinder) {
   try {
-    updateWorkflow({
+    await updateWorkflow({
       context: {
         ...workflow?.context,
         grinderModel: grinder.name,
@@ -245,6 +249,7 @@ async function skipStep() {
 }
 
 async function stopAndGoBack() {
+  markUserStop?.()
   try {
     await setMachineState('idle')
   } catch {

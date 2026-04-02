@@ -133,7 +133,7 @@ watch(
             :value="settings.visualizerUsername"
             placeholder="email@example.com"
             autocomplete="username"
-            @change="e => settings.visualizerUsername = e.target.value"
+            @input="e => settings.visualizerUsername = e.target.value"
           />
         </div>
 
@@ -145,7 +145,7 @@ watch(
             :value="settings.visualizerPassword"
             placeholder="password"
             autocomplete="current-password"
-            @change="e => settings.visualizerPassword = e.target.value"
+            @input="e => settings.visualizerPassword = e.target.value"
           />
         </div>
 
