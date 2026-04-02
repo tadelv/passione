@@ -146,7 +146,7 @@ onMounted(loadShots)
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .comparison-page__graph {
@@ -168,7 +168,7 @@ onMounted(loadShots)
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -211,7 +211,7 @@ onMounted(loadShots)
 }
 
 .comparison-page__shot-title {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
@@ -227,7 +227,7 @@ onMounted(loadShots)
   border: 1px solid var(--color-error);
   background: transparent;
   color: var(--color-error);
-  font-size: 18px;
+  font-size: var(--font-body);
   line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
@@ -246,7 +246,7 @@ onMounted(loadShots)
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 </style>

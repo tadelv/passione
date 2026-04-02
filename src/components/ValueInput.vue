@@ -197,7 +197,7 @@ onUnmounted(stopHold)
   border: none;
   background: transparent;
   color: var(--color-text);
-  font-size: 20px;
+  font-size: var(--font-title);
   font-weight: bold;
   cursor: pointer;
   display: flex;
@@ -213,7 +213,7 @@ onUnmounted(stopHold)
 }
 
 .value-input__btn:active:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-hover);
 }
 
 .value-input:focus {
@@ -224,7 +224,7 @@ onUnmounted(stopHold)
 .value-input__display {
   flex: 1;
   text-align: center;
-  font-size: 24px;
+  font-size: var(--font-title);
   font-weight: bold;
   white-space: nowrap;
   min-width: 0;

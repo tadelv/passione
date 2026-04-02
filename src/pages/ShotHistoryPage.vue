@@ -364,7 +364,7 @@ onMounted(loadShotIds)
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   outline: none;
 }
 
@@ -377,7 +377,7 @@ onMounted(loadShotIds)
 }
 
 .shot-history__count {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   white-space: nowrap;
 }
@@ -394,7 +394,7 @@ onMounted(loadShotIds)
   padding: 40px;
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .shot-history__row {
@@ -425,12 +425,12 @@ onMounted(loadShotIds)
 }
 
 .shot-history__date {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .shot-history__profile {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -438,7 +438,7 @@ onMounted(loadShotIds)
 }
 
 .shot-history__meta {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
@@ -450,12 +450,12 @@ onMounted(loadShotIds)
 }
 
 .shot-history__duration {
-  font-size: 16px;
+  font-size: var(--font-body);
   color: var(--color-text-secondary);
 }
 
 .shot-history__rating {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-warning);
 }
@@ -465,7 +465,7 @@ onMounted(loadShotIds)
   height: 32px;
   border-radius: 50%;
   border: none;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -498,7 +498,7 @@ onMounted(loadShotIds)
   padding: 16px;
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .shot-history__compare-toggle {
@@ -507,7 +507,7 @@ onMounted(loadShotIds)
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -526,7 +526,7 @@ onMounted(loadShotIds)
   padding: 8px 16px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text);
 }
 
@@ -536,7 +536,7 @@ onMounted(loadShotIds)
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

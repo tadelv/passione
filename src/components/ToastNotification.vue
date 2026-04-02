@@ -35,7 +35,7 @@ const TYPE_ICONS = {
   position: fixed;
   top: 12px;
   right: 12px;
-  z-index: 1000;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -49,7 +49,7 @@ const TYPE_ICONS = {
   gap: 8px;
   padding: 10px 16px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--color-text);
   pointer-events: auto;
@@ -63,24 +63,24 @@ const TYPE_ICONS = {
 }
 
 .toast--success {
-  background: rgba(76, 175, 80, 0.9);
+  background: var(--color-toast-success);
 }
 
 .toast--error {
-  background: rgba(244, 67, 54, 0.9);
+  background: var(--color-toast-error);
 }
 
 .toast--warning {
-  background: rgba(255, 193, 7, 0.9);
-  color: #000;
+  background: var(--color-toast-warning);
+  color: var(--color-background);
 }
 
 .toast--info {
-  background: rgba(78, 133, 244, 0.9);
+  background: var(--color-toast-info);
 }
 
 .toast__icon {
-  font-size: 16px;
+  font-size: var(--font-body);
   flex-shrink: 0;
 }
 

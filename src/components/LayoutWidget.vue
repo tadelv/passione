@@ -511,7 +511,7 @@ const lastShotInfo = computed(() => {
 }
 
 .layout-widget__last-shot-profile {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
   overflow: hidden;
@@ -520,7 +520,7 @@ const lastShotInfo = computed(() => {
 }
 
 .layout-widget__last-shot-detail {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -549,7 +549,7 @@ const lastShotInfo = computed(() => {
   border: 1px dashed var(--color-border);
   background: transparent;
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -561,7 +561,7 @@ const lastShotInfo = computed(() => {
 
 /* ---- Clock ---- */
 .layout-widget__clock {
-  font-size: 48px;
+  font-size: var(--font-value);
   font-weight: 300;
   color: var(--color-text);
   letter-spacing: 2px;
@@ -629,14 +629,14 @@ const lastShotInfo = computed(() => {
 }
 
 .layout-widget__scale-weight {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 
 .layout-widget__scale-battery {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
@@ -646,7 +646,7 @@ const lastShotInfo = computed(() => {
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -657,12 +657,14 @@ const lastShotInfo = computed(() => {
 }
 
 .layout-widget__scale-btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 
 .layout-widget__scale-disconnected {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
@@ -678,7 +680,7 @@ const lastShotInfo = computed(() => {
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

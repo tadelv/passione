@@ -392,7 +392,7 @@ async function stopAndGoBack() {
   padding: 8px 32px;
   font-size: var(--font-title);
   color: var(--color-text-secondary);
-  z-index: 5;
+  z-index: var(--z-chart);
 }
 
 .espresso-page__chart {
@@ -470,13 +470,13 @@ async function stopAndGoBack() {
 }
 
 .espresso-page__metric-value {
-  font-size: 24px;
+  font-size: var(--font-title);
   font-weight: 500;
   color: var(--color-text);
 }
 
 .espresso-page__metric-value--timer {
-  font-size: 30px;
+  font-size: var(--font-heading);
   font-weight: bold;
 }
 

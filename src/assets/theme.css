@@ -62,12 +62,49 @@
   --chart-font-size: 14px;
   --graph-line-width: 3px;
 
+  /* Extended font scale (fills gaps for components) */
+  --font-xs: 10px;
+  --font-sm: 12px;
+  --font-md: 14px;
+
+  /* Overlays & scrims */
+  --color-overlay-backdrop: rgba(0, 0, 0, 0.6);
+  --color-overlay-surface: rgba(26, 26, 46, 0.92);
+  --color-overlay-scrim: rgba(26, 26, 46, 0.75);
+
+  /* Toast notification colors */
+  --color-toast-success: rgba(76, 175, 80, 0.9);
+  --color-toast-error: rgba(244, 67, 54, 0.9);
+  --color-toast-warning: rgba(255, 193, 7, 0.9);
+  --color-toast-info: rgba(78, 133, 244, 0.9);
+
+  /* Canvas / chart auxiliary colors */
+  --color-canvas-grid: #3a3a4e;
+  --color-canvas-label: #a0a8b8;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-surface-pressed: rgba(255, 255, 255, 0.1);
+  --color-surface-active: rgba(78, 133, 244, 0.15);
+  --color-warning-subtle: rgba(255, 193, 7, 0.1);
+  --color-screensaver-bg: #000000;
+  --color-screensaver-card: #1a1a1a;
+
   /* Shadows */
   --shadow-color: rgba(0, 0, 0, 0.25);
 
   /* Button states */
   --button-default: var(--color-primary);
   --button-disabled: #555555;
+  --button-disabled-text: var(--color-text-secondary);
+
+  /* Z-index scale */
+  --z-base: 1;
+  --z-chart: 2;
+  --z-sticky: 10;
+  --z-dropdown: 100;
+  --z-overlay: 300;
+  --z-modal: 500;
+  --z-toast: 600;
+  --z-debug: 900;
 
   /* DYE measurement colors */
   --color-dye-dose: #6F4E37;

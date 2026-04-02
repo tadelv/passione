@@ -93,7 +93,7 @@ function onClick(index, event) {
   border: none;
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;

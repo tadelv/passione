@@ -74,7 +74,7 @@ function goToHistory() {
 }
 
 .history-tab__section-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   padding-bottom: 8px;
@@ -92,12 +92,12 @@ function goToHistory() {
 }
 
 .history-tab__stat-label {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
 .history-tab__stat-value {
-  font-size: 20px;
+  font-size: var(--font-title);
   font-weight: 700;
   color: var(--color-text);
 }
@@ -108,7 +108,7 @@ function goToHistory() {
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

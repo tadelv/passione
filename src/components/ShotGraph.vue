@@ -113,7 +113,7 @@ function drawPhaseOverlays(u) {
     // Phase label at top of chart
     if (marker.label) {
       ctx.font = '10px system-ui, sans-serif'
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.fillStyle = 'rgba(255,255,255,0.6)' // ~color-text at 60% opacity (canvas can't use CSS vars)
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.fillText(marker.label, x + Math.min(barW / 2, 20), top + 2)
@@ -234,17 +234,17 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 3px;
   padding: 6px 10px;
-  background: rgba(26, 26, 46, 0.75);
+  background: var(--color-overlay-scrim);
   border-radius: 6px;
   pointer-events: none;
-  z-index: 2;
+  z-index: var(--z-chart);
 }
 
 .shot-graph__legend-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   white-space: nowrap;
 }

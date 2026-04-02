@@ -111,7 +111,7 @@ const displayText = computed(() =>
 
 .rating-input__label {
   min-width: 64px;
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-warning);
   white-space: nowrap;
@@ -167,7 +167,7 @@ const displayText = computed(() =>
   border: 2px solid var(--color-border);
   cursor: pointer;
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .rating-input__presets {
@@ -182,7 +182,7 @@ const displayText = computed(() =>
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

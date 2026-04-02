@@ -1166,7 +1166,8 @@ onMounted(loadProfile)
 }
 
 .recipe-editor__phase--disabled {
-  opacity: 0.5;
+  color: var(--button-disabled-text);
+  pointer-events: none;
 }
 
 .recipe-editor__phase-header {
@@ -1219,7 +1220,7 @@ onMounted(loadProfile)
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--font-xs);
   font-weight: bold;
   color: var(--color-text);
   flex-shrink: 0;
@@ -1238,7 +1239,7 @@ onMounted(loadProfile)
 }
 
 .recipe-editor__phase-chevron {
-  font-size: 10px;
+  font-size: var(--font-xs);
   color: var(--color-text-secondary, #a0a8b8);
   flex-shrink: 0;
 }
@@ -1291,7 +1292,7 @@ onMounted(loadProfile)
 }
 
 .recipe-editor__field-label--small {
-  font-size: 10px;
+  font-size: var(--font-xs);
   width: 48px;
   flex-shrink: 0;
 }
@@ -1461,14 +1462,16 @@ onMounted(loadProfile)
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .recipe-editor__bar-btn:disabled {
-  opacity: 0.4;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 

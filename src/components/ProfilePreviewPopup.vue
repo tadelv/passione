@@ -52,8 +52,8 @@ const profileTitle = computed(() => props.profile?.title || props.profile?.name 
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 600;
-  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-modal);
+  background: var(--color-overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +110,7 @@ const profileTitle = computed(() => props.profile?.title || props.profile?.name 
 }
 
 .profile-preview__info-btn:active {
-  background: rgba(78, 133, 244, 0.15);
+  background: var(--color-surface-active);
 }
 
 .profile-preview__close-btn {
@@ -128,7 +128,7 @@ const profileTitle = computed(() => props.profile?.title || props.profile?.name 
 }
 
 .profile-preview__close-btn:active {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-pressed);
 }
 
 .profile-preview__body {

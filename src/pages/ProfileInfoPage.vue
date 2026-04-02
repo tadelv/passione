@@ -310,7 +310,7 @@ onMounted(fetchProfile)
   border-radius: 50%;
   background: var(--color-primary);
   color: white;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: bold;
   flex-shrink: 0;
 }

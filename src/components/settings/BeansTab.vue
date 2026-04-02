@@ -451,7 +451,7 @@ async function deleteBatch(beanId, batch) {
 }
 
 .beans-tab__title {
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -466,7 +466,7 @@ async function deleteBatch(beanId, batch) {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   cursor: pointer;
 }
@@ -477,7 +477,7 @@ async function deleteBatch(beanId, batch) {
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -520,18 +520,18 @@ async function deleteBatch(beanId, batch) {
 }
 
 .beans-tab__bean-roaster {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .beans-tab__bean-name {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
 .beans-tab__expand-icon {
-  font-size: 10px;
+  font-size: var(--font-xs);
   color: var(--color-text-secondary);
 }
 
@@ -569,7 +569,7 @@ async function deleteBatch(beanId, batch) {
 }
 
 .beans-tab__form-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -591,7 +591,7 @@ async function deleteBatch(beanId, batch) {
 }
 
 .beans-tab__label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
@@ -602,7 +602,7 @@ async function deleteBatch(beanId, batch) {
   border: 1px solid var(--color-border);
   background: var(--color-background);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .beans-tab__form-actions {
@@ -618,7 +618,7 @@ async function deleteBatch(beanId, batch) {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -647,12 +647,12 @@ async function deleteBatch(beanId, batch) {
 
 .beans-tab__btn--small {
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .beans-tab__btn--icon {
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   background: transparent;
   border: none;
   color: var(--color-text-secondary);
@@ -678,7 +678,7 @@ async function deleteBatch(beanId, batch) {
 }
 
 .beans-tab__batches-title {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -710,23 +710,23 @@ async function deleteBatch(beanId, batch) {
 }
 
 .beans-tab__batch-date {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text);
   font-weight: 500;
 }
 
 .beans-tab__batch-age {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .beans-tab__batch-weight {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
 .beans-tab__batch-frozen {
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--color-primary);
   padding: 2px 8px;
@@ -743,11 +743,11 @@ async function deleteBatch(beanId, batch) {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .beans-tab__empty--small {
   padding: 12px;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 </style>

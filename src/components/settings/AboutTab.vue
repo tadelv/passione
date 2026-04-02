@@ -76,13 +76,13 @@ onMounted(async () => {
 }
 
 .about-tab__title {
-  font-size: 32px;
+  font-size: var(--font-heading);
   font-weight: bold;
   color: var(--color-primary);
 }
 
 .about-tab__version {
-  font-size: 18px;
+  font-size: var(--font-body);
   color: var(--color-text);
 }
 
@@ -93,14 +93,14 @@ onMounted(async () => {
 }
 
 .about-tab__text {
-  font-size: 16px;
+  font-size: var(--font-body);
   color: var(--color-text-secondary);
   line-height: 1.5;
   max-width: 400px;
 }
 
 .about-tab__text--small {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-family: monospace;
 }
 
@@ -112,7 +112,7 @@ onMounted(async () => {
 }
 
 .about-tab__label {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -120,7 +120,7 @@ onMounted(async () => {
 }
 
 .about-tab__credits {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   font-style: italic;
   line-height: 1.5;

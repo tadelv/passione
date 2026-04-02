@@ -357,7 +357,7 @@ const frameCount = computed(() => {
   max-width: 500px;
   padding: 10px 16px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   text-align: center;
   margin-bottom: 16px;
@@ -385,14 +385,14 @@ const frameCount = computed(() => {
 }
 
 .viz-import__heading {
-  font-size: 22px;
+  font-size: var(--font-title);
   font-weight: 700;
   color: var(--color-text);
   text-align: center;
 }
 
 .viz-import__subtext {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   text-align: center;
   line-height: 1.5;
@@ -406,7 +406,7 @@ const frameCount = computed(() => {
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 28px;
+  font-size: var(--font-heading);
   font-weight: 700;
   text-align: center;
   letter-spacing: 8px;
@@ -430,14 +430,15 @@ const frameCount = computed(() => {
   padding: 10px 24px;
   border-radius: 8px;
   border: none;
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .viz-import__btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
@@ -459,7 +460,7 @@ const frameCount = computed(() => {
 
 .viz-import__btn--large {
   padding: 14px 32px;
-  font-size: 16px;
+  font-size: var(--font-body);
 }
 
 /* Instructions */
@@ -471,7 +472,7 @@ const frameCount = computed(() => {
 }
 
 .viz-import__instructions-title {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 8px;
@@ -486,7 +487,7 @@ const frameCount = computed(() => {
 }
 
 .viz-import__steps li {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
@@ -497,7 +498,7 @@ const frameCount = computed(() => {
 }
 
 .viz-import__note-text {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   line-height: 1.5;
   margin-bottom: 8px;
@@ -517,13 +518,13 @@ const frameCount = computed(() => {
 }
 
 .viz-import__preview-title {
-  font-size: 22px;
+  font-size: var(--font-title);
   font-weight: 700;
   color: var(--color-text);
 }
 
 .viz-import__preview-author {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   margin-top: 4px;
 }
@@ -560,12 +561,12 @@ const frameCount = computed(() => {
 }
 
 .viz-import__detail-label {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
 .viz-import__detail-value {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -581,7 +582,7 @@ const frameCount = computed(() => {
 .viz-import__overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
@@ -601,14 +602,14 @@ const frameCount = computed(() => {
 }
 
 .viz-import__dialog-title {
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 700;
   color: var(--color-text);
   text-align: center;
 }
 
 .viz-import__dialog-text {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   text-align: center;
   line-height: 1.5;
@@ -629,7 +630,7 @@ const frameCount = computed(() => {
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 16px;
+  font-size: var(--font-body);
 }
 
 .viz-import__name-input:focus {

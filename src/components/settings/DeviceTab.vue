@@ -99,7 +99,7 @@ async function onTare() {
 }
 
 .device-tab__title {
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -110,14 +110,15 @@ async function onTare() {
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .device-tab__scan-btn:disabled {
-  opacity: 0.6;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
@@ -125,7 +126,7 @@ async function onTare() {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .device-tab__list {
@@ -157,18 +158,18 @@ async function onTare() {
 }
 
 .device-tab__device-name {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .device-tab__device-type {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .device-tab__device-status {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
 }
 
@@ -179,7 +180,7 @@ async function onTare() {
 }
 
 .device-tab__section-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   margin-bottom: 12px;
@@ -191,7 +192,7 @@ async function onTare() {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

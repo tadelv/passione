@@ -711,7 +711,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px dashed var(--color-border);
   background: transparent;
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -746,7 +746,7 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__profile-name {
-  font-size: 15px;
+  font-size: var(--font-body);
   color: var(--color-text);
 }
 
@@ -756,7 +756,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px solid var(--color-primary);
   background: transparent;
   color: var(--color-primary);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -781,7 +781,7 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__section-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   padding-bottom: 6px;
@@ -795,12 +795,12 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .bean-info__hint {
-  font-size: 11px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   opacity: 0.7;
 }
@@ -812,7 +812,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 15px;
+  font-size: var(--font-body);
   outline: none;
 }
 
@@ -831,7 +831,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 15px;
+  font-size: var(--font-body);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -859,14 +859,14 @@ watch(() => workflow?.profile, (newProfile) => {
   border: none;
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .bean-info__op-badge {
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--color-success);
   text-transform: uppercase;
@@ -893,7 +893,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -912,7 +912,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: none;
   background: var(--color-success);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -929,7 +929,7 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__readonly {
-  font-size: 15px;
+  font-size: var(--font-body);
   color: var(--color-text);
   padding: 8px 0 2px;
 }
@@ -942,7 +942,7 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 .bean-info__batch-detail {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
@@ -950,7 +950,7 @@ watch(() => workflow?.profile, (newProfile) => {
   background: none;
   border: none;
   color: var(--color-primary);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   padding: 4px 0;
@@ -974,7 +974,7 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   cursor: pointer;
   text-align: left;
   -webkit-tap-highlight-color: transparent;

@@ -113,7 +113,7 @@ function onBlur() {
   top: 100%;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   margin-top: 4px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -137,7 +137,7 @@ function onBlur() {
 }
 
 .suggestion-field__option:active {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-hover);
 }
 
 .suggestion-field__option + .suggestion-field__option {

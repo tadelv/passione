@@ -294,7 +294,7 @@ function onDialogKeydown(e) {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 600;
+  z-index: var(--z-modal);
   background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
@@ -385,7 +385,7 @@ function onDialogKeydown(e) {
 }
 
 .brew-dialog__ratio-value {
-  font-size: 32px;
+  font-size: var(--font-heading);
   font-weight: bold;
   color: var(--color-primary);
 }

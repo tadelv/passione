@@ -85,7 +85,7 @@ const displayFlags = computed(() => {
   padding: 0 var(--spacing-large) 0 var(--chart-margin-small);
   background: var(--color-surface);
   flex-shrink: 0;
-  z-index: 10;
+  z-index: var(--z-sticky);
 }
 
 .status-bar__left {

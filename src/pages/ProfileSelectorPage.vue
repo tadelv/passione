@@ -326,11 +326,11 @@ onMounted(fetchProfiles)
 }
 
 .profile-selector__item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-surface-hover);
 }
 
 .profile-selector__item--selected {
-  background: rgba(78, 133, 244, 0.15);
+  background: var(--color-surface-active);
 }
 
 .profile-selector__item--active {
@@ -344,7 +344,7 @@ onMounted(fetchProfiles)
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -456,7 +456,7 @@ onMounted(fetchProfiles)
   border: 1px solid var(--color-primary);
   background: transparent;
   color: var(--color-primary);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

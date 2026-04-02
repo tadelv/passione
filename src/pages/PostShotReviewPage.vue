@@ -540,7 +540,7 @@ function goBack() {
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .review-page__scroll {
@@ -649,7 +649,7 @@ function goBack() {
   height: 44px;
   display: flex;
   align-items: center;
-  font-size: 20px;
+  font-size: var(--font-title);
   font-weight: bold;
   color: var(--color-primary);
 }
@@ -712,7 +712,8 @@ function goBack() {
 }
 
 .review-page__save-btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
@@ -734,7 +735,9 @@ function goBack() {
 }
 
 .review-page__upload-btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 
@@ -749,8 +752,8 @@ function goBack() {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 700;
-  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-overlay);
+  background: var(--color-overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,8 +1,101 @@
-<script setup>
-import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
+# Power & Sleep Redesign Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Replace the 7-row-per-day wake schedule grid with schedule cards that group days naturally, wire auto-sleep to the server API, and clean up dead settings.
+
+**Architecture:** PreferencesTab's Power & Sleep section is rewritten. Schedules load from the server's presence API and render as cards with direct-manipulation interactions (tap time to edit, tap day pills to toggle, dropdown for keep-awake). Settings cleanup removes `autoWakeEnabled` and `autoSleepMinutes` from local KV store since both are server-authoritative (auto-sleep sync already handled by `useAutoSleep.js`).
+
+**Tech Stack:** Vue 3 Composition API, `<script setup>`, ReaPrime REST API (`/api/v1/presence/*`)
+
+---
+
+### File Map
+
+| File | Action | Responsibility |
+|------|--------|----------------|
+| `src/components/settings/PreferencesTab.vue` | Rewrite | Schedule cards UI, auto-sleep dropdown, all schedule CRUD |
+| `src/composables/useSettings.js` | Modify | Remove `autoWakeEnabled` and `autoSleepMinutes` from defaults and groups |
+
+---
+
+### Task 1: Clean up dead settings from useSettings.js
+
+**Files:**
+- Modify: `src/composables/useSettings.js:24` (remove `autoSleepMinutes` default)
+- Modify: `src/composables/useSettings.js:80` (remove `autoWakeEnabled` default)
+- Modify: `src/composables/useSettings.js:158` (remove from `preferences` group)
+- Modify: `src/composables/useSettings.js:189` (remove from `options` group)
+
+- [ ] **Step 1: Remove `autoSleepMinutes` from DEFAULT_SETTINGS**
+
+In `src/composables/useSettings.js`, remove the `autoSleepMinutes: 60,` line and its comment from DEFAULT_SETTINGS (around line 23-24).
+
+- [ ] **Step 2: Remove `autoWakeEnabled` from DEFAULT_SETTINGS**
+
+In `src/composables/useSettings.js`, remove the `autoWakeEnabled: false,` line (around line 80).
+
+- [ ] **Step 3: Remove from GROUPS**
+
+In the `preferences` group array (around line 157-159), remove `'autoSleepMinutes'` from the array.
+
+In the `options` group array (around line 187-190), remove `'autoWakeEnabled'` from the array.
+
+- [ ] **Step 4: Verify `useAutoSleep.js` still works**
+
+`useAutoSleep.js` reads/writes `settings.settings.autoSleepMinutes`. Since it's no longer in defaults, it will be `undefined` initially but gets set from server on mount (line 100). The watch on line 91 will still work. However, the initial `_syncSettingsToServer()` call on line 74 would send `undefined`. 
+
+Fix: In `src/composables/useAutoSleep.js`, guard the sync function:
+
+```javascript
+async function _syncSettingsToServer() {
+  const minutes = settings.settings.autoSleepMinutes
+  if (minutes == null) return  // Not yet loaded from server
+  try {
+    await updatePresenceSettings({
+      sleepTimeoutMinutes: minutes,
+      userPresenceEnabled: true,
+    })
+  } catch {
+    // Server may not support presence API yet
+  }
+}
+```
+
+- [ ] **Step 5: Build and verify**
+
+Run: `npm run build`
+Expected: Clean build, no errors.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/composables/useSettings.js src/composables/useAutoSleep.js
+git commit -m "refactor: remove autoSleepMinutes and autoWakeEnabled from local settings
+
+Both are now server-authoritative via the presence API.
+autoSleepMinutes is synced by useAutoSleep.js.
+autoWakeEnabled is managed by PreferencesTab directly."
+```
+
+---
+
+### Task 2: Rewrite PreferencesTab Power & Sleep section
+
+**Files:**
+- Rewrite: `src/components/settings/PreferencesTab.vue`
+
+This is the main task. The entire `<script setup>`, `<template>`, and `<style>` for the Power & Sleep column gets rewritten. The Water column stays unchanged.
+
+- [ ] **Step 1: Rewrite the script section**
+
+Replace the entire `<script setup>` in `src/components/settings/PreferencesTab.vue` with:
+
+```javascript
+import { ref, computed, inject, onMounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import { updateWaterLevelThreshold } from '../../api/rest.js'
 import {
-  updateWaterLevelThreshold,
   getPresenceSchedules,
   getPresenceSettings,
   updatePresenceSettings,
@@ -33,13 +126,13 @@ const refillThresholdDisplay = computed({
 // ---- Power & Sleep (server-backed) ----
 
 const DAYS = [
-  { key: 'Mo', name: 'Monday', iso: 1 },
-  { key: 'Tu', name: 'Tuesday', iso: 2 },
-  { key: 'We', name: 'Wednesday', iso: 3 },
-  { key: 'Th', name: 'Thursday', iso: 4 },
-  { key: 'Fr', name: 'Friday', iso: 5 },
-  { key: 'Sa', name: 'Saturday', iso: 6 },
-  { key: 'Su', name: 'Sunday', iso: 7 },
+  { key: 'M', iso: 1 },
+  { key: 'T', iso: 2 },
+  { key: 'W', iso: 3 },
+  { key: 'T', iso: 4 },
+  { key: 'F', iso: 5 },
+  { key: 'S', iso: 6 },
+  { key: 'S', iso: 7 },
 ]
 
 const KEEP_AWAKE_OPTIONS = [
@@ -99,7 +192,7 @@ async function addSchedule() {
   try {
     const created = await createPresenceSchedule({
       time: '07:00',
-      daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+      daysOfWeek: [],
       enabled: true,
     })
     if (created?.id) {
@@ -145,10 +238,8 @@ async function removeSchedule(id) {
   try {
     await deletePresenceSchedule(id)
   } catch {
-    // Revert — splice back at original position
-    const list = [...schedules.value]
-    list.splice(Math.min(idx, list.length), 0, prev)
-    schedules.value = list
+    // Revert
+    schedules.value = [...schedules.value, prev]
     toast?.error('Failed to delete schedule')
   }
 }
@@ -172,15 +263,13 @@ function toggleDay(scheduleId, isoDay) {
 }
 
 function isDayActive(schedule, isoDay) {
-  const days = schedule.daysOfWeek
-  if (!Array.isArray(days) || days.length === 0) return true // legacy: empty = every day
-  return days.includes(isoDay)
+  if (!Array.isArray(schedule.daysOfWeek) || schedule.daysOfWeek.length === 0) return true // empty = every day
+  return schedule.daysOfWeek.includes(isoDay)
 }
 
 function isLastActiveDay(schedule, isoDay) {
-  const days = schedule.daysOfWeek
-  if (!Array.isArray(days)) return false
-  return days.length === 1 && days[0] === isoDay
+  if (!Array.isArray(schedule.daysOfWeek) || schedule.daysOfWeek.length === 0) return false
+  return schedule.daysOfWeek.length === 1 && schedule.daysOfWeek[0] === isoDay
 }
 
 function setTime(scheduleId, time) {
@@ -198,25 +287,39 @@ function toggleEnabled(scheduleId) {
   updateScheduleField(scheduleId, { enabled: !schedule.enabled })
 }
 
-// ---- Double-tap delete ----
+function keepAwakeLabel(schedule) {
+  const v = schedule.keepAwakeFor
+  if (!v) return 'wake only'
+  if (v < 60) return `${v} min`
+  return `${v / 60} hr`
+}
 
-function onCardClick(id, event) {
-  if (event.detail >= 2) {
+// ---- Long-press delete ----
+
+let longPressTimer = null
+
+function onCardPointerDown(id) {
+  longPressTimer = setTimeout(() => {
     confirmDeleteId.value = id
     clearTimeout(confirmDeleteTimer)
     confirmDeleteTimer = setTimeout(() => {
       confirmDeleteId.value = null
     }, 4000)
-  }
+  }, 500)
+}
+
+function onCardPointerUp() {
+  clearTimeout(longPressTimer)
 }
 
 onMounted(loadAll)
+```
 
-onUnmounted(() => {
-  clearTimeout(confirmDeleteTimer)
-})
-</script>
+- [ ] **Step 2: Rewrite the template**
 
+Replace the entire `<template>` section with:
+
+```html
 <template>
   <div class="pref" v-if="settings">
     <div class="pref__grid">
@@ -256,7 +359,9 @@ onUnmounted(() => {
             :key="schedule.id"
             class="pref__card"
             :class="{ 'pref__card--disabled': !schedule.enabled }"
-            @click="onCardClick(schedule.id, $event)"
+            @pointerdown.prevent="onCardPointerDown(schedule.id)"
+            @pointerup="onCardPointerUp()"
+            @pointerleave="onCardPointerUp()"
           >
             <!-- Delete confirm overlay -->
             <div v-if="confirmDeleteId === schedule.id" class="pref__delete-confirm">
@@ -310,7 +415,6 @@ onUnmounted(() => {
                     'pref__pill--active': isDayActive(schedule, day.iso),
                     'pref__pill--last': isLastActiveDay(schedule, day.iso),
                   }"
-                  :aria-label="'Toggle ' + day.name"
                   @click.stop="toggleDay(schedule.id, day.iso)"
                 >
                   {{ day.key }}
@@ -359,47 +463,17 @@ onUnmounted(() => {
           <span class="pref__hint">Warn when water drops below this level</span>
         </div>
       </div>
-
-      <!-- Column 3: Espresso -->
-      <div class="pref__column">
-        <h4 class="pref__section-title">Espresso</h4>
-
-        <div class="pref__sleep-row">
-          <div>
-            <div class="pref__label">Show brew dialog</div>
-            <div class="pref__hint">Confirm dose, yield, and temperature before each shot</div>
-          </div>
-          <button
-            class="pref__toggle-switch"
-            :class="{ 'pref__toggle-switch--on': settings.showBrewDialog }"
-            @click="settings.showBrewDialog = !settings.showBrewDialog"
-            :aria-label="settings.showBrewDialog ? 'Disable brew dialog' : 'Enable brew dialog'"
-          >
-            <span class="pref__toggle-knob" />
-          </button>
-        </div>
-
-        <div class="pref__sleep-row">
-          <div>
-            <div class="pref__label">Linger on shot graph</div>
-            <div class="pref__hint">Stay on espresso page after shot ends</div>
-          </div>
-          <button
-            class="pref__toggle-switch"
-            :class="{ 'pref__toggle-switch--on': settings.lingerOnEspressoPage }"
-            @click="settings.lingerOnEspressoPage = !settings.lingerOnEspressoPage"
-            :aria-label="settings.lingerOnEspressoPage ? 'Disable linger' : 'Enable linger'"
-          >
-            <span class="pref__toggle-knob" />
-          </button>
-        </div>
-
-      </div>
     </div>
   </div>
   <div v-else class="pref__empty">Settings not available.</div>
 </template>
+```
 
+- [ ] **Step 3: Rewrite the styles**
+
+Replace the entire `<style scoped>` section with:
+
+```css
 <style scoped>
 .pref {
   display: flex;
@@ -424,7 +498,7 @@ onUnmounted(() => {
 }
 
 .pref__section-title {
-  font-size: var(--font-body);
+  font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
   padding-bottom: 8px;
@@ -438,12 +512,12 @@ onUnmounted(() => {
 }
 
 .pref__label {
-  font-size: var(--font-md);
+  font-size: 14px;
   color: var(--color-text-secondary);
 }
 
 .pref__hint {
-  font-size: var(--font-sm);
+  font-size: 12px;
   color: var(--color-text-secondary);
   opacity: 0.7;
 }
@@ -466,7 +540,7 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
   background: var(--color-background);
   color: var(--color-text);
-  font-size: var(--font-md);
+  font-size: 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -494,8 +568,7 @@ onUnmounted(() => {
 }
 
 .pref__card--disabled {
-  color: var(--button-disabled-text);
-  pointer-events: none;
+  opacity: 0.5;
 }
 
 .pref__card-top {
@@ -519,7 +592,7 @@ onUnmounted(() => {
 }
 
 .pref__time {
-  font-size: var(--font-title);
+  font-size: 22px;
   font-weight: 600;
   color: var(--color-text);
   letter-spacing: -0.5px;
@@ -532,7 +605,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   cursor: pointer;
-  font-size: var(--font-body);
+  font-size: 16px;
 }
 
 /* ---- Keep-awake badge ---- */
@@ -544,7 +617,7 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
   background: var(--color-background);
   color: var(--color-text-secondary);
-  font-size: var(--font-sm);
+  font-size: 12px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -591,13 +664,13 @@ onUnmounted(() => {
 }
 
 .pref__pill {
-  width: 34px;
+  width: 32px;
   height: 28px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: var(--font-sm);
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -634,7 +707,7 @@ onUnmounted(() => {
   border: none;
   background: var(--color-danger, #e94560);
   color: #fff;
-  font-size: var(--font-md);
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -646,7 +719,7 @@ onUnmounted(() => {
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: var(--font-md);
+  font-size: 13px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -660,7 +733,7 @@ onUnmounted(() => {
   border: 1px dashed var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: var(--font-md);
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -674,7 +747,7 @@ onUnmounted(() => {
 }
 
 .pref__add-icon {
-  font-size: var(--font-body);
+  font-size: 18px;
 }
 
 /* ---- Segment group (water) ---- */
@@ -692,7 +765,7 @@ onUnmounted(() => {
   border: none;
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: var(--font-md);
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -709,3 +782,69 @@ onUnmounted(() => {
   color: var(--color-text-secondary);
 }
 </style>
+```
+
+- [ ] **Step 4: Build and verify**
+
+Run: `npm run build`
+Expected: Clean build, no errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/components/settings/PreferencesTab.vue
+git commit -m "feat: rewrite Power & Sleep with schedule cards
+
+Replace 7-row per-day grid with schedule cards that group days
+naturally. Auto-sleep synced to server via presence API. Schedule
+cards support direct manipulation: tap time to edit, tap day pills
+to toggle, dropdown for keep-awake duration, toggle switch for
+enable/disable, long-press to delete."
+```
+
+---
+
+### Task 3: Verify integration and fix edge cases
+
+**Files:**
+- Possibly modify: `src/components/settings/PreferencesTab.vue`
+- Possibly modify: `src/composables/useAutoSleep.js`
+
+- [ ] **Step 1: Verify no remaining references to removed settings**
+
+Search for `autoWakeEnabled` and `autoSleepMinutes` across the codebase (excluding `useAutoSleep.js` which legitimately uses `autoSleepMinutes` as a reactive bridge):
+
+```bash
+grep -r "autoWakeEnabled" src/ --include="*.vue" --include="*.js"
+grep -r "autoSleepMinutes" src/ --include="*.vue" --include="*.js"
+```
+
+`useAutoSleep.js` references `settings.settings.autoSleepMinutes` — this still works because Vue's `reactive()` allows setting properties not in the original defaults. The server value gets written here on mount, and PreferencesTab now also writes here via `setSleepTimeout()` to keep useAutoSleep's watcher in sync.
+
+If any other files reference these removed settings, update them.
+
+- [ ] **Step 2: Test the full flow manually**
+
+1. Open Settings → Preferences tab
+2. Verify auto-sleep dropdown loads the server's current value
+3. Change auto-sleep — verify it persists (reload page, value should stick)
+4. Verify schedule cards load from server
+5. Add a new schedule — verify card appears with defaults
+6. Tap time — verify time picker opens
+7. Tap day pills — verify they toggle (last one should not toggle off)
+8. Change keep-awake dropdown — verify it saves
+9. Toggle enable switch — verify card dims when disabled
+10. Long-press card — verify delete confirm appears, then auto-dismisses after ~4s
+11. Delete a schedule — verify card removed
+
+- [ ] **Step 3: Final build**
+
+Run: `npm run build`
+Expected: Clean build.
+
+- [ ] **Step 4: Commit if any fixes were needed**
+
+```bash
+git add -u
+git commit -m "fix: edge cases in power & sleep redesign"
+```

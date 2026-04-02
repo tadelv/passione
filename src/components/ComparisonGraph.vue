@@ -121,17 +121,17 @@ function buildOpts(width, height) {
     legend: { show: false },
     axes: [
       {
-        stroke: '#a0a8b8',
-        grid: { stroke: '#3a3a4e', width: 1 },
-        ticks: { stroke: '#3a3a4e', width: 1 },
+        stroke: '#a0a8b8', // matches --color-canvas-label
+        grid: { stroke: '#3a3a4e', width: 1 }, // matches --color-canvas-grid
+        ticks: { stroke: '#3a3a4e', width: 1 }, // matches --color-canvas-grid
         values: (u, vals) => vals.map(v => v.toFixed(0) + 's'),
         font: '11px system-ui, sans-serif',
         gap: 6,
       },
       {
-        stroke: '#a0a8b8',
-        grid: { stroke: '#3a3a4e', width: 1 },
-        ticks: { stroke: '#3a3a4e', width: 1 },
+        stroke: '#a0a8b8', // matches --color-canvas-label
+        grid: { stroke: '#3a3a4e', width: 1 }, // matches --color-canvas-grid
+        ticks: { stroke: '#3a3a4e', width: 1 }, // matches --color-canvas-grid
         values: (u, vals) => vals.map(v => v.toFixed(0)),
         font: '11px system-ui, sans-serif',
         gap: 6,
@@ -139,7 +139,7 @@ function buildOpts(width, height) {
       },
       {
         side: 1,
-        stroke: '#a2693d',
+        stroke: '#a2693d', // matches --color-weight
         grid: { show: false },
         ticks: { show: false },
         values: (u, vals) => vals.map(v => v.toFixed(0) + 'g'),
@@ -251,7 +251,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 12px;
   padding: 6px 8px;
-  font-size: 11px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 

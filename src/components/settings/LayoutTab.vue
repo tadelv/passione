@@ -240,7 +240,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__description {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   line-height: 1.5;
   margin: 0;
@@ -287,7 +287,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__preview-zone--empty {
-  opacity: 0.5;
+  color: var(--button-disabled-text);
 }
 
 .layout-tab__preview-zone--topLeft       { grid-area: topLeft; }
@@ -298,7 +298,7 @@ const unusedWidgets = computed(() => {
 .layout-tab__preview-zone--bottomRight   { grid-area: bottomRight; }
 
 .layout-tab__preview-zone-name {
-  font-size: 10px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -306,7 +306,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__preview-zone-widget {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text);
   font-weight: 500;
   text-align: center;
@@ -325,7 +325,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__section-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   padding-bottom: 8px;
@@ -334,7 +334,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__zone-hint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--color-text-secondary);
   margin-left: 8px;
@@ -348,7 +348,7 @@ const unusedWidgets = computed(() => {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -371,7 +371,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__widget-name {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text);
   font-weight: 500;
 }
@@ -388,7 +388,7 @@ const unusedWidgets = computed(() => {
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 16px;
+  font-size: var(--font-body);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -397,7 +397,8 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__widget-btn:disabled {
-  opacity: 0.3;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
@@ -411,7 +412,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__empty-hint {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   font-style: italic;
   margin: 0;
@@ -429,7 +430,7 @@ const unusedWidgets = computed(() => {
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -437,8 +438,9 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__add-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  cursor: default;
 }
 
 /* ---- Actions ---- */
@@ -455,15 +457,17 @@ const unusedWidgets = computed(() => {
   border: 1px solid var(--color-error);
   background: transparent;
   color: var(--color-error);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .layout-tab__reset-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
+  cursor: default;
 }
 
 .layout-tab__reset-btn:not(:disabled):active {
@@ -471,7 +475,7 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__save-message {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-success);
   font-weight: 500;
 }

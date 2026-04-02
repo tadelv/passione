@@ -81,7 +81,7 @@ function onHomeClick(event) {
   gap: var(--spacing-medium);
   position: sticky;
   bottom: 0;
-  z-index: 10;
+  z-index: var(--z-sticky);
 }
 
 .bottom-bar__back,
@@ -109,7 +109,7 @@ function onHomeClick(event) {
 }
 
 .bottom-bar__title {
-  font-size: 20px;
+  font-size: var(--font-title);
   font-weight: bold;
   color: white;
   white-space: nowrap;

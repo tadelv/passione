@@ -244,8 +244,8 @@ function onCancel() {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 600;
-  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-modal);
+  background: var(--color-overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,7 +290,7 @@ function onCancel() {
 }
 
 .preset-edit-popup__close:active {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-surface-pressed);
 }
 
 .preset-edit-popup__body {
@@ -334,7 +334,7 @@ function onCancel() {
 .preset-edit-popup__input--emoji {
   max-width: 80px;
   text-align: center;
-  font-size: 24px;
+  font-size: var(--font-title);
 }
 
 .preset-edit-popup__actions {

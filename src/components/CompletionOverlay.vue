@@ -80,8 +80,8 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 500;
-  background: rgba(26, 26, 46, 0.92);
+  z-index: var(--z-modal);
+  background: var(--color-overlay-surface);
   display: flex;
   align-items: center;
   justify-content: center;

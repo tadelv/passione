@@ -271,7 +271,7 @@ watch(
 }
 
 .vis-tab__section-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   padding-bottom: 8px;
@@ -291,12 +291,12 @@ watch(
 }
 
 .vis-tab__label {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
 .vis-tab__hint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   opacity: 0.7;
 }
@@ -308,7 +308,7 @@ watch(
   border: 1px solid var(--color-border);
   background: var(--color-background);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .vis-tab__input::placeholder {
@@ -323,7 +323,7 @@ watch(
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -343,7 +343,7 @@ watch(
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -358,12 +358,13 @@ watch(
 
 .vis-tab__test-btn:disabled,
 .vis-tab__sync-btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
 .vis-tab__result {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
 }
 
@@ -400,7 +401,7 @@ watch(
 }
 
 .vis-tab__status-text {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 

@@ -198,7 +198,7 @@ function resetTheme() {
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   text-transform: capitalize;
@@ -219,7 +219,7 @@ function resetTheme() {
   border: none;
   background: linear-gradient(135deg, #f44336, #ff9800, #ffeb3b, #4caf50, #2196f3, #9c27b0);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -231,7 +231,7 @@ function resetTheme() {
   border: 1px solid var(--color-error);
   background: transparent;
   color: var(--color-error);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -258,7 +258,7 @@ function resetTheme() {
 }
 
 .themes-tab__category-title {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -277,7 +277,7 @@ function resetTheme() {
   color: var(--color-text);
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--font-md);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -315,7 +315,7 @@ function resetTheme() {
 }
 
 .themes-tab__editor-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -340,7 +340,7 @@ function resetTheme() {
 }
 
 .themes-tab__hex-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
@@ -353,7 +353,7 @@ function resetTheme() {
   background: var(--color-background);
   color: var(--color-text);
   font-family: monospace;
-  font-size: 16px;
+  font-size: var(--font-body);
 }
 
 .themes-tab__color-picker {
@@ -371,7 +371,7 @@ function resetTheme() {
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .themes-tab__empty {

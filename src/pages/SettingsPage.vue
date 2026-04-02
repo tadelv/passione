@@ -139,7 +139,7 @@ const tabComponents = [
   border: none;
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;

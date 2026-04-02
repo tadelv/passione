@@ -45,7 +45,7 @@ function label(type) {
 .device-picker {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,14 +67,14 @@ function label(type) {
 }
 
 .device-picker__title {
-  font-size: 17px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .device-picker__desc {
   padding: 12px 16px 4px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   margin: 0;
 }
@@ -106,13 +106,13 @@ function label(type) {
 }
 
 .device-picker__name {
-  font-size: 15px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .device-picker__id {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   font-family: monospace;
 }
@@ -129,7 +129,7 @@ function label(type) {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;

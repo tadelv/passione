@@ -959,14 +959,16 @@ onMounted(loadProfile)
   border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
   background: transparent;
   color: var(--color-text, #fff);
-  font-size: 12px;
+  font-size: var(--font-sm);
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
 
 .profile-editor__tool-btn:disabled {
-  opacity: 0.35;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 
@@ -1033,7 +1035,7 @@ onMounted(loadProfile)
   border-radius: 50%;
   background: var(--color-primary, #4e85f4);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -1045,7 +1047,7 @@ onMounted(loadProfile)
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: bold;
   flex-shrink: 0;
   color: var(--color-text);
@@ -1147,7 +1149,7 @@ onMounted(loadProfile)
 }
 
 .profile-editor__label--small {
-  font-size: 10px;
+  font-size: var(--font-xs);
   width: 48px;
   flex-shrink: 0;
 }
@@ -1272,14 +1274,16 @@ onMounted(loadProfile)
   border: 1px solid rgba(255, 255, 255, 0.4);
   background: transparent;
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .profile-editor__bar-btn:disabled {
-  opacity: 0.4;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 

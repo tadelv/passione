@@ -413,7 +413,7 @@ async function toggleArchive(grinder) {
 }
 
 .grinders-tab__title {
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -428,7 +428,7 @@ async function toggleArchive(grinder) {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -440,7 +440,7 @@ async function toggleArchive(grinder) {
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -454,7 +454,7 @@ async function toggleArchive(grinder) {
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 /* List */
@@ -492,18 +492,18 @@ async function toggleArchive(grinder) {
 }
 
 .grinders-tab__item-model {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .grinders-tab__item-burrs {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .grinders-tab__item-chevron {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
@@ -527,7 +527,7 @@ async function toggleArchive(grinder) {
 }
 
 .grinders-tab__form-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -539,7 +539,7 @@ async function toggleArchive(grinder) {
 }
 
 .grinders-tab__label {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
@@ -550,7 +550,7 @@ async function toggleArchive(grinder) {
   border: 1px solid var(--color-border);
   background: var(--color-background);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .grinders-tab__input--short {
@@ -564,7 +564,7 @@ async function toggleArchive(grinder) {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -598,7 +598,7 @@ async function toggleArchive(grinder) {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -622,7 +622,7 @@ async function toggleArchive(grinder) {
   border-radius: 16px;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 
@@ -636,7 +636,7 @@ async function toggleArchive(grinder) {
   background: rgba(255, 255, 255, 0.25);
   color: var(--color-text);
   border-radius: 50%;
-  font-size: 14px;
+  font-size: var(--font-md);
   line-height: 1;
   cursor: pointer;
   padding: 0;
@@ -661,14 +661,15 @@ async function toggleArchive(grinder) {
   padding: 8px 20px;
   border-radius: 8px;
   border: none;
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .grinders-tab__btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 

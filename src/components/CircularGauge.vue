@@ -109,7 +109,7 @@ const displayValue = computed(() => props.value.toFixed(1))
 }
 
 .circular-gauge__number {
-  font-size: 20px;
+  font-size: var(--font-title);
   font-weight: bold;
   color: var(--color-text);
 }

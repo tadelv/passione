@@ -166,7 +166,7 @@ onMounted(loadSettings)
 }
 
 .gateway-tab__section-title {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   padding-bottom: 8px;
@@ -180,12 +180,12 @@ onMounted(loadSettings)
 }
 
 .gateway-tab__label {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 
 .gateway-tab__value {
-  font-size: 16px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
   text-transform: capitalize;
@@ -205,7 +205,7 @@ onMounted(loadSettings)
   border: none;
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   text-transform: capitalize;
@@ -222,7 +222,7 @@ onMounted(loadSettings)
   padding: 24px;
   text-align: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -235,7 +235,7 @@ onMounted(loadSettings)
   border: none;
   background: var(--color-primary);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
 }
@@ -247,7 +247,7 @@ onMounted(loadSettings)
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -261,13 +261,13 @@ onMounted(loadSettings)
 }
 
 .gateway-tab__hint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   opacity: 0.7;
 }
 
 .gateway-tab__saving {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   opacity: 0.7;
 }

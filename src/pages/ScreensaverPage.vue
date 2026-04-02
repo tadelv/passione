@@ -191,8 +191,8 @@ onUnmounted(() => {
 .screensaver {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-  background: #000;
+  z-index: var(--z-overlay);
+  background: var(--color-screensaver-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -214,7 +214,7 @@ onUnmounted(() => {
 }
 
 .screensaver__colon {
-  font-size: 80px;
+  font-size: var(--font-timer);
   font-weight: 300;
   color: rgba(255, 255, 255, 0.5);
   line-height: 1;
@@ -240,7 +240,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #1a1a1a;
+  background: var(--color-screensaver-card);
   border-radius: 12px;
   backface-visibility: hidden;
   overflow: hidden;
@@ -261,7 +261,7 @@ onUnmounted(() => {
 }
 
 .screensaver__digit {
-  font-size: 96px;
+  font-size: var(--font-timer);
   font-weight: 700;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
@@ -306,7 +306,7 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   opacity: 0.4;
-  z-index: 0;
+  z-index: var(--z-base);
   pointer-events: none;
 }
 
@@ -314,44 +314,44 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   gap: 24px;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .screensaver__shot-time {
-  font-size: 48px;
+  font-size: var(--font-value);
   font-weight: 300;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .screensaver__shot-dose {
-  font-size: 22px;
+  font-size: var(--font-title);
   color: #a2693d;
   opacity: 0.8;
 }
 
 .screensaver__shot-ratio {
-  font-size: 22px;
+  font-size: var(--font-title);
   color: rgba(255, 255, 255, 0.3);
 }
 
 .screensaver__shot-profile {
-  font-size: 16px;
+  font-size: var(--font-body);
   color: rgba(255, 255, 255, 0.3);
   letter-spacing: 1px;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .screensaver__shot-coffee {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: rgba(255, 255, 255, 0.2);
   letter-spacing: 0.5px;
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .screensaver__shot-empty {
-  font-size: 16px;
+  font-size: var(--font-body);
   color: rgba(255, 255, 255, 0.2);
-  z-index: 1;
+  z-index: var(--z-base);
 }
 
 .screensaver__shot-clock {
@@ -359,12 +359,12 @@ onUnmounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 64px;
+  font-size: var(--font-timer);
   font-weight: 200;
   color: rgba(255, 255, 255, 0.15);
   font-variant-numeric: tabular-nums;
   letter-spacing: 4px;
-  z-index: 2;
+  z-index: var(--z-chart);
 }
 
 /* Ambient Glow */
@@ -511,7 +511,7 @@ onUnmounted(() => {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 14px;
+  font-size: var(--font-md);
   color: rgba(255, 255, 255, 0.1);
   font-variant-numeric: tabular-nums;
 }
@@ -525,7 +525,7 @@ onUnmounted(() => {
 .screensaver__hint {
   position: absolute;
   bottom: 40px;
-  font-size: 14px;
+  font-size: var(--font-md);
   color: rgba(255, 255, 255, 0.15);
   letter-spacing: 1px;
 }

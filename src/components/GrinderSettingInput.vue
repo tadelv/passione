@@ -68,7 +68,7 @@ function onNumeric(v) {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 15px;
+  font-size: var(--font-body);
   outline: none;
 }
 

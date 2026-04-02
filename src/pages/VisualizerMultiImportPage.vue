@@ -478,7 +478,7 @@ function reset() {
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 700;
   text-align: center;
   letter-spacing: 4px;
@@ -501,7 +501,7 @@ function reset() {
   padding: 10px 20px;
   border-radius: 8px;
   border: none;
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -509,7 +509,8 @@ function reset() {
 }
 
 .viz-multi__btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
@@ -530,24 +531,24 @@ function reset() {
 
 .viz-multi__btn--small {
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .viz-multi__btn--tiny {
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .viz-multi__btn--large {
   padding: 14px 28px;
-  font-size: 16px;
+  font-size: var(--font-body);
 }
 
 /* Banners */
 .viz-multi__banner {
   padding: 10px 16px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   text-align: center;
 }
@@ -585,14 +586,14 @@ function reset() {
 }
 
 .viz-multi__heading {
-  font-size: 22px;
+  font-size: var(--font-title);
   font-weight: 700;
   color: var(--color-text);
   text-align: center;
 }
 
 .viz-multi__subtext {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   text-align: center;
   line-height: 1.5;
@@ -606,7 +607,7 @@ function reset() {
 }
 
 .viz-multi__help-title {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 8px;
@@ -621,7 +622,7 @@ function reset() {
 }
 
 .viz-multi__steps li {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
@@ -631,7 +632,7 @@ function reset() {
 }
 
 .viz-multi__note-text {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   line-height: 1.5;
   margin-bottom: 8px;
@@ -663,13 +664,13 @@ function reset() {
 }
 
 .viz-multi__list-count {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   font-weight: 600;
 }
 
 .viz-multi__all-done {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-success);
   font-weight: 600;
 }
@@ -706,7 +707,8 @@ function reset() {
 }
 
 .viz-multi__list-item--disabled {
-  opacity: 0.5;
+  color: var(--button-disabled-text);
+  pointer-events: none;
 }
 
 .viz-multi__list-item-info {
@@ -718,7 +720,7 @@ function reset() {
 }
 
 .viz-multi__list-item-title {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
   overflow: hidden;
@@ -727,7 +729,7 @@ function reset() {
 }
 
 .viz-multi__list-item-author {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -735,7 +737,7 @@ function reset() {
 }
 
 .viz-multi__list-item-error {
-  font-size: 11px;
+  font-size: var(--font-sm);
   color: var(--color-error);
 }
 
@@ -747,7 +749,7 @@ function reset() {
 }
 
 .viz-multi__list-item-status {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 700;
   font-family: monospace;
   color: var(--color-text-secondary);
@@ -766,8 +768,7 @@ function reset() {
 }
 
 .viz-multi__status--disabled {
-  color: var(--color-text-secondary);
-  opacity: 0.5;
+  color: var(--button-disabled-text);
 }
 
 .viz-multi__status--loading {
@@ -791,7 +792,7 @@ function reset() {
   justify-content: center;
   flex: 1;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .viz-multi__detail-header {
@@ -799,13 +800,13 @@ function reset() {
 }
 
 .viz-multi__detail-title {
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 700;
   color: var(--color-text);
 }
 
 .viz-multi__detail-author {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
   margin-top: 2px;
 }
@@ -843,12 +844,12 @@ function reset() {
 }
 
 .viz-multi__detail-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .viz-multi__detail-value {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--color-text);
 }

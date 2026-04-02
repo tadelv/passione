@@ -96,7 +96,7 @@ function onInput(e) {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 24px;
+  font-size: var(--font-title);
   font-weight: bold;
   cursor: pointer;
   display: flex;

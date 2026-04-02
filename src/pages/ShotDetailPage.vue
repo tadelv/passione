@@ -366,7 +366,7 @@ async function uploadToVisualizer() {
   align-items: center;
   justify-content: center;
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: var(--font-md);
 }
 
 .shot-detail__graph {
@@ -378,7 +378,7 @@ async function uploadToVisualizer() {
 
 .shot-detail__position {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
   padding-bottom: 4px;
 }
@@ -403,13 +403,13 @@ async function uploadToVisualizer() {
 }
 
 .shot-detail__metric-value {
-  font-size: 18px;
+  font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .shot-detail__metric-label {
-  font-size: 11px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
@@ -435,19 +435,19 @@ async function uploadToVisualizer() {
 }
 
 .shot-detail__card-label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
 .shot-detail__card-value {
-  font-size: 15px;
+  font-size: var(--font-body);
   color: var(--color-text);
   word-break: break-word;
 }
 
 .shot-detail__card-detail {
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .shot-detail__actions {
@@ -464,14 +464,16 @@ async function uploadToVisualizer() {
   border: 1px solid var(--color-success);
   background: transparent;
   color: var(--color-success);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
 .shot-detail__upload-btn:disabled {
-  opacity: 0.5;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 
@@ -485,7 +487,7 @@ async function uploadToVisualizer() {
   border: 1px solid var(--color-primary);
   background: transparent;
   color: var(--color-primary);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -501,7 +503,7 @@ async function uploadToVisualizer() {
   border: 1px solid var(--color-error);
   background: transparent;
   color: var(--color-error);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -512,7 +514,7 @@ async function uploadToVisualizer() {
 }
 
 .shot-detail__confirm-text {
-  font-size: 14px;
+  font-size: var(--font-md);
   color: var(--color-error);
   text-align: center;
 }
@@ -528,7 +530,7 @@ async function uploadToVisualizer() {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   cursor: pointer;
 }
 
@@ -538,7 +540,7 @@ async function uploadToVisualizer() {
   border: none;
   background: var(--color-error);
   color: var(--color-text);
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
 }

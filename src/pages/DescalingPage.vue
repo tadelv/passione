@@ -369,7 +369,8 @@ onUnmounted(stopTimer)
 }
 
 .descaling-page__begin-btn:disabled {
-  opacity: 0.4;
+  background-color: var(--button-disabled);
+  color: var(--button-disabled-text);
   cursor: default;
 }
 
@@ -420,13 +421,13 @@ onUnmounted(stopTimer)
   display: flex;
   gap: 12px;
   padding: 16px;
-  background: rgba(255, 193, 7, 0.1);
+  background: var(--color-warning-subtle);
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-card);
 }
 
 .descaling-page__warning-icon {
-  font-size: 24px;
+  font-size: var(--font-title);
   flex-shrink: 0;
 }
 

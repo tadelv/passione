@@ -338,7 +338,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 14px;
   padding: 6px 8px;
-  font-size: 11px;
+  font-size: var(--font-sm);
   color: var(--text-secondary, #a0a8b8);
 }
 

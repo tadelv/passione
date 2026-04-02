@@ -105,7 +105,7 @@ onUnmounted(() => {
 }
 
 .action-button.disabled .action-button__icon {
-  opacity: 0.5;
+  color: var(--button-disabled-text);
 }
 
 .action-button.disabled .action-button__label {
@@ -113,7 +113,7 @@ onUnmounted(() => {
 }
 
 .action-button__icon {
-  font-size: 48px;
+  font-size: var(--font-value);
   line-height: 1;
 }
 

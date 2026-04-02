@@ -163,7 +163,7 @@ onUnmounted(() => {
   position: fixed;
   bottom: 16px;
   right: 16px;
-  z-index: 9999;
+  z-index: var(--z-debug);
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -198,7 +198,7 @@ onUnmounted(() => {
   border-radius: 9px;
   background: var(--color-error, #ff4444);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -208,7 +208,7 @@ onUnmounted(() => {
 .log-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: var(--z-debug);
   display: flex;
   flex-direction: column;
   background: var(--color-background, #1a1a2e);
@@ -266,7 +266,7 @@ onUnmounted(() => {
   overflow-y: auto;
   padding: 8px;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.5;
 }
 
