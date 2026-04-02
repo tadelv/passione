@@ -200,6 +200,13 @@ export function useMachine() {
     )
     ws.onConnectionChange = (connected) => {
       isConnected.value = connected
+      if (!connected) {
+        // Reset state so the UI doesn't stay interactive against an
+        // unreachable machine (keyboard shortcuts, buttons, etc.)
+        state.value = 'unknown'
+        substate.value = 'unknown'
+        _stopShotTimer()
+      }
     }
     ws.connect()
   }

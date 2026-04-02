@@ -100,7 +100,7 @@ function buildOpts(width, height) {
       label: `Flow${suffix}`,
       stroke: colors.flow,
       width: 2.5,
-      scale: 'pressure',
+      scale: 'flow',
       show: props.visibleCurves.flow,
     })
     seriesDefs.push({
@@ -151,6 +151,7 @@ function buildOpts(width, height) {
     scales: {
       x: { time: false },
       pressure: { min: 0, max: 12, auto: false },
+      flow: { min: 0, max: 12, auto: false },
       weight: { min: 0, max: 60, auto: true },
     },
     series: seriesDefs,
@@ -164,7 +165,7 @@ function initChart() {
   const h = Math.floor(rect.height) || 300
 
   const opts = buildOpts(w, h)
-  const data = buildData() || [[]]
+  const data = buildData() || [[], ...Array(props.shots.length * 3).fill([])]
 
   chart = new uPlot(opts, data, chartEl.value)
 }

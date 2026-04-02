@@ -30,11 +30,20 @@ const newGrinder = ref(emptyGrinder())
 const newPresetValue = ref('')
 
 const filteredGrinders = computed(() => {
-  return grinders.value.filter(g => showArchived.value ? g.archived : !g.archived)
+  return grinders.value.filter(g => showArchived.value || !g.archived)
 })
 
+// Edit form works on a clone so unsaved changes don't bleed into the shared list
+const editGrinder = ref(emptyGrinder())
+
 function toggleExpand(id) {
-  expandedId.value = expandedId.value === id ? null : id
+  if (expandedId.value === id) {
+    expandedId.value = null
+  } else {
+    expandedId.value = id
+    const g = grinders.value.find(g => g.id === id)
+    if (g) editGrinder.value = JSON.parse(JSON.stringify(g))
+  }
 }
 
 // ---- Create ----
@@ -77,23 +86,25 @@ async function submitCreate() {
 
 const editPresetValue = ref('')
 
-function addEditPresetValue(grinder) {
+function addEditPresetValue() {
   const v = editPresetValue.value.trim()
   if (!v) return
-  if (!grinder.settingValues) grinder.settingValues = []
-  if (!grinder.settingValues.includes(v)) {
-    grinder.settingValues.push(v)
+  if (!editGrinder.value.settingValues) editGrinder.value.settingValues = []
+  if (!editGrinder.value.settingValues.includes(v)) {
+    editGrinder.value.settingValues.push(v)
   }
   editPresetValue.value = ''
 }
 
-function removeEditPresetValue(grinder, index) {
-  grinder.settingValues.splice(index, 1)
+function removeEditPresetValue(index) {
+  editGrinder.value.settingValues.splice(index, 1)
 }
 
 async function saveGrinder(grinder) {
   try {
-    await grindersApi?.update(grinder.id, grinder)
+    await grindersApi?.update(grinder.id, editGrinder.value)
+    // Apply saved values back to the shared list
+    Object.assign(grinder, editGrinder.value)
     toast?.success('Grinder saved')
   } catch {
     toast?.error('Failed to save grinder')
@@ -280,19 +291,19 @@ async function toggleArchive(grinder) {
         <div v-if="expandedId === grinder.id" class="grinders-tab__edit">
           <div class="grinders-tab__field">
             <label class="grinders-tab__label">Model *</label>
-            <input v-model="grinder.model" class="grinders-tab__input" />
+            <input v-model="editGrinder.model" class="grinders-tab__input" />
           </div>
 
           <div class="grinders-tab__field">
             <label class="grinders-tab__label">Burrs</label>
-            <input v-model="grinder.burrs" class="grinders-tab__input" />
+            <input v-model="editGrinder.burrs" class="grinders-tab__input" />
           </div>
 
           <div class="grinders-tab__row">
             <div class="grinders-tab__field">
               <label class="grinders-tab__label">Burr size (mm)</label>
               <input
-                v-model.number="grinder.burrSize"
+                v-model.number="editGrinder.burrSize"
                 type="number"
                 class="grinders-tab__input grinders-tab__input--short"
               />
@@ -300,7 +311,7 @@ async function toggleArchive(grinder) {
 
             <div class="grinders-tab__field">
               <label class="grinders-tab__label">Burr type</label>
-              <select v-model="grinder.burrType" class="grinders-tab__select">
+              <select v-model="editGrinder.burrType" class="grinders-tab__select">
                 <option v-for="t in BURR_TYPES" :key="t" :value="t">{{ t }}</option>
               </select>
             </div>
@@ -308,18 +319,18 @@ async function toggleArchive(grinder) {
 
           <div class="grinders-tab__field">
             <label class="grinders-tab__label">Setting type</label>
-            <select v-model="grinder.settingType" class="grinders-tab__select">
+            <select v-model="editGrinder.settingType" class="grinders-tab__select">
               <option v-for="t in SETTING_TYPES" :key="t" :value="t">{{ t }}</option>
             </select>
           </div>
 
           <!-- Numeric step fields -->
-          <div v-if="grinder.settingType === 'numeric'" class="grinders-tab__row">
+          <div v-if="editGrinder.settingType === 'numeric'" class="grinders-tab__row">
             <div class="grinders-tab__field">
               <label class="grinders-tab__label">Small step</label>
               <ValueInput
-                :model-value="grinder.settingSmallStep ?? 0.1"
-                @update:model-value="v => grinder.settingSmallStep = v"
+                :model-value="editGrinder.settingSmallStep ?? 0.1"
+                @update:model-value="v => editGrinder.settingSmallStep = v"
                 :min="0.01"
                 :max="10"
                 :step="0.1"
@@ -330,8 +341,8 @@ async function toggleArchive(grinder) {
             <div class="grinders-tab__field">
               <label class="grinders-tab__label">Big step</label>
               <ValueInput
-                :model-value="grinder.settingBigStep ?? 0.5"
-                @update:model-value="v => grinder.settingBigStep = v"
+                :model-value="editGrinder.settingBigStep ?? 0.5"
+                @update:model-value="v => editGrinder.settingBigStep = v"
                 :min="0.1"
                 :max="50"
                 :step="0.5"
@@ -342,25 +353,25 @@ async function toggleArchive(grinder) {
           </div>
 
           <!-- Preset values -->
-          <div v-if="grinder.settingType === 'preset'" class="grinders-tab__field">
+          <div v-if="editGrinder.settingType === 'preset'" class="grinders-tab__field">
             <label class="grinders-tab__label">Preset values</label>
             <div class="grinders-tab__preset-input">
               <input
                 v-model="editPresetValue"
                 class="grinders-tab__input"
                 placeholder="Add a value..."
-                @keydown.enter.prevent="addEditPresetValue(grinder)"
+                @keydown.enter.prevent="addEditPresetValue()"
               />
-              <button class="grinders-tab__preset-add-btn" @click="addEditPresetValue(grinder)">Add</button>
+              <button class="grinders-tab__preset-add-btn" @click="addEditPresetValue()">Add</button>
             </div>
-            <div v-if="grinder.settingValues?.length" class="grinders-tab__pills">
+            <div v-if="editGrinder.settingValues?.length" class="grinders-tab__pills">
               <span
-                v-for="(val, i) in grinder.settingValues"
+                v-for="(val, i) in editGrinder.settingValues"
                 :key="i"
                 class="grinders-tab__pill"
               >
                 {{ val }}
-                <button class="grinders-tab__pill-remove" @click="removeEditPresetValue(grinder, i)">&times;</button>
+                <button class="grinders-tab__pill-remove" @click="removeEditPresetValue(i)">&times;</button>
               </span>
             </div>
           </div>

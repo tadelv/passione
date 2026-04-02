@@ -109,14 +109,24 @@ export function useShotData() {
    */
   function stop() {
     isRecording.value = false
+    // Capture final elapsed so subsequent calls return the frozen value
+    // (prevents steam/flush completion overlay from showing espresso duration)
+    _stoppedElapsed = shotStartTime.value !== null
+      ? (Date.now() - shotStartTime.value) / 1000
+      : 0
   }
 
+  let _stoppedElapsed = 0
+
   /**
-   * Get the current elapsed time in seconds (or 0 if not recording).
+   * Get the elapsed time in seconds. Returns the live value while recording,
+   * or the frozen value from when stop() was called.
    */
   function elapsed() {
-    if (shotStartTime.value === null) return 0
-    return (Date.now() - shotStartTime.value) / 1000
+    if (isRecording.value && shotStartTime.value !== null) {
+      return (Date.now() - shotStartTime.value) / 1000
+    }
+    return _stoppedElapsed
   }
 
   return {

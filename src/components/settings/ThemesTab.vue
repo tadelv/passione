@@ -2,6 +2,7 @@
 import { ref, inject, computed } from 'vue'
 
 const theme = inject('theme', null)
+const settings = inject('settings', null)
 
 const presetNames = computed(() => theme?.getPresetNames?.() ?? [])
 
@@ -98,7 +99,7 @@ function resetTheme() {
         v-for="name in presetNames"
         :key="name"
         class="themes-tab__preset-btn"
-        :class="{ 'themes-tab__preset-btn--active': theme.colors?.value && false }"
+        :class="{ 'themes-tab__preset-btn--active': settings?.settings?.activeThemeName === name }"
         :style="{ background: name === 'default' ? '#4e85f4' : undefined }"
         @click="applyPreset(name)"
       >

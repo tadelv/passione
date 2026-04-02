@@ -93,6 +93,10 @@ async function toggleBean(bean) {
 }
 
 async function saveEditBean(bean) {
+  if (!editBean.roaster?.trim() || !editBean.name?.trim()) {
+    toast?.warning('Roaster and name are required')
+    return
+  }
   try {
     const payload = {
       roaster: editBean.roaster.trim(),

@@ -221,8 +221,10 @@ const stopInitialNav = watch(machine.state, async (state) => {
   if (state === 'unknown') return
   stopInitialNav()
   await router.isReady()
-  if (state === 'sleeping' && settings.settings.screensaverType !== 'disabled') {
-    if (route.path !== '/screensaver') router.replace('/screensaver')
+  if (state === 'sleeping') {
+    if (settings.settings.screensaverType !== 'disabled' && route.path !== '/screensaver') {
+      router.replace('/screensaver')
+    }
   } else {
     const target = STATE_ROUTES[state]
     if (target && route.path !== target) router.replace(target)
@@ -347,7 +349,7 @@ const isOperating = computed(() =>
 
 function onKeyDown(e) {
   // Ignore when typing in input fields
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) {
     return
   }
 
