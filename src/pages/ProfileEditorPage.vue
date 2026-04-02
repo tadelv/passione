@@ -963,6 +963,11 @@ onMounted(loadProfile)
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .profile-editor__tool-btn:disabled {

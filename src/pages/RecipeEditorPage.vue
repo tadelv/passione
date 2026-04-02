@@ -1187,7 +1187,10 @@ onMounted(loadProfile)
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
 }
 
 .recipe-editor__phase-toggle input[type="checkbox"] {

@@ -382,8 +382,8 @@ const unusedWidgets = computed(() => {
 }
 
 .layout-tab__widget-btn {
-  width: 32px;
-  height: 32px;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: transparent;

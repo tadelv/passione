@@ -630,8 +630,8 @@ async function toggleArchive(grinder) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   border: none;
   background: rgba(255, 255, 255, 0.25);
   color: var(--color-text);

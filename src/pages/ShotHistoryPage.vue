@@ -461,8 +461,8 @@ onMounted(loadShotIds)
 }
 
 .shot-history__action-btn {
-  width: 32px;
-  height: 32px;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   border-radius: 50%;
   border: none;
   font-size: var(--font-md);

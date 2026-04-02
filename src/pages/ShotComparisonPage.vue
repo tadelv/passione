@@ -221,8 +221,8 @@ onMounted(loadShots)
 }
 
 .comparison-page__remove-btn {
-  width: 28px;
-  height: 28px;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
   border-radius: 50%;
   border: 1px solid var(--color-error);
   background: transparent;
