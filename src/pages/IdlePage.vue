@@ -1,14 +1,17 @@
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LayoutWidget from '../components/LayoutWidget.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
+import LayoutEditOverlay from '../components/LayoutEditOverlay.vue'
 import { useLayout } from '../composables/useLayout.js'
 import { setMachineState, getProfiles } from '../api/rest.js'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 
 // Layout system
 const { layout, loaded: layoutLoaded, load: loadLayout, STACK_ZONES } = useLayout()
@@ -20,6 +23,17 @@ const updateWorkflow = inject('updateWorkflow')
 const settings = inject('settings', null)
 const toast = inject('toast', null)
 const operationSettings = inject('operationSettings', null)
+
+const editingLayout = inject('editingLayout', ref(false))
+
+const isEditMode = computed(() => route.query.editLayout === 'true')
+
+// Sync the editingLayout flag so App.vue suppresses auto-navigation
+watch(isEditMode, (v) => { editingLayout.value = v }, { immediate: true })
+
+onUnmounted(() => {
+  editingLayout.value = false
+})
 
 const isReady = computed(() =>
   machineState.value === 'idle' || machineState.value === 'ready'
@@ -277,6 +291,7 @@ onMounted(() => {
   <div class="idle-page" :class="{
     'idle-page--center-left-only': hasCenterLeft && !hasCenterRight,
     'idle-page--center-right-only': !hasCenterLeft && hasCenterRight,
+    'idle-page--editing': isEditMode,
   }">
     <!-- Top row -->
     <template v-if="showTopRow">
@@ -398,6 +413,9 @@ onMounted(() => {
       </div>
     </template>
 
+    <!-- Layout edit overlay -->
+    <LayoutEditOverlay v-if="isEditMode" />
+
     <!-- Combo quick edit popup -->
     <PresetEditPopup
       :visible="editPopupVisible"
@@ -488,5 +506,16 @@ onMounted(() => {
   align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-medium);
+}
+
+/* Edit mode: dim all widgets, disable interaction */
+.idle-page--editing > :not(.edit-overlay) {
+  opacity: 0.5;
+  filter: saturate(0.3);
+  pointer-events: none;
+}
+
+.idle-page--editing {
+  position: relative;
 }
 </style>
