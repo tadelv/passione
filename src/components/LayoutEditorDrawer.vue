@@ -15,18 +15,10 @@ const {
   WIDGET_LABELS,
   WIDGET_ZONE_RULES,
   STACK_ZONES,
+  ZONE_LABELS,
 } = useLayout()
 
 const isStack = computed(() => STACK_ZONES.has(props.zone))
-
-const ZONE_LABELS = {
-  topLeft: 'Top Left',
-  topRight: 'Top Right',
-  centerLeft: 'Center Left',
-  centerRight: 'Center Right',
-  bottomLeft: 'Bottom Left',
-  bottomRight: 'Bottom Right',
-}
 
 const widgets = computed(() => layout.value.zones[props.zone]?.widgets ?? [])
 
@@ -67,7 +59,7 @@ function addWidget() {
 </script>
 
 <template>
-  <div class="drawer-backdrop" @click.self="emit('close')">
+  <div class="drawer-backdrop" @click.self="emit('close')" @keydown.escape="emit('close')">
     <div class="drawer" role="dialog" aria-label="Layout editor">
       <div class="drawer__handle" />
 

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayout } from '../../composables/useLayout.js'
 
@@ -8,6 +8,7 @@ const { loaded, load, resetLayout } = useLayout()
 
 const saving = ref(false)
 const saveMessage = ref('')
+let saveMessageTimer = null
 
 onMounted(async () => {
   if (!loaded.value) await load()
@@ -17,12 +18,16 @@ function openEditor() {
   router.push({ path: '/', query: { editLayout: 'true' } })
 }
 
+onUnmounted(() => {
+  clearTimeout(saveMessageTimer)
+})
+
 async function onReset() {
   saving.value = true
   await resetLayout()
   saving.value = false
   saveMessage.value = 'Reset to default'
-  setTimeout(() => { saveMessage.value = '' }, 2000)
+  saveMessageTimer = setTimeout(() => { saveMessage.value = '' }, 2000)
 }
 </script>
 

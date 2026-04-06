@@ -362,6 +362,9 @@ const isOperating = computed(() =>
 )
 
 function onKeyDown(e) {
+  // Ignore during layout editing
+  if (editingLayout.value) return
+
   // Ignore when typing in input fields
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) {
     return
