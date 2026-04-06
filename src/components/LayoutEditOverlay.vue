@@ -125,7 +125,7 @@ function done() {
 .edit-overlay__done {
   pointer-events: auto;
   position: fixed;
-  top: 16px;
+  top: calc(var(--status-bar-height) + 8px);
   left: 50%;
   transform: translateX(-50%);
   z-index: calc(var(--z-popover) + 1);

@@ -116,6 +116,7 @@ function addWidget() {
   align-items: flex-end;
   justify-content: center;
   background: rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
 }
 
 .drawer {

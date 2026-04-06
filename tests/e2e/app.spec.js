@@ -313,6 +313,181 @@ test.describe('ProfileInfoPage', () => {
   })
 })
 
+test.describe('Layout Editor', () => {
+  test('enters edit mode via query param and shows overlay', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(1000)
+
+    // Navigate to edit mode via in-app router
+    await page.evaluate(() => window.__vueRouter.push({ path: '/', query: { editLayout: 'true' } }))
+    await page.waitForSelector('.edit-overlay', { timeout: 5000 })
+
+    // Overlay should be visible with zone targets and Done pill
+    await expect(page.locator('.edit-overlay')).toBeVisible()
+    await expect(page.locator('.edit-overlay__done')).toBeVisible()
+
+    // All 6 zones should be rendered
+    const zones = page.locator('.edit-overlay__zone')
+    await expect(zones).toHaveCount(6)
+
+    // Widgets should be dimmed (idle-page--editing class applied)
+    await expect(page.locator('.idle-page--editing')).toBeVisible()
+  })
+
+  test('tapping a zone opens the editor drawer', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(1000)
+
+    await page.evaluate(() => window.__vueRouter.push({ path: '/', query: { editLayout: 'true' } }))
+    await page.waitForSelector('.edit-overlay', { timeout: 5000 })
+
+    // Click the Center Left zone
+    await page.locator('.edit-overlay__zone--centerLeft').click()
+
+    // Drawer should appear with the zone name
+    await expect(page.locator('[role="dialog"]')).toBeVisible()
+    await expect(page.locator('.drawer__title')).toContainText('Center Left')
+
+    // Should show widgets (the default layout has gauges in centerLeft)
+    const widgetRows = page.locator('.drawer__widget-name')
+    await expect(widgetRows.first()).toBeVisible()
+  })
+
+  test('tapping a different zone switches the drawer', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(1000)
+
+    await page.evaluate(() => window.__vueRouter.push({ path: '/', query: { editLayout: 'true' } }))
+    await page.waitForSelector('.edit-overlay', { timeout: 5000 })
+
+    // Open Center Left
+    await page.locator('.edit-overlay__zone--centerLeft').click()
+    await expect(page.locator('.drawer__title')).toContainText('Center Left')
+
+    // Close drawer by clicking backdrop
+    await page.locator('.drawer-backdrop').click({ position: { x: 10, y: 10 } })
+    await page.waitForTimeout(300)
+
+    // Switch to Center Right
+    await page.locator('.edit-overlay__zone--centerRight').click()
+    await expect(page.locator('.drawer__title')).toContainText('Center Right')
+  })
+
+  test('Done button exits edit mode', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(1000)
+
+    await page.evaluate(() => window.__vueRouter.push({ path: '/', query: { editLayout: 'true' } }))
+    await page.waitForSelector('.edit-overlay', { timeout: 5000 })
+
+    // Click Done
+    await page.locator('.edit-overlay__done').click()
+    await page.waitForTimeout(500)
+
+    // Overlay should be gone
+    await expect(page.locator('.edit-overlay')).not.toBeVisible()
+    // URL should no longer have editLayout
+    await expect(page).not.toHaveURL(/editLayout/)
+  })
+
+  test('can remove and add a widget', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(1000)
+
+    await page.evaluate(() => window.__vueRouter.push({ path: '/', query: { editLayout: 'true' } }))
+    await page.waitForSelector('.edit-overlay', { timeout: 5000 })
+
+    // Open Center Left zone
+    await page.locator('.edit-overlay__zone--centerLeft').click()
+    await page.waitForSelector('[role="dialog"]', { timeout: 3000 })
+
+    // Count initial widgets
+    const initialCount = await page.locator('.drawer__row').count()
+    expect(initialCount).toBeGreaterThan(0)
+
+    // Remove the first widget
+    await page.locator('.drawer__btn--remove').first().click()
+    await page.waitForTimeout(300)
+
+    // Should have one fewer widget
+    const afterRemoveCount = await page.locator('.drawer__row').count()
+    expect(afterRemoveCount).toBe(initialCount - 1)
+
+    // Add a widget back — select from dropdown and click Add
+    const select = page.locator('.drawer__select')
+    if (await select.isVisible()) {
+      await select.selectOption({ index: 1 })
+      await page.locator('.drawer__add-btn').click()
+      await page.waitForTimeout(300)
+
+      const afterAddCount = await page.locator('.drawer__row').count()
+      expect(afterAddCount).toBe(afterRemoveCount + 1)
+    }
+  })
+
+  test('Settings Layout tab shows Edit Layout button', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    // Navigate to settings
+    await page.goto('/#/settings')
+    await page.waitForTimeout(1000)
+
+    // Find and click the Layout tab
+    const layoutTab = page.locator('text=Layout')
+    await expect(layoutTab).toBeVisible()
+    await layoutTab.click()
+    await page.waitForTimeout(500)
+
+    // Should show Edit Layout button
+    const editBtn = page.locator('.layout-tab__edit-btn')
+    await expect(editBtn).toBeVisible()
+    await expect(editBtn).toHaveText('Edit Layout')
+
+    // Should show Reset to Default button
+    await expect(page.locator('.layout-tab__reset-btn')).toBeVisible()
+  })
+
+  test('Edit Layout button navigates to IdlePage in edit mode', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    await page.goto('/#/settings')
+    await page.waitForTimeout(1000)
+
+    // Click Layout tab
+    await page.locator('text=Layout').click()
+    await page.waitForTimeout(500)
+
+    // Click Edit Layout
+    await page.locator('.layout-tab__edit-btn').click()
+    await page.waitForTimeout(1000)
+
+    // Should be on IdlePage in edit mode
+    await expect(page).toHaveURL(/editLayout=true/)
+    await expect(page.locator('.edit-overlay')).toBeVisible()
+  })
+
+  test('backdrop click closes the drawer', async ({ page }) => {
+    await loadApp(page)
+    await page.waitForTimeout(1000)
+
+    await page.evaluate(() => window.__vueRouter.push({ path: '/', query: { editLayout: 'true' } }))
+    await page.waitForSelector('.edit-overlay', { timeout: 5000 })
+
+    // Open a zone drawer
+    await page.locator('.edit-overlay__zone--centerLeft').click()
+    await expect(page.locator('[role="dialog"]')).toBeVisible()
+
+    // Click the backdrop (top-left corner, outside the drawer)
+    await page.locator('.drawer-backdrop').click({ position: { x: 10, y: 10 } })
+    await page.waitForTimeout(500)
+
+    // Drawer should be closed
+    await expect(page.locator('[role="dialog"]')).not.toBeVisible()
+  })
+})
+
 test.describe('Pages load without errors', () => {
   const routes = [
     { path: '/#/', name: 'IdlePage' },

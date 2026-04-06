@@ -57,7 +57,7 @@ const NAV_DEBOUNCE_MS = 300
 router.beforeEach((to, from, next) => {
   const now = Date.now()
   // Allow the initial navigation (START_LOCATION has no matched routes)
-  if (to.path === from.path && from.matched.length > 0) {
+  if (to.path === from.path && to.fullPath === from.fullPath && from.matched.length > 0) {
     next(false)
     return
   }
