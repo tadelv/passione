@@ -1,0 +1,55 @@
+name: Build and Release Skin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create manifest.json
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cat > dist/manifest.json << EOF
+          {
+            "id": "passione",
+            "name": "Passione",
+            "description": "A work of passion — a modern web interface for the DE1 espresso machine via Streamline-Bridge",
+            "version": "${VERSION}",
+            "author": "Vid Tadel",
+            "repository": "https://github.com/${{ github.repository }}"
+          }
+          EOF
+
+      - name: Create release archive
+        run: |
+          cd dist
+          zip -r ../passione-${GITHUB_REF_NAME}.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: passione-${{ github.ref_name }}.zip
+          name: Passione ${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
