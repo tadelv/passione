@@ -107,6 +107,9 @@ provide('theme', theme)
 provide('volumeMode', volumeMode)
 provide('autoSleep', autoSleep)
 provide('display', display)
+
+const editingLayout = ref(false)
+provide('editingLayout', editingLayout)
 provide('toast', toast)
 provide('operationSettings', operationSettings)
 
@@ -262,6 +265,9 @@ watch(machine.state, (newState, oldState) => {
     // If waking into idle, skip remaining logic (no operation to set up)
     if (wakeTarget === '/') return
   }
+
+  // Suppress navigation during layout editing
+  if (editingLayout.value && route.path === '/') return
 
   const targetRoute = STATE_ROUTES[newState]
 
