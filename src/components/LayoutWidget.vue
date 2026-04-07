@@ -293,6 +293,7 @@ const lastShotInfo = computed(() => {
           :selected-index="selectedWorkflowCombo"
           :long-press-enabled="true"
           @select="idx => emit('workflow-combo-select', idx)"
+          @activate="() => emit('start-espresso')"
           @long-press="idx => emit('workflow-combo-long-press', idx)"
         />
       </div>

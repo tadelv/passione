@@ -86,10 +86,13 @@ async function onComboSelect(index) {
 
   const update = {}
 
-  if (combo.profileId) {
+  if (combo.profileId || combo.profileTitle) {
     try {
       const records = await getProfiles()
-      const record = (Array.isArray(records) ? records : []).find(r => r.id === combo.profileId)
+      const allRecords = Array.isArray(records) ? records : []
+      // Match by ID first, fall back to title match (Profile objects don't carry the ProfileRecord ID)
+      const record = allRecords.find(r => r.id === combo.profileId)
+        || (combo.profileTitle && allRecords.find(r => r.profile?.title === combo.profileTitle))
       if (record?.profile) {
         update.profile = record.profile
       } else {
@@ -100,7 +103,7 @@ async function onComboSelect(index) {
     }
   }
 
-  const coffeeName = [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
+  const coffeeName = combo.coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
   if (coffeeName || combo.roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting) {
     update.context = {
       coffeeName: coffeeName || null,
@@ -116,7 +119,7 @@ async function onComboSelect(index) {
   // Suppress useOperationSettings watchers so settings mutations don't trigger extra API calls.
   operationSettings?.suppress()
 
-  if (combo.steamSettings) {
+  if (combo.includeSteam && combo.steamSettings) {
     update.steamSettings = {
       targetTemperature: combo.steamSettings.temperature ?? settings.settings.steamTemperature ?? 160,
       duration: combo.steamSettings.duration ?? settings.settings.steamDuration ?? 30,
@@ -127,7 +130,7 @@ async function onComboSelect(index) {
     if (combo.steamSettings.temperature != null) settings.settings.steamTemperature = combo.steamSettings.temperature
   }
 
-  if (combo.flushSettings) {
+  if (combo.includeFlush && combo.flushSettings) {
     update.rinseData = {
       targetTemperature: combo.flushSettings.temperature ?? settings.settings.flushTemperature ?? 90,
       duration: combo.flushSettings.duration ?? settings.settings.flushDuration ?? 5,
@@ -137,7 +140,7 @@ async function onComboSelect(index) {
     if (combo.flushSettings.flow != null) settings.settings.flushFlowRate = combo.flushSettings.flow
   }
 
-  if (combo.hotWaterSettings) {
+  if (combo.includeHotWater && combo.hotWaterSettings) {
     update.hotWaterData = {
       targetTemperature: combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature ?? 80,
       volume: combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume ?? 200,
