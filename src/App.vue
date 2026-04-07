@@ -36,7 +36,7 @@ const scale = useScale()
 const devices = useDevices()
 const waterLevels = useWaterLevels()
 const shotSettings = useShotSettings()
-const { workflow, updateWorkflow } = useWorkflow()
+const { workflow, updateWorkflow, ready: workflowReady } = useWorkflow()
 const shotData = useShotData()
 
 const beansComposable = useBeans()
@@ -434,8 +434,8 @@ onMounted(async () => {
   // WKWebView where holding the mouse/trackpad triggers contextmenu + pointercancel).
   document.addEventListener('contextmenu', onContextMenu)
 
-  // Load persisted settings, then sync operation defaults from workflow
-  await settings.load()
+  // Load persisted settings, wait for workflow, then sync operation defaults
+  await Promise.all([settings.load(), workflowReady])
   operationSettings.syncFromWorkflow()
 })
 

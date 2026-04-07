@@ -186,12 +186,19 @@ export function useWorkflow() {
     }
   }
 
-  onMounted(refresh)
+  let _readyResolve
+  const ready = new Promise(resolve => { _readyResolve = resolve })
+
+  onMounted(async () => {
+    await refresh()
+    _readyResolve()
+  })
 
   return {
     workflow,
     loading,
     error,
+    ready,
     refresh,
     updateWorkflow,
   }
