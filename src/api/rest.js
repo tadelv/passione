@@ -158,12 +158,30 @@ export function getShotIds(order = 'desc') {
   return sendCommand(`/api/v1/shots/ids?order=${order}`)
 }
 
+/**
+ * Fetch a paginated list of shots (without measurements).
+ * Uses the proper paginated endpoint: GET /api/v1/shots?limit=N&offset=M&order=desc
+ * Returns { items, total, limit, offset }.
+ */
+export async function getShotsPaginated(limit = 50, offset = 0) {
+  const result = await sendCommand(`/api/v1/shots?limit=${limit}&offset=${offset}&order=desc`)
+  // Normalize: the endpoint returns { items, total, limit, offset }
+  if (result && typeof result === 'object' && Array.isArray(result.items)) {
+    return result
+  }
+  // Fallback for older API versions that return a plain array
+  const items = Array.isArray(result) ? result : []
+  return { items, total: items.length, limit, offset }
+}
+
 export async function getShots(ids) {
   if (ids && ids.length) {
     // Try batch endpoint first, fall back to individual fetches
     try {
       const result = await sendCommand(`/api/v1/shots?ids=${ids.map(encodeURIComponent).join(',')}&order=desc`)
-      if (Array.isArray(result) && result.length > 0) return result
+      // Handle both paginated response shape and plain array
+      const items = Array.isArray(result) ? result : (result?.items ?? [])
+      if (items.length > 0) return items
     } catch { /* batch endpoint may not be available */ }
 
     // Fallback: fetch individually
@@ -179,7 +197,7 @@ export async function getShot(id) {
   // Use query-param endpoint — path-based /shots/{id} fails for timestamp IDs
   // that contain colons (e.g. "2025-09-08T10:35:22.155387")
   const result = await sendCommand(`/api/v1/shots?ids=${encodeURIComponent(id)}`)
-  const shots = Array.isArray(result) ? result : (result?.shots ?? [])
+  const shots = Array.isArray(result) ? result : (result?.items ?? result?.shots ?? [])
   return shots[0] ?? null
 }
 

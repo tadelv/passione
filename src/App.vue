@@ -65,18 +65,37 @@ provide('shotTime', machine.shotTime)
 provide('substate', machine.substate)
 provide('waterLevel', waterLevels.currentLevel)
 
-// Water level display: mm → ml conversion using DE1 tank cross-section (~150mm × 83mm)
-const WATER_ML_PER_MM = 12.45
-const WATER_TANK_MAX_MM = 120
+// Water level display: mm → ml conversion using DE1 tank CAD-derived lookup table.
+// The tank cross-section is non-uniform — a linear constant is inaccurate.
+// Source: Decenza de1device.cpp parseWaterLevel()
+const WATER_MM_TO_ML = [
+  0, 16, 43, 70, 97, 124, 151, 179, 206, 233,         // 0-9mm
+  261, 288, 316, 343, 371, 398, 426, 453, 481, 509,    // 10-19mm
+  537, 564, 592, 620, 648, 676, 704, 732, 760, 788,    // 20-29mm
+  816, 844, 872, 900, 929, 957, 985, 1013, 1042, 1070, // 30-39mm
+  1104, 1138, 1172, 1207, 1242, 1277, 1312, 1347, 1382, 1417, // 40-49mm
+  1453, 1488, 1523, 1559, 1594, 1630, 1665, 1701, 1736, 1772, // 50-59mm
+  1808, 1843, 1879, 1915, 1951, 1986,                  // 60-65mm
+]
+const WATER_SENSOR_OFFSET_MM = 5 // sensor mounted 5mm above water intake
+const WATER_FULL_ML = 1104 // tank capacity at "full" (40mm + offset)
+
+function waterMmToMl(rawMm) {
+  const mm = Math.max(0, rawMm + WATER_SENSOR_OFFSET_MM)
+  const idx = Math.min(Math.floor(mm), WATER_MM_TO_ML.length - 1)
+  return WATER_MM_TO_ML[idx]
+}
+
 const waterLevelDisplay = computed(() => {
   const mm = waterLevels.currentLevel.value
   if (settings.settings.waterLevelDisplayUnit === 'ml') {
-    return (mm * WATER_ML_PER_MM).toFixed(1) + ' ml'
+    return waterMmToMl(mm) + ' ml'
   }
   return mm.toFixed(1) + ' mm'
 })
 const waterLevelPercent = computed(() => {
-  return Math.min(100, Math.round((waterLevels.currentLevel.value / WATER_TANK_MAX_MM) * 100))
+  const ml = waterMmToMl(waterLevels.currentLevel.value)
+  return Math.min(100, Math.round((ml / WATER_FULL_ML) * 100))
 })
 provide('waterLevelDisplay', waterLevelDisplay)
 provide('waterLevelPercent', waterLevelPercent)

@@ -2,7 +2,7 @@
 import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { getShotIds, getShots } from '../api/rest.js'
+import { getShotsPaginated } from '../api/rest.js'
 import { normalizeShot as normalizeShotShared } from '../composables/useShotNormalize'
 
 const router = useRouter()
@@ -12,8 +12,8 @@ const updateWorkflow = inject('updateWorkflow')
 const PAGE_SIZE = 50
 const SEARCH_DEBOUNCE_MS = 300
 
-const allShotIds = ref([])
 const loadedShots = ref([])
+const totalShots = ref(0)
 const loadedCount = ref(0)
 const loading = ref(false)
 const initialLoading = ref(true)
@@ -89,47 +89,33 @@ function normalizeShot(shot) {
   return result
 }
 
-// Load all shot IDs first, then load pages
-async function loadShotIds() {
+async function loadInitial() {
   initialLoading.value = true
-  try {
-    const result = await getShotIds()
-    allShotIds.value = Array.isArray(result) ? result : (result?.ids ?? [])
-  } catch {
-    allShotIds.value = []
-  }
-  // Load first page
   loadedShots.value = []
   loadedCount.value = 0
+  totalShots.value = 0
   await loadMore()
   initialLoading.value = false
 }
 
 async function loadMore() {
   if (loading.value) return
-  const ids = filteredIds.value
-  if (loadedCount.value >= ids.length) return
+  if (loadedCount.value > 0 && loadedCount.value >= totalShots.value) return
 
   loading.value = true
-  const pageIds = ids.slice(loadedCount.value, loadedCount.value + PAGE_SIZE)
   try {
-    const result = await getShots(pageIds)
-    const shots = Array.isArray(result) ? result : (result?.shots ?? [])
-    loadedShots.value = [...loadedShots.value, ...shots.map(normalizeShot)]
-    loadedCount.value += pageIds.length
+    const result = await getShotsPaginated(PAGE_SIZE, loadedCount.value)
+    const shots = result.items.map(normalizeShot)
+    loadedShots.value = [...loadedShots.value, ...shots]
+    loadedCount.value += shots.length
+    totalShots.value = result.total
   } catch {
     // ignore
   }
   loading.value = false
 }
 
-const hasMore = computed(() => loadedCount.value < filteredIds.value.length)
-
-const filteredIds = computed(() => {
-  // Client-side search is applied after loading (basic filtering by ID)
-  // Since we only have IDs at this point, full search happens on loaded shots
-  return allShotIds.value
-})
+const hasMore = computed(() => loadedCount.value < totalShots.value)
 
 const displayedShots = computed(() => {
   if (!searchQuery.value.trim()) return loadedShots.value
@@ -223,7 +209,7 @@ function formatDoseYield(shot) {
   return ''
 }
 
-onMounted(loadShotIds)
+onMounted(loadInitial)
 </script>
 
 <template>

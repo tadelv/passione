@@ -11,7 +11,30 @@ import {
   deletePresenceSchedule,
 } from '../../api/rest.js'
 
-const WATER_ML_PER_MM = 12.45
+// DE1 tank CAD-derived lookup table (same as App.vue)
+const WATER_MM_TO_ML = [
+  0, 16, 43, 70, 97, 124, 151, 179, 206, 233,
+  261, 288, 316, 343, 371, 398, 426, 453, 481, 509,
+  537, 564, 592, 620, 648, 676, 704, 732, 760, 788,
+  816, 844, 872, 900, 929, 957, 985, 1013, 1042, 1070,
+  1104, 1138, 1172, 1207, 1242, 1277, 1312, 1347, 1382, 1417,
+  1453, 1488, 1523, 1559, 1594, 1630, 1665, 1701, 1736, 1772,
+  1808, 1843, 1879, 1915, 1951, 1986,
+]
+const WATER_SENSOR_OFFSET_MM = 5
+
+function waterMmToMl(rawMm) {
+  const mm = Math.max(0, rawMm + WATER_SENSOR_OFFSET_MM)
+  const idx = Math.min(Math.floor(mm), WATER_MM_TO_ML.length - 1)
+  return WATER_MM_TO_ML[idx]
+}
+
+function waterMlToMm(ml) {
+  for (let i = WATER_MM_TO_ML.length - 1; i >= 0; i--) {
+    if (WATER_MM_TO_ML[i] <= ml) return Math.max(0, i - WATER_SENSOR_OFFSET_MM)
+  }
+  return 0
+}
 
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
@@ -22,9 +45,9 @@ const toast = inject('toast', null)
 const isML = computed(() => settings?.waterLevelDisplayUnit === 'ml')
 
 const refillThresholdDisplay = computed({
-  get: () => isML.value ? Math.round(settings.waterRefillThreshold * WATER_ML_PER_MM) : settings.waterRefillThreshold,
+  get: () => isML.value ? waterMmToMl(settings.waterRefillThreshold) : settings.waterRefillThreshold,
   set: (v) => {
-    const mm = isML.value ? Math.round(v / WATER_ML_PER_MM) : v
+    const mm = isML.value ? waterMlToMm(v) : v
     settings.waterRefillThreshold = mm
     updateWaterLevelThreshold(mm).catch(() => {})
   },
