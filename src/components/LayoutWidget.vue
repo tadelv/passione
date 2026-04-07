@@ -14,6 +14,7 @@ import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { espressoIcon, steamIcon, hotWaterIcon, flushIcon } from '../assets/icons/operations.js'
 
 const HistoryShotGraph = defineAsyncComponent(() => import('./HistoryShotGraph.vue'))
 
@@ -61,6 +62,7 @@ const router = useRouter()
 const machineConnected = inject('machineConnected', ref(false))
 const scaleConnected = inject('scaleConnected', ref(false))
 const temperature = inject('temperature', ref(0))
+const steamTemperature = inject('steamTemperature', ref(0))
 const waterLevelDisplay = inject('waterLevelDisplay', ref(''))
 const waterLevelPercent = inject('waterLevelPercent', ref(0))
 const profileName = inject('profileName', ref(''))
@@ -215,13 +217,39 @@ const lastShotInfo = computed(() => {
       />
     </template>
 
+    <!-- Steam gauge -->
+    <template v-else-if="type === 'steamGauge'">
+      <CircularGauge
+        :value="steamTemperature"
+        :min="0"
+        :max="170"
+        unit="&deg;C"
+        :label="t('common.steam')"
+        color="var(--color-accent)"
+        :size="120"
+      />
+    </template>
+
+    <!-- Water level gauge -->
+    <template v-else-if="type === 'waterGauge'">
+      <CircularGauge
+        :value="waterLevelPercent"
+        :min="0"
+        :max="100"
+        unit="%"
+        label="Water"
+        color="var(--color-flow)"
+        :size="120"
+      />
+    </template>
+
     <!-- Action buttons -->
     <template v-else-if="type === 'actionButtons'">
       <div class="layout-widget__actions">
-        <ActionButton icon="&#9749;" :label="t('idle.espresso')" :disabled="!isReady" @click="emit('start-espresso')" />
-        <ActionButton icon="&#9752;" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady" @click="emit('start-steam')" />
-        <ActionButton icon="&#128167;" :label="t('idle.hotWater')" color="var(--color-flow)" :disabled="!isReady" @click="emit('start-hot-water')" />
-        <ActionButton icon="&#127754;" :label="t('idle.flush')" color="var(--color-success)" :disabled="!isReady" @click="emit('start-flush')" />
+        <ActionButton :icon="espressoIcon" :label="t('idle.espresso')" :disabled="!isReady" @click="emit('start-espresso')" />
+        <ActionButton :icon="steamIcon" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady" @click="emit('start-steam')" />
+        <ActionButton :icon="hotWaterIcon" :label="t('idle.hotWater')" color="var(--color-flow)" :disabled="!isReady" @click="emit('start-hot-water')" />
+        <ActionButton :icon="flushIcon" :label="t('idle.flush')" color="var(--color-success)" :disabled="!isReady" @click="emit('start-flush')" />
       </div>
     </template>
 

@@ -63,7 +63,7 @@ onUnmounted(() => {
     :aria-label="ariaLabel || label"
     @click="onClick"
   >
-    <span v-if="icon" class="action-button__icon">{{ icon }}</span>
+    <span v-if="icon" class="action-button__icon" v-html="icon"></span>
     <span class="action-button__label">{{ confirmed ? 'Tap to start' : label }}</span>
   </button>
 </template>
@@ -113,8 +113,17 @@ onUnmounted(() => {
 }
 
 .action-button__icon {
-  font-size: var(--font-value);
+  width: 36px;
+  height: 36px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-button__icon :deep(svg) {
+  width: 100%;
+  height: 100%;
 }
 
 .action-button__label {
