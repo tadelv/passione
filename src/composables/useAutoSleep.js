@@ -2,45 +2,23 @@
  * Presence & idle management composable.
  *
  * Follows the recommended pattern from Skins.md:
- *   - On user activity: send heartbeat to prevent machine auto-sleep + restore display
- *   - After local idle timeout: dim display (screensaver-like)
+ *   - On user activity: send heartbeat to prevent machine auto-sleep
  *   - Server handles the actual sleep countdown via heartbeat timeout
+ *   - Display dimming is handled by the sleep state watcher in App.vue
  *   - Syncs autoSleepMinutes setting to server's presence config
  */
 
 import { watch, onMounted, onUnmounted } from 'vue'
 import { sendHeartbeat, getPresenceSettings, updatePresenceSettings } from '../api/rest.js'
 
-const LOCAL_DIM_TIMEOUT_MS = 60_000 // Dim display after 60s of no user activity
-
 export function useAutoSleep(machine, settings, display) {
   let _activityCleanup = null
-  let _idleTimer = null
 
   // ---- User activity handling ------------------------------------------------
 
   function _onUserActivity() {
     // Signal presence to server (server throttles to 30s internally)
     sendHeartbeat().catch(() => {})
-
-    // Restore display if dimmed — but not while the machine is sleeping,
-    // where dim is intentional and controlled by the state watcher.
-    if (machine.state.value !== 'sleeping') {
-      display?.restore()
-    }
-
-    // Reset local idle timer
-    _resetIdleTimer()
-  }
-
-  function _resetIdleTimer() {
-    clearTimeout(_idleTimer)
-    _idleTimer = setTimeout(() => {
-      // Dim display when user is idle locally (skip if already sleeping)
-      if (machine.state.value !== 'sleeping') {
-        display?.dim()
-      }
-    }, LOCAL_DIM_TIMEOUT_MS)
   }
 
   function _startActivityTracking() {
@@ -74,14 +52,12 @@ export function useAutoSleep(machine, settings, display) {
 
   function start() {
     _startActivityTracking()
-    _resetIdleTimer()
     // Send initial heartbeat
     sendHeartbeat().catch(() => {})
     _syncSettingsToServer()
   }
 
   function stop() {
-    clearTimeout(_idleTimer)
     _activityCleanup?.()
     _activityCleanup = null
   }
