@@ -72,10 +72,11 @@ The core real-time data structure (~10Hz via WebSocket):
 - **Composables** (`src/composables/`) — WebSocket/API connections, state management, and behavior
 - **Router** (`src/router/`) — hash-based routing with 300ms navigation debounce
 - **Settings** persist via ReaPrime's key-value store (`/api/v1/store/decenza-js/{key}`), managed by the `useSettings` composable with auto-load and debounced auto-save
+- **Power/Sleep** — `useAutoSleep` composable manages sleep schedules, keep-awake, and wake timers via ReaPrime API
 
 ## Feature Scope
 
-Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor), shot history (list/detail/comparison/post-shot review), Visualizer import, layout customization, bean info, screensaver, descaling wizard, settings.
+Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor), shot history (list/detail/comparison/post-shot review), Visualizer import, layout customization, bean info, screensaver (ambient glow / last shot recap / shot graph modes), power & sleep schedule management, descaling wizard, settings.
 
 **Deferred:** AI shot analysis and dialing assistant.
 
@@ -88,13 +89,13 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 
 ## Interaction Patterns
 
-- **Preset pills:** Single tap selects, double-tap on selected activates (starts operation), long-press (500ms) opens edit popup
+- **Preset pills:** Single tap selects, double-tap on selected activates (starts operation), double-tap on unselected opens edit popup
 - **ValueInput:** +/- buttons with press-and-hold repeat (80ms), drag-to-adjust on display (20px = 1 step), full keyboard support (arrows, PageUp/Down, Home/End)
 - **Operation pages:** Show preset pills AND stop button during active operation. Settings sync to workflow API with 300ms debounce.
-- **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Long-press shows ProfilePreviewPopup
+- **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Double-tap on unselected shows ProfilePreviewPopup
 - **BrewDialog:** Optional pre-brew dialog (controlled by `showBrewDialog` setting). Shows temperature, dose, yield, ratio, grinder fields. Integrates with workflow API.
 - **ProfileSelectorPage:** Single click applies profile (not just previews)
-- **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, long-press opens detail
+- **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, tap opens detail
 - **Global keyboard shortcuts:** E/S/W/F to start operations when idle, Space/Escape to stop current operation
 - **Features not backed by ReaPrime API** should show a toast notification ("not yet available") rather than silently failing
 
@@ -109,6 +110,10 @@ npm run build        # Static output in dist/
 npm run test:e2e     # Playwright end-to-end tests
 npm run preview      # Preview production build
 ```
+
+### CI/CD
+
+- **Release**: GitHub Actions workflow (`.github/workflows/release.yml`) — triggered on version tags
 
 ### Dev Proxy
 
@@ -148,7 +153,7 @@ curl -X POST http://localhost:8080/api/v1/webui/skins/install/github-branch \
 1. **Purposeful density** — Show the right information at the right time. Never show everything at once; never hide what matters now.
 2. **Confidence through clarity** — Large, readable values. Unambiguous states. Machine state drives the UI.
 3. **Warmth without whimsy** — Soft transitions, comfortable spacing, inviting colors. No bouncy animations, no gamification.
-4. **Touch-native feel** — Press-and-hold, drag-to-adjust, two-step confirms. Fingers first, mouse second, keyboard as power-user bonus.
+4. **Touch-native feel** — Double-tap actions, drag-to-adjust, two-step confirms. Fingers first, mouse second, keyboard as power-user bonus.
 5. **Invisible complexity** — Progressive disclosure, not feature walls. Casual use is effortless, advanced use is discoverable.
 
 ### Accessibility
