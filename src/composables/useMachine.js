@@ -165,26 +165,20 @@ export function useMachine() {
   watch(state, (newState, oldState) => {
     if (newState === oldState) return
 
-    if (FLOWING_STATES.has(newState) && !FLOWING_STATES.has(oldState)) {
-      if (newState === 'espresso') {
-        // For espresso, reset but don't start — wait for preinfusion substate
-        _resetShotTimer()
-      } else {
-        _startShotTimer()
-      }
-    } else if (!FLOWING_STATES.has(newState) && FLOWING_STATES.has(oldState)) {
+    if (FLOWING_STATES.has(newState)) {
+      // Entering any flowing state: reset timer, wait for preparingForShot to end
+      _resetShotTimer()
+    } else if (FLOWING_STATES.has(oldState)) {
       // Leaving a flowing operation — keep final time visible but stop ticking
       _stopShotTimer()
     }
   })
 
-  // For espresso, start the timer when liquid flow begins (not during preheat)
+  // Start the timer when the machine exits preparingForShot (applies to all operations)
   watch(substate, (newSubstate) => {
-    if (state.value === 'espresso' &&
-        (newSubstate === 'preinfusion' || newSubstate === 'pouring') &&
-        _shotStartTime.value === null) {
-      _startShotTimer()
-    }
+    if (!FLOWING_STATES.has(state.value)) return
+    if (newSubstate === 'preparingForShot' || _shotStartTime.value !== null) return
+    _startShotTimer()
   })
 
   // ---- Connection management ------------------------------------------------
