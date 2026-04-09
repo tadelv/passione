@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { getProfile, getProfiles } from '../api/rest.js'
+import { isSimpleProfile } from '../composables/useSimpleProfile'
 
 const router = useRouter()
 const route = useRoute()
@@ -159,7 +160,7 @@ onMounted(fetchProfile)
       <button
         v-if="record?.id"
         class="profile-info__edit-btn"
-        @click="router.push(`/recipe-editor/${encodeURIComponent(record.id)}`)"
+        @click="router.push(isSimpleProfile(record?.profile ?? record) ? `/simple-editor/${encodeURIComponent(record.id)}` : `/recipe-editor/${encodeURIComponent(record.id)}`)"
       >
         Edit
       </button>

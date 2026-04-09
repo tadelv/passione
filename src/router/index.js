@@ -20,6 +20,7 @@ const VisualizerMultiImportPage = () => import('../pages/VisualizerMultiImportPa
 const BeanInfoPage = () => import('../pages/BeanInfoPage.vue')
 const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 const RecipeEditorPage = () => import('../pages/RecipeEditorPage.vue')
+const SimpleProfileEditorPage = () => import('../pages/SimpleProfileEditorPage.vue')
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -41,6 +42,7 @@ const routes = [
   { path: '/visualizer-multi-import', name: 'visualizer-multi-import', component: VisualizerMultiImportPage },
   { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
   { path: '/recipe-editor/:id?', name: 'recipe-editor', component: RecipeEditorPage },
+  { path: '/simple-editor/:id?', name: 'simple-editor', component: SimpleProfileEditorPage },
 ]
 
 const router = createRouter({
