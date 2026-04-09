@@ -574,6 +574,46 @@ Fix and enhance the existing code to support all features across subsequent phas
 
 ---
 
+## Phase 7 — v0.3.0 Features (Decenza Parity)
+
+### P7-1. API Alignment with Streamline-Bridge `[x]`
+- **Description**: Update useMachine.js PHASE_MAP and OPERATION_STATES with new machine states (busy, calibration, selfTest, airPurge, fwUpgrade, skipStep). Migrate shot data to annotations schema. Add server-side search to getShotsPaginated. Consolidate useShotNormalize into single source of truth. Remove dead 'ready' state references.
+- **Complexity**: M
+- **Blocked**: No
+
+### P7-2. PhaseTimeline Component `[x]`
+- **Description**: Horizontal progress visualization on EspressoPage showing 4 extraction phases (Preheat, Pre-infusion, Pouring, Ending). Active phase expands. Profile tracking color (green/amber/red) using QML-ported thresholds. Replaces the static "PREHEATING..." banner.
+- **QML Reference**: `vendor/decenza/qml/components/PhaseTimelineView.qml`
+- **Complexity**: M
+- **Blocked**: No
+
+### P7-3. Simple Profile Editor `[x]`
+- **Description**: Classic 4-step editor for settings_2a (pressure) and settings_2b (flow) profiles. Steps: Temperature, Preinfuse, Hold/Rise, Decline, Stop at Weight. Live profile graph preview. `useSimpleProfile` composable for frame generation. ProfileInfoPage auto-routes to correct editor.
+- **QML Reference**: `vendor/decenza/qml/pages/SimpleProfileEditorPage.qml`
+- **Complexity**: L
+- **Blocked**: No
+
+### P7-4. Auto-Favorites Page `[x]`
+- **Description**: Client-side aggregation of shot history to surface best bean/profile/grinder combinations. Groups by bean, profile, bean+profile, or all three. Shows avg rating, dose, yield, duration. Load profile and Show Shots actions.
+- **QML Reference**: `vendor/decenza/qml/pages/AutoFavoritesPage.qml`
+- **API**: `GET /api/v1/shots?limit=200&offset=N` (paginated fetch for aggregation)
+- **Complexity**: M
+- **Blocked**: No
+
+### P7-5. Phase Summary Panel `[x]`
+- **Description**: Collapsible per-phase metrics table (duration, avg pressure, avg flow, weight gained, pump mode) on ShotDetailPage and PostShotReviewPage. Computed from measurements array.
+- **QML Reference**: `vendor/decenza/qml/components/PhaseSummaryPanel.qml`
+- **Complexity**: S
+- **Blocked**: No
+
+### P7-6. Cup Fill Visualization `[x]`
+- **Description**: Animated CSS cup fill during extraction on EspressoPage. Coffee fill tracks yield weight vs target. Crema layer, wave animation, stream from portafilter. Pure CSS (no GPU shaders).
+- **QML Reference**: `vendor/decenza/qml/components/CupFillView.qml`
+- **Complexity**: S
+- **Blocked**: No
+
+---
+
 ## Task Dependency Summary
 
 ```

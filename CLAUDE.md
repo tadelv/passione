@@ -41,12 +41,14 @@ The skin communicates with Streamline-Bridge running on the same device or local
 ### Machine States
 
 ```
-sleeping → idle → heating → [ready]
-idle → espresso → (preinfusion → pouring → done) → idle
+sleeping → idle → heating → espresso/steam/hotWater/flush
+idle → espresso → (preparingForShot → preinfusion → pouring → pouringDone) → idle
 idle → steam → idle
 idle → hotWater → idle
 idle → flush → idle
 ```
+
+Additional states: `booting`, `busy`, `calibration`, `selfTest`, `airPurge`, `fwUpgrade`, `needsWater`, `error`, `descaling`, `cleaning`, `steamRinse`, `skipStep` (transient during espresso).
 
 ### Snapshot Data Shape
 
@@ -74,11 +76,29 @@ The core real-time data structure (~10Hz via WebSocket):
 - **Settings** persist via ReaPrime's key-value store (`/api/v1/store/decenza-js/{key}`), managed by the `useSettings` composable with auto-load and debounced auto-save
 - **Power/Sleep** — `useAutoSleep` composable manages sleep schedules, keep-awake, and wake timers via ReaPrime API
 
+### Key Composables
+
+- **`useMachine`** — WebSocket snapshot consumer (~10Hz). Exposes reactive refs for all telemetry. `PHASE_MAP` maps machine states to UI phases. `OPERATION_STATES` controls wake-lock protection (includes `fwUpgrade`, `selfTest`, `calibration`, `airPurge`).
+- **`useShotNormalize`** — Central shot record normalizer. All pages that display shot data call `normalizeShot(raw)` to get a flat, display-ready object. Handles: dose (annotations → context → legacy), coffee, grinder, rating, notes, TDS/EY, profileName, barista, duration, profile ref. Do NOT add per-page normalization — extend this composable instead.
+- **`useSimpleProfile`** — Pure functions for simple profile editing (settings_2a/2b). `extractSimpleParams()` reads params from profile root, `generateSimpleFrames()` creates the frames array, `buildProfileFromParams()` assembles the full API payload.
+
+### Shot Data: Annotations vs Legacy
+
+Shot records have two data schemas:
+- **`annotations`** (new): `enjoyment`, `espressoNotes`, `actualDoseWeight`, `actualYield`, `drinkTds`, `drinkEy`, `extras` (barista, beanBrand, etc.)
+- **Legacy** (deprecated): `shotNotes`, `metadata` (rating, barista, etc.)
+
+The normalizer reads annotations first, falls back to legacy. The PostShotReviewPage writes both for backward compatibility with older gateways. When adding new shot fields, prefer `annotations` or `annotations.extras`.
+
 ## Feature Scope
 
-Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor), shot history (list/detail/comparison/post-shot review), Visualizer import, layout customization, bean info, screensaver (ambient glow / last shot recap / shot graph modes), power & sleep schedule management, descaling wizard, settings.
+Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor/simple editor), shot history (list/detail/comparison/post-shot review/phase summary), auto-favorites, Visualizer import, layout customization, bean info, screensaver (ambient glow / last shot recap / shot graph modes), power & sleep schedule management, descaling wizard, settings.
 
-**Deferred:** AI shot analysis and dialing assistant.
+**Espresso Page:** Phase timeline (real-time extraction phases with tracking color), cup fill visualization, shot graph, info bar with pressure/flow/temp/weight.
+
+**Profile Editors:** Three editor types — Simple (settings_2a/2b, 4-step), Recipe (settings_2c, named phases), Advanced (frame-by-frame). `ProfileInfoPage` auto-routes to the correct editor based on `legacy_profile_type`.
+
+**Deferred:** AI shot analysis and dialing assistant, shot history sort controls (API limitation — only `orderBy: timestamp`), steam calibration wizard (blocked on ReaPrime orchestration API), weather widget (low priority).
 
 ## Design Principles
 
@@ -95,7 +115,11 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 - **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Double-tap on unselected shows ProfilePreviewPopup
 - **BrewDialog:** Optional pre-brew dialog (controlled by `showBrewDialog` setting). Shows temperature, dose, yield, ratio, grinder fields. Integrates with workflow API.
 - **ProfileSelectorPage:** Single click applies profile (not just previews)
-- **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, tap opens detail
+- **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, tap opens detail. Server-side search with debounce and generation counter for race prevention. Shot count shows server total.
+- **PhaseTimeline:** Horizontal progress bar on EspressoPage showing Preheat/Pre-infusion/Pouring/Ending. Active segment expands. Tracking color (green/amber/red) based on QML-ported thresholds for pressure/flow deviation.
+- **PhaseSummaryPanel:** Collapsible table on ShotDetailPage and PostShotReviewPage. Computed client-side from measurements array.
+- **SimpleProfileEditorPage:** 4-step editor for settings_2a (pressure) and settings_2b (flow). Live graph preview. Dirty detection with navigation guard. Routes via ProfileInfoPage edit button.
+- **AutoFavoritesPage:** Client-side aggregation of all shots via paginated API. Groups by bean/profile/grinder. Load and Show Shots actions per group.
 - **Global keyboard shortcuts:** E/S/W/F to start operations when idle, Space/Escape to stop current operation
 - **Features not backed by ReaPrime API** should show a toast notification ("not yet available") rather than silently failing
 
