@@ -3,6 +3,7 @@ import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ShotGraph from '../components/ShotGraph.vue'
 import PhaseTimeline from '../components/PhaseTimeline.vue'
+import CupFillView from '../components/CupFillView.vue'
 import BrewDialog from '../components/BrewDialog.vue'
 import { setMachineState, tareScale, getLatestShot } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
@@ -291,16 +292,26 @@ async function stopAndGoBack() {
       :shot-time="shotTime ?? 0"
     />
 
-    <!-- Shot graph -->
-    <div class="espresso-page__chart">
-      <ShotGraph
-        v-if="shotData"
-        :data="shotData.data.value"
-        :frame-markers="frameMarkers"
-        :show-legend="true"
-      />
-      <div v-else class="espresso-page__chart-placeholder">
-        <span>Shot Graph</span>
+    <!-- Shot graph + cup fill -->
+    <div class="espresso-page__chart-row">
+      <div class="espresso-page__chart">
+        <ShotGraph
+          v-if="shotData"
+          :data="shotData.data.value"
+          :frame-markers="frameMarkers"
+          :show-legend="true"
+        />
+        <div v-else class="espresso-page__chart-placeholder">
+          <span>Shot Graph</span>
+        </div>
+      </div>
+      <div class="espresso-page__cup">
+        <CupFillView
+          :current-weight="weight ?? 0"
+          :target-weight="displayTargetWeight"
+          :flow="flow"
+          :is-pouring="machineState === 'espresso'"
+        />
       </div>
     </div>
 
@@ -389,10 +400,20 @@ async function stopAndGoBack() {
   background: var(--color-background);
 }
 
+.espresso-page__chart-row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .espresso-page__chart {
   flex: 1;
-  padding: 44px 0 0 0;
   min-height: 0;
+}
+
+.espresso-page__cup {
+  width: 100px;
+  flex-shrink: 0;
 }
 
 .espresso-page__chart-placeholder {

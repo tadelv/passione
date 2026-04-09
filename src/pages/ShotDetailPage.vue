@@ -5,6 +5,7 @@ import HistoryShotGraph from '../components/HistoryShotGraph.vue'
 import RatingInput from '../components/RatingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 import SwipeableArea from '../components/SwipeableArea.vue'
+import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, getShotIds, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 
@@ -84,28 +85,8 @@ async function loadShot(id) {
     const raw = await getShot(id)
     if (raw) {
       const result = normalizeShot(raw)
-      const w = raw.workflow ?? {}
-      const meta = raw.metadata ?? {}
-
-      // Fields not covered by normalizeShot
-      if (!result.profileName) result.profileName = w.profile?.title ?? w.name ?? null
-      if (result.barista == null) result.barista = meta.barista ?? null
-      if (result.notes == null && result.shotNotes != null) result.notes = result.shotNotes
-      if (!result.profile && w.profile) result.profile = w.profile
-      if (result.duration == null && result.measurements?.length >= 2) {
-        const first = result.measurements[0]
-        const last = result.measurements[result.measurements.length - 1]
-        const getTs = (m) => {
-          if (m.elapsed != null) return m.elapsed
-          const ts = m.machine?.timestamp ?? m.timestamp
-          return ts ? new Date(ts).getTime() / 1000 : 0
-        }
-        const d = getTs(last) - getTs(first)
-        if (d > 0) result.duration = d
-      }
-
       shot.value = result
-      rating.value = result.rating ?? result.metadata?.rating ?? 0
+      rating.value = result.rating ?? 0
       enrichShot(result)
     } else {
       shot.value = null
@@ -166,7 +147,10 @@ async function onRatingChange(val) {
   rating.value = val
   if (shotId.value) {
     try {
-      await updateShot(shotId.value, { metadata: { rating: val } })
+      await updateShot(shotId.value, {
+        annotations: { enjoyment: val },
+        metadata: { rating: val },
+      })
     } catch {
       // ignore
     }
@@ -301,6 +285,11 @@ async function uploadToVisualizer() {
             @update:model-value="onRatingChange"
           />
         </div>
+      </div>
+
+      <!-- Phase summary -->
+      <div class="shot-detail__phase-summary">
+        <PhaseSummaryPanel :measurements="shot?.measurements ?? []" />
       </div>
 
       <!-- Action buttons -->
@@ -443,6 +432,10 @@ async function uploadToVisualizer() {
   font-size: var(--font-body);
   color: var(--color-text);
   word-break: break-word;
+}
+
+.shot-detail__phase-summary {
+  padding: 0 16px;
 }
 
 .shot-detail__card-detail {

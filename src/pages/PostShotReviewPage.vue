@@ -6,6 +6,7 @@ import RatingInput from '../components/RatingInput.vue'
 import ValueInput from '../components/ValueInput.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import BottomBar from '../components/BottomBar.vue'
+import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 
@@ -106,14 +107,17 @@ async function loadSuggestions() {
 
     for (const raw of shots) {
       const n = normalizeShot(raw)
+      const extras = raw.annotations?.extras ?? {}
       const meta = raw.metadata ?? {}
 
       if (n.coffeeRoaster) sets.roaster.add(n.coffeeRoaster)
-      if (meta.beanBrand) sets.beanBrand.add(meta.beanBrand)
+      const beanBrandVal = extras.beanBrand ?? meta.beanBrand
+      if (beanBrandVal) sets.beanBrand.add(beanBrandVal)
       if (n.coffeeName) sets.beanType.add(n.coffeeName)
       if (n.grinderModel) sets.grinderModel.add(n.grinderModel)
       if (n.grinderSetting != null) sets.grinderSetting.add(String(n.grinderSetting))
-      if (meta.barista) sets.barista.add(meta.barista)
+      const baristaVal = extras.barista ?? meta.barista
+      if (baristaVal) sets.barista.add(baristaVal)
     }
 
     historySuggestions.value = {
@@ -131,21 +135,23 @@ async function loadSuggestions() {
 
 function populateFromShot(shot) {
   const s = normalizeShot(shot)
+  const ann = shot.annotations ?? {}
+  const extras = ann.extras ?? {}
   const meta = shot.metadata ?? {}
   roaster.value = s.coffeeRoaster ?? ''
-  beanBrand.value = meta.beanBrand ?? ''
+  beanBrand.value = extras.beanBrand ?? meta.beanBrand ?? ''
   beanType.value = s.coffeeName ?? ''
-  roastDate.value = meta.roastDate ?? ''
-  roastLevel.value = meta.roastLevel ?? ''
+  roastDate.value = extras.roastDate ?? meta.roastDate ?? ''
+  roastLevel.value = extras.roastLevel ?? meta.roastLevel ?? ''
   grinderModel.value = s.grinderModel ?? ''
   grinderSetting.value = s.grinderSetting != null ? String(s.grinderSetting) : ''
-  beverageType.value = meta.beverageType ?? ''
-  barista.value = meta.barista ?? ''
+  beverageType.value = extras.beverageType ?? meta.beverageType ?? ''
+  barista.value = extras.barista ?? meta.barista ?? ''
   doseIn.value = s.doseIn ?? 0
   doseOut.value = s.doseOut ?? 0
-  tds.value = meta.tds ?? 0
+  tds.value = s.tds ?? meta.tds ?? 0
   rating.value = s.rating ?? settings?.settings?.defaultShotRating ?? 0
-  notes.value = shot.shotNotes ?? ''
+  notes.value = s.notes ?? ''
 }
 
 function populateFromSticky() {
@@ -214,6 +220,21 @@ async function save() {
   saving.value = true
   try {
     await updateShot(shotId.value, {
+      annotations: {
+        enjoyment: rating.value || undefined,
+        espressoNotes: notes.value || undefined,
+        actualDoseWeight: doseIn.value || undefined,
+        actualYield: doseOut.value || undefined,
+        drinkTds: tds.value || undefined,
+        extras: {
+          barista: barista.value || undefined,
+          beanBrand: beanBrand.value || undefined,
+          roastDate: roastDate.value || undefined,
+          roastLevel: roastLevel.value || undefined,
+          beverageType: beverageType.value || undefined,
+        },
+      },
+      // Keep legacy fields for backward compatibility with older gateways
       shotNotes: notes.value || undefined,
       metadata: {
         rating: rating.value,
@@ -226,8 +247,6 @@ async function save() {
       },
       workflow: {
         context: {
-          targetDoseWeight: doseIn.value || undefined,
-          targetYield: doseOut.value || undefined,
           coffeeName: beanType.value || undefined,
           coffeeRoaster: roaster.value || undefined,
           grinderModel: grinderModel.value || undefined,
@@ -460,6 +479,11 @@ function goBack() {
           </div>
         </div>
 
+        <!-- Phase summary -->
+        <div class="review-page__phase-summary">
+          <PhaseSummaryPanel :measurements="shot?.measurements ?? []" />
+        </div>
+
         <!-- Rating -->
         <div class="review-page__rating-section">
           <span class="review-page__section-title">Rating</span>
@@ -652,6 +676,10 @@ function goBack() {
   font-size: var(--font-title);
   font-weight: bold;
   color: var(--color-primary);
+}
+
+.review-page__phase-summary {
+  padding: 0 16px;
 }
 
 .review-page__rating-section {
