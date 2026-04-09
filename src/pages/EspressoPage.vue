@@ -2,8 +2,10 @@
 import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ShotGraph from '../components/ShotGraph.vue'
+import PhaseTimeline from '../components/PhaseTimeline.vue'
 import BrewDialog from '../components/BrewDialog.vue'
 import { setMachineState, tareScale, getLatestShot } from '../api/rest.js'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const router = useRouter()
 
@@ -129,15 +131,15 @@ function onBrewDialogCancel() {
 
 async function onBrewDialogUseLastShot() {
   try {
-    const lastShot = await getLatestShot()
-    if (lastShot) {
-      // Extract relevant parameters from last shot and populate workflow context
+    const raw = await getLatestShot()
+    if (raw) {
+      const lastShot = normalizeShot(raw)
       const contextUpdate = {}
-      if (lastShot.doseIn != null || lastShot.dose != null) {
-        contextUpdate.targetDoseWeight = lastShot.doseIn ?? lastShot.dose
+      if (lastShot.doseIn != null) {
+        contextUpdate.targetDoseWeight = lastShot.doseIn
       }
-      if (lastShot.doseOut != null || lastShot.targetWeight != null) {
-        contextUpdate.targetYield = lastShot.doseOut ?? lastShot.targetWeight
+      if (lastShot.doseOut != null) {
+        contextUpdate.targetYield = lastShot.doseOut
       }
       if (Object.keys(contextUpdate).length > 0) {
         await updateWorkflow({
@@ -198,10 +200,6 @@ watch(() => shotData?.isRecording?.value, (recording) => {
     lastFrame = -1
   }
 })
-
-const isPreheating = computed(() =>
-  substate.value === 'preparingForShot' || substate.value === 'preheating'
-)
 
 const weightProgress = computed(() => {
   if (volumeMode) return volumeMode.progress.value
@@ -281,10 +279,17 @@ async function stopAndGoBack() {
       @use-last-shot="onBrewDialogUseLastShot"
     />
 
-    <!-- Preheating banner -->
-    <div v-if="isPreheating" class="espresso-page__preheat">
-      PREHEATING...
-    </div>
+    <!-- Phase timeline -->
+    <PhaseTimeline
+      :phase="machine?.phase?.value ?? ''"
+      :current-weight="weight ?? 0"
+      :target-weight="displayTargetWeight"
+      :current-flow="flow"
+      :current-pressure="pressure"
+      :target-flow="machine?.targetFlow?.value ?? 0"
+      :target-pressure="machine?.targetPressure?.value ?? 0"
+      :shot-time="shotTime ?? 0"
+    />
 
     <!-- Shot graph -->
     <div class="espresso-page__chart">
@@ -382,17 +387,6 @@ async function stopAndGoBack() {
   flex-direction: column;
   height: 100%;
   background: var(--color-background);
-}
-
-.espresso-page__preheat {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 8px 32px;
-  font-size: var(--font-title);
-  color: var(--color-text-secondary);
-  z-index: var(--z-chart);
 }
 
 .espresso-page__chart {
