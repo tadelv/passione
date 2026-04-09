@@ -39,6 +39,9 @@ Browse, search, and manage espresso profiles.
 - Visual profile graph showing pressure, flow, and temperature curves
 - View step-by-step breakdown of each profile frame
 - Apply profiles to the current workflow with a single tap
+- **Simple Profile Editor** for classic 4-step pressure/flow profiles (Temperature, Preinfuse, Hold/Rise, Decline, Stop at Weight) -- perfect for beginners
+- Advanced frame-by-frame editor for power users
+- ProfileInfoPage automatically routes to the correct editor based on profile type
 
 ### Shot History
 
@@ -81,10 +84,28 @@ Rearrange the home screen to show what matters to you.
 - **Beans**: Manage your coffee bean library
 - **Grinders**: Manage grinder profiles
 
+### Espresso Extraction
+
+- **Phase Timeline** showing real-time extraction progress (Preheat, Pre-infusion, Pouring, Ending) with profile tracking color feedback (green/amber/red)
+- **Cup Fill Visualization** -- animated cup graphic tracking yield weight vs target during brewing
+- **Real-time shot graphs** with pressure, flow, temperature, and weight curves
+
+### Shot Review
+
+- **Post-shot review** with shot graph, notes, rating, TDS/EY
+- **Phase Summary Panel** -- collapsible per-phase metrics table showing duration, avg pressure, avg flow, and weight gained per extraction phase
+- Shot annotations support (new structured format alongside legacy fields)
+
+### Auto-Favorites
+
+Surface your best bean/profile/grinder combinations from shot history.
+
+- Group by bean, profile, bean+profile, or all three
+- Average rating, dose, yield, and duration per combination
+- Load a combination's profile or view its shots directly
+
 ### Additional Features
 
-- **Real-time espresso graphs** with pressure, flow, temperature, and weight curves during brewing
-- **Post-shot review** with shot graph, notes, and rating
 - **Descaling wizard** for guided machine maintenance
 - **Screensaver** with multiple modes (ambient glow, last shot recap, shot graph)
 - **Power & sleep** schedule management with keep-awake timers
@@ -102,7 +123,7 @@ Passione is a skin for [Streamline-Bridge](https://github.com/tadelv/reaprime). 
 3. Install from URL using the latest release ZIP:
 
 ```
-https://github.com/tadelv/passione/releases/latest/download/passione-v0.2.1.zip
+https://github.com/tadelv/passione/releases/latest/download/passione-v0.3.0.zip
 ```
 
 Or via the REST API:
@@ -110,7 +131,7 @@ Or via the REST API:
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-release \
   -H "Content-Type: application/json" \
-  -d '{"repo": "tadelv/passione", "asset": "passione-v0.2.1.zip"}'
+  -d '{"repo": "tadelv/passione", "asset": "passione-v0.3.0.zip"}'
 ```
 
 ### From GitHub Branch (latest development)
