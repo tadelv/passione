@@ -306,13 +306,26 @@ function routeApi(path, method, body, res, url) {
     return shot ? json(shot) : json({ error: 'Not found' }, 404)
   }
   if (path === '/api/v1/shots' && method === 'GET') {
-    // Batch fetch with ?ids= or return all
+    // Batch fetch with ?ids= or paginated list
     const idsParam = url?.searchParams?.get('ids')
     if (idsParam) {
       const ids = idsParam.split(',').map(decodeURIComponent)
-      return json(ids.map(id => mockShotsData[id]).filter(Boolean))
+      const items = ids.map(id => mockShotsData[id]).filter(Boolean)
+      return json({ items, total: items.length, limit: items.length, offset: 0 })
     }
-    return json(Object.values(mockShotsData))
+    const allShots = Object.values(mockShotsData)
+    const search = url?.searchParams?.get('search')?.toLowerCase()
+    const filtered = search
+      ? allShots.filter(s => {
+          const w = s.workflow ?? {}
+          const texts = [w.name, w.profile?.title, s.metadata?.barista].filter(Boolean)
+          return texts.some(t => t.toLowerCase().includes(search))
+        })
+      : allShots
+    const limit = parseInt(url?.searchParams?.get('limit') || '50')
+    const offset = parseInt(url?.searchParams?.get('offset') || '0')
+    const items = filtered.slice(offset, offset + limit)
+    return json({ items, total: filtered.length, limit, offset })
   }
 
   // KV Store -- handles /api/v1/store/{namespace}/{key}
