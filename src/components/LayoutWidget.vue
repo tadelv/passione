@@ -151,7 +151,7 @@ async function fetchLastShot() {
 // Re-fetch last shot when espresso ends — delay to allow ReaPrime to save it
 watch(machineState, (newState, oldState) => {
   if (props.type !== 'lastShot') return
-  if (oldState === 'espresso' && (newState === 'idle' || newState === 'ready')) {
+  if (oldState === 'espresso' && newState === 'idle') {
     clearTimeout(lastShotRefreshTimer)
     lastShotRefreshTimer = setTimeout(fetchLastShot, 3000)
   }
@@ -165,9 +165,7 @@ const lastShotInfo = computed(() => {
   const raw = lastShot.value
   if (!raw) return {}
   const s = normalizeShot(raw)
-  const w = s.workflow ?? {}
 
-  const shotProfile = w.profile?.title ?? w.name ?? null
   const coffeeName = [s.coffeeRoaster, s.coffeeName].filter(Boolean).join(' — ') || null
 
   let dose = null
@@ -183,22 +181,9 @@ const lastShotInfo = computed(() => {
   else if (s.grinderSetting) grinderText = `Grind: ${s.grinderSetting}`
   else if (s.grinderModel) grinderText = s.grinderModel
 
-  let duration = null
-  if (s.duration) {
-    duration = `${Number(s.duration).toFixed(0)}s`
-  } else if (s.measurements?.length >= 2) {
-    const first = s.measurements[0]
-    const last = s.measurements[s.measurements.length - 1]
-    const getTs = (m) => {
-      if (m.elapsed != null) return m.elapsed
-      const ts = m.machine?.timestamp ?? m.timestamp
-      return ts ? new Date(ts).getTime() / 1000 : 0
-    }
-    const d = getTs(last) - getTs(first)
-    if (d > 0) duration = `${d.toFixed(0)}s`
-  }
+  const duration = s.duration ? `${Number(s.duration).toFixed(0)}s` : null
 
-  return { profile: shotProfile, coffee: coffeeName, dose, grinder: grinderText, duration }
+  return { profile: s.profileName, coffee: coffeeName, dose, grinder: grinderText, duration }
 })
 </script>
 

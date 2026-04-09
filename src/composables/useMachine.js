@@ -11,7 +11,7 @@ import { ReconnectingWebSocket } from '../api/websocket'
 import { setMachineState, getMachineState } from '../api/rest'
 
 // States where the machine is actively performing an operation
-const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush', 'descaling', 'cleaning'])
+const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush', 'descaling', 'cleaning', 'calibration', 'selfTest', 'airPurge', 'fwUpgrade'])
 const FLOWING_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush'])
 const HEATING_STATES = new Set(['heating', 'preheating'])
 const READY_STATES = new Set(['idle', 'heating'])
@@ -22,6 +22,7 @@ const PHASE_MAP = {
   'idle': 'Idle',
   'heating': 'Heating',
   'booting': 'Idle',
+  'busy': 'Busy',
   'preheating': 'EspressoPreheating',
   'espresso': 'Pouring',
   'steam': 'Steaming',
@@ -30,6 +31,11 @@ const PHASE_MAP = {
   'steamRinse': 'Flushing',
   'descaling': 'Descaling',
   'cleaning': 'Cleaning',
+  'calibration': 'Busy',
+  'selfTest': 'Busy',
+  'airPurge': 'Busy',
+  'fwUpgrade': 'Busy',
+  'skipStep': 'Pouring',
   'needsWater': 'Refill',
   'error': 'Disconnected',
 }

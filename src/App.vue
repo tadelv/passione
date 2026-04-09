@@ -373,7 +373,7 @@ function onStopReasonDismiss() {
 // ---- P0-7: Keyboard Shortcuts ----
 const isReady = computed(() => {
   const s = machine.state.value
-  return s === 'idle' || s === 'ready'
+  return s === 'idle'
 })
 
 const isOperating = computed(() =>

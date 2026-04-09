@@ -77,7 +77,7 @@ async function emergencyStop() {
 
 // Watch for machine returning to idle during descaling -> move to rinse
 watch(machineState, (newState) => {
-  if (phase.value === 'inProgress' && (newState === 'idle' || newState === 'ready')) {
+  if (phase.value === 'inProgress' && newState === 'idle') {
     stopTimer()
     phase.value = 'rinse'
   }

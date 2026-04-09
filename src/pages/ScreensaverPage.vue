@@ -61,30 +61,13 @@ const lastShotInfo = computed(() => {
   const raw = lastShotData.value
   if (!raw) return null
   const s = normalizeShot(raw)
-  const w = s.workflow ?? {}
 
-  const profile = w.profile?.title ?? w.name ?? null
+  const profile = s.profileName
   const coffee = [s.coffeeRoaster, s.coffeeName].filter(Boolean).join(' — ') || null
   const doseIn = s.doseIn ? Number(s.doseIn).toFixed(1) : null
   const doseOut = s.doseOut ? Number(s.doseOut).toFixed(1) : null
   const ratio = (s.doseIn && s.doseOut) ? (s.doseOut / s.doseIn).toFixed(1) : null
-
-  // Compute duration from measurements if not on the shot record
-  let duration = s.duration ? Number(s.duration).toFixed(1) : null
-  if (!duration && Array.isArray(raw.measurements) && raw.measurements.length > 1) {
-    const ms = raw.measurements
-    const parseTs = (m) => {
-      const t = m.elapsed ?? m.timestamp ?? m.machine?.timestamp ?? m.scale?.timestamp
-      if (t == null) return null
-      const v = typeof t === 'string' ? new Date(t).getTime() / 1000 : (Number(t) > 1e12 ? Number(t) / 1000 : Number(t))
-      return v
-    }
-    const first = parseTs(ms[0])
-    const last = parseTs(ms[ms.length - 1])
-    if (first != null && last != null) {
-      duration = (last - first).toFixed(1)
-    }
-  }
+  const duration = s.duration ? Number(s.duration).toFixed(1) : null
 
   return { profile, coffee, doseIn, doseOut, ratio, duration }
 })

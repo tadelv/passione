@@ -163,8 +163,10 @@ export function getShotIds(order = 'desc') {
  * Uses the proper paginated endpoint: GET /api/v1/shots?limit=N&offset=M&order=desc
  * Returns { items, total, limit, offset }.
  */
-export async function getShotsPaginated(limit = 50, offset = 0) {
-  const result = await sendCommand(`/api/v1/shots?limit=${limit}&offset=${offset}&order=desc`)
+export async function getShotsPaginated(limit = 50, offset = 0, { search } = {}) {
+  const params = new URLSearchParams({ limit, offset, order: 'desc' })
+  if (search) params.set('search', search)
+  const result = await sendCommand(`/api/v1/shots?${params}`)
   // Normalize: the endpoint returns { items, total, limit, offset }
   if (result && typeof result === 'object' && Array.isArray(result.items)) {
     return result

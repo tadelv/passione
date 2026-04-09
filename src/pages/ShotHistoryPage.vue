@@ -3,7 +3,7 @@ import { ref, computed, inject, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import { getShotsPaginated } from '../api/rest.js'
-import { normalizeShot as normalizeShotShared } from '../composables/useShotNormalize'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const router = useRouter()
 const toast = inject('toast', null)
@@ -22,6 +22,7 @@ const compareMode = ref(false)
 const selectedIds = ref(new Set())
 
 let searchTimer = null
+let loadGeneration = 0
 
 function toggleCompareMode() {
   compareMode.value = !compareMode.value
@@ -47,93 +48,48 @@ function openComparison() {
   }
 }
 
-/**
- * Normalize a shot record from API format to flat fields for display.
- * Delegates core flattening to the shared normalizeShot helper, then
- * applies page-specific fields (profileName, notes, barista, duration).
- */
-function normalizeShot(shot) {
-  if (!shot) return shot
-  const result = normalizeShotShared(shot)
-  const w = shot.workflow ?? {}
-  const meta = shot.metadata ?? {}
-
-  // Flatten profile name
-  if (!result.profileName) {
-    result.profileName = w.profile?.title ?? w.name ?? null
-  }
-  // Flatten notes
-  if (result.notes == null && shot.shotNotes != null) {
-    result.notes = shot.shotNotes
-  }
-  // Flatten barista from metadata
-  if (result.barista == null && meta.barista != null) {
-    result.barista = meta.barista
-  }
-  // Flatten profile object for Load button
-  if (!result.profile && w.profile) {
-    result.profile = w.profile
-  }
-  // Calculate duration from measurements if missing
-  if (result.duration == null && shot.measurements?.length >= 2) {
-    const first = shot.measurements[0]
-    const last = shot.measurements[shot.measurements.length - 1]
-    const getTs = (m) => {
-      if (m.elapsed != null) return m.elapsed
-      const ts = m.machine?.timestamp ?? m.timestamp
-      return ts ? new Date(ts).getTime() / 1000 : 0
-    }
-    const d = getTs(last) - getTs(first)
-    if (d > 0) result.duration = d
-  }
-  return result
-}
-
 async function loadInitial() {
+  const gen = ++loadGeneration
   initialLoading.value = true
   loadedShots.value = []
   loadedCount.value = 0
   totalShots.value = 0
-  await loadMore()
-  initialLoading.value = false
+  loading.value = false
+  await loadMore(gen)
+  if (gen === loadGeneration) initialLoading.value = false
 }
 
-async function loadMore() {
+async function loadMore(gen = loadGeneration) {
   if (loading.value) return
   if (loadedCount.value > 0 && loadedCount.value >= totalShots.value) return
 
   loading.value = true
+  let stale = false
   try {
-    const result = await getShotsPaginated(PAGE_SIZE, loadedCount.value)
+    const opts = searchQuery.value.trim() ? { search: searchQuery.value.trim() } : {}
+    const result = await getShotsPaginated(PAGE_SIZE, loadedCount.value, opts)
+    if (gen !== loadGeneration) { stale = true; return }
     const shots = result.items.map(normalizeShot)
     loadedShots.value = [...loadedShots.value, ...shots]
     loadedCount.value += shots.length
     totalShots.value = result.total
   } catch {
     // ignore
+  } finally {
+    if (!stale) loading.value = false
   }
-  loading.value = false
 }
 
 const hasMore = computed(() => loadedCount.value < totalShots.value)
 
-const displayedShots = computed(() => {
-  if (!searchQuery.value.trim()) return loadedShots.value
-  const q = searchQuery.value.toLowerCase()
-  return loadedShots.value.filter(shot => {
-    const fields = [
-      shot.profileName, shot.coffeeName, shot.coffeeRoaster,
-      shot.grinderModel, shot.grinderSetting, shot.barista,
-      shot.notes,
-    ]
-    return fields.some(f => f && String(f).toLowerCase().includes(q))
-  })
-})
+const displayedShots = computed(() => loadedShots.value)
 
 function onSearchInput(e) {
+  const val = e.target.value
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
-    searchQuery.value = e.target.value
+    searchQuery.value = val
+    loadInitial()
   }, SEARCH_DEBOUNCE_MS)
 }
 
@@ -220,10 +176,11 @@ onMounted(loadInitial)
         class="shot-history__search"
         type="text"
         placeholder="Search shots..."
+        :value="searchQuery"
         @input="onSearchInput"
       />
       <span class="shot-history__count">
-        {{ displayedShots.length }} shot{{ displayedShots.length !== 1 ? 's' : '' }}
+        {{ totalShots }} shot{{ totalShots !== 1 ? 's' : '' }}
       </span>
       <button
         class="shot-history__compare-toggle"
@@ -287,10 +244,10 @@ onMounted(loadInitial)
             {{ formatDuration(shot.duration) }}
           </span>
           <span
-            v-if="shot.enjoyment > 0 || shot.rating > 0"
+            v-if="shot.rating > 0"
             class="shot-history__rating"
           >
-            {{ (shot.enjoyment || shot.rating) }}%
+            {{ shot.rating }}%
           </span>
 
           <!-- Per-row action buttons (matching QML: Load, Edit, Detail) -->

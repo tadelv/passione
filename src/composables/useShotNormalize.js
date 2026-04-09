@@ -10,11 +10,12 @@ export function normalizeShot(shot) {
   const dd = w.doseData ?? {}
   const coffee = w.coffeeData ?? {}
   const grinder = w.grinderData ?? {}
+  const ann = shot.annotations ?? {}
   const meta = shot.metadata ?? {}
 
-  // Dose — context first, then legacy doseData, then shot root
-  if (result.doseIn == null) result.doseIn = ctx.targetDoseWeight ?? dd.doseIn ?? dd.dose ?? null
-  if (result.doseOut == null) result.doseOut = ctx.targetYield ?? dd.doseOut ?? dd.targetWeight ?? null
+  // Dose — annotations first, then context, then legacy doseData, then shot root
+  if (result.doseIn == null) result.doseIn = ann.actualDoseWeight ?? ctx.targetDoseWeight ?? dd.doseIn ?? dd.dose ?? null
+  if (result.doseOut == null) result.doseOut = ann.actualYield ?? ctx.targetYield ?? dd.doseOut ?? dd.targetWeight ?? null
 
   // Coffee — context first, then legacy coffeeData, then metadata
   if (result.coffeeName == null) result.coffeeName = ctx.coffeeName ?? coffee.name ?? meta.beanType ?? null
@@ -31,8 +32,34 @@ export function normalizeShot(shot) {
   result.grinderId = ctx.grinderId ?? null
   result.beanBatchId = ctx.beanBatchId ?? null
 
-  // Metadata fields
-  if (result.rating == null) result.rating = meta.rating ?? null
+  // Rating & notes — annotations first, then legacy metadata/shotNotes
+  if (result.rating == null) result.rating = ann.enjoyment ?? meta.rating ?? null
+  if (result.notes == null) result.notes = ann.espressoNotes ?? shot.shotNotes ?? null
+
+  // TDS / EY from annotations
+  if (result.tds == null) result.tds = ann.drinkTds ?? meta.tds ?? null
+  if (result.ey == null) result.ey = ann.drinkEy ?? null
+
+  // Profile name and object reference
+  if (result.profileName == null) result.profileName = w.profile?.title ?? w.name ?? null
+  if (!result.profile && w.profile) result.profile = w.profile
+
+  // Barista — annotations.extras first, then legacy metadata
+  const extras = ann.extras ?? {}
+  if (result.barista == null) result.barista = extras.barista ?? meta.barista ?? null
+
+  // Duration — derived from measurements if not already present
+  if (result.duration == null && Array.isArray(result.measurements) && result.measurements.length >= 2) {
+    const first = result.measurements[0]
+    const last = result.measurements[result.measurements.length - 1]
+    const getTs = (m) => {
+      if (m.elapsed != null) return m.elapsed
+      const ts = m.machine?.timestamp ?? m.timestamp ?? m.scale?.timestamp
+      return ts ? (typeof ts === 'number' && ts > 1e12 ? ts / 1000 : new Date(ts).getTime() / 1000) : 0
+    }
+    const d = getTs(last) - getTs(first)
+    if (d > 0) result.duration = d
+  }
 
   return result
 }

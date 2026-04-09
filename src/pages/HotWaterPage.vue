@@ -60,7 +60,7 @@ function onPresetSelect(index) {
 }
 
 function onPresetActivate() {
-  if (machineState.value !== 'idle' && machineState.value !== 'ready') return
+  if (machineState.value !== 'idle') return
   setMachineState('hotWater').catch(() => {})
 }
 

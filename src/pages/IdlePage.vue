@@ -36,7 +36,7 @@ onUnmounted(() => {
 })
 
 const isReady = computed(() =>
-  machineState.value === 'idle' || machineState.value === 'ready'
+  machineState.value === 'idle'
 )
 
 // Shot plan lines — from workflow data

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ComparisonGraph from '../components/ComparisonGraph.vue'
 import BottomBar from '../components/BottomBar.vue'
 import { getShot } from '../api/rest.js'
+import { normalizeShot } from '../composables/useShotNormalize'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,7 +28,7 @@ async function loadShots() {
   const results = await Promise.allSettled(ids.map(id => getShot(id)))
   shots.value = results
     .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value)
+    .map(r => normalizeShot(r.value))
   loading.value = false
 }
 
@@ -39,8 +40,8 @@ function formatDuration(seconds) {
 }
 
 function formatDoseRatio(shot) {
-  const d = shot.dose ?? shot.doseIn
-  const o = shot.output ?? shot.doseOut ?? shot.yield
+  const d = shot.doseIn
+  const o = shot.doseOut
   if (d && o) return `${Number(d).toFixed(1)}g / ${Number(o).toFixed(1)}g (1:${(o / d).toFixed(1)})`
   if (d) return `${Number(d).toFixed(1)}g in`
   if (o) return `${Number(o).toFixed(1)}g out`
@@ -116,8 +117,8 @@ onMounted(loadShots)
           <div class="comparison-page__shot-meta">
             <span>{{ formatDuration(shot.duration) }}</span>
             <span>{{ formatDoseRatio(shot) }}</span>
-            <span v-if="shot.enjoyment > 0 || shot.rating > 0">
-              Rating: {{ shot.enjoyment || shot.rating }}%
+            <span v-if="shot.rating > 0">
+              Rating: {{ shot.rating }}%
             </span>
           </div>
         </div>
