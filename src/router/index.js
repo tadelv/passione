@@ -21,6 +21,7 @@ const BeanInfoPage = () => import('../pages/BeanInfoPage.vue')
 const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 const RecipeEditorPage = () => import('../pages/RecipeEditorPage.vue')
 const SimpleProfileEditorPage = () => import('../pages/SimpleProfileEditorPage.vue')
+const AutoFavoritesPage = () => import('../pages/AutoFavoritesPage.vue')
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -43,6 +44,7 @@ const routes = [
   { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
   { path: '/recipe-editor/:id?', name: 'recipe-editor', component: RecipeEditorPage },
   { path: '/simple-editor/:id?', name: 'simple-editor', component: SimpleProfileEditorPage },
+  { path: '/auto-favorites', name: 'auto-favorites', component: AutoFavoritesPage },
 ]
 
 const router = createRouter({
