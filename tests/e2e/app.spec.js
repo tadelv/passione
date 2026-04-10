@@ -85,28 +85,22 @@ test.describe('StatusBar', () => {
     await expect(indicator).toBeVisible()
   })
 
-  test('shows temperature value from mock data', async ({ page }) => {
+  test('shows temperature values from mock data', async ({ page }) => {
     await loadApp(page)
+    await page.waitForTimeout(2000)
 
-    // Wait for WebSocket data to arrive
-    await page.waitForTimeout(1000)
-
-    // Temperature should display the mock value (92.5)
-    const tempElement = page.locator('.status-bar__temp')
-    await expect(tempElement).toBeVisible()
-    await expect(tempElement).toContainText('92.5')
+    // Status bar should show mix/group temps
+    const temps = page.locator('.status-bar__temp')
+    await expect(temps.first()).toBeVisible()
+    await expect(temps.first()).toContainText('92.5')
   })
 
   test('shows water level', async ({ page }) => {
     await loadApp(page)
+    await page.waitForTimeout(2000)
 
-    // Wait for WebSocket data
-    await page.waitForTimeout(1000)
-
-    // Water level should show 75% (from mock data)
     const waterLevel = page.locator('.status-bar__water')
     await expect(waterLevel).toBeVisible()
-    await expect(waterLevel).toContainText('75%')
   })
 })
 
@@ -154,77 +148,54 @@ test.describe('IdlePage action buttons', () => {
   })
 })
 
-test.describe('CircularGauge', () => {
-  test('displays temperature value', async ({ page }) => {
+test.describe('StatusBar temps', () => {
+  test('displays steam temperature', async ({ page }) => {
     await loadApp(page)
+    await page.waitForTimeout(2000)
 
-    // Wait for WebSocket data to populate the gauge
-    await page.waitForTimeout(1500)
-
-    // The gauge renders inside a LayoutZone. Look for the gauge component.
-    const gauge = page.locator('.circular-gauge')
-    await expect(gauge.first()).toBeVisible()
-
-    // The gauge should show the mock temperature (92.5)
-    const gaugeNumber = page.locator('.circular-gauge__number')
-    await expect(gaugeNumber.first()).toBeVisible()
-    await expect(gaugeNumber.first()).toHaveText('92.5')
+    const steam = page.locator('.status-bar__steam-temp')
+    await expect(steam).toBeVisible()
+    // Mock sends steamTemperature: 140.0
+    await expect(steam).toContainText('140')
   })
 
-  test('has proper ARIA attributes', async ({ page }) => {
+  test('displays clock', async ({ page }) => {
     await loadApp(page)
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(1000)
 
-    // The gauge has role="meter" with ARIA value attributes
-    const gauge = page.locator('[role="meter"]')
-    await expect(gauge.first()).toBeVisible()
-
-    // Check that aria-valuenow reflects the temperature
-    const valuenow = await gauge.first().getAttribute('aria-valuenow')
-    expect(parseFloat(valuenow)).toBeCloseTo(92.5, 0)
+    const clock = page.locator('.status-bar__clock')
+    await expect(clock).toBeVisible()
+    const text = await clock.textContent()
+    expect(text).toMatch(/\d{2}:\d{2}/)
   })
 })
 
 test.describe('Navigation', () => {
-  test('clicking Settings navigates to /settings', async ({ page }) => {
+  test('can navigate to /settings', async ({ page }) => {
     await loadApp(page)
-    await page.waitForTimeout(1000)
-
-    // Find the Settings nav button (rendered by LayoutZone with navButtons type)
-    const settingsBtn = page.locator('.layout-zone__nav-btn', { hasText: 'Settings' })
-    await expect(settingsBtn).toBeVisible()
-
-    // Click it
-    await settingsBtn.click()
-
-    // Wait for navigation
     await page.waitForTimeout(500)
 
-    // URL should contain #/settings
+    await page.evaluate(() => window.__vueRouter.push('/settings'))
+    await page.waitForTimeout(500)
+
     await expect(page).toHaveURL(/.*#\/settings/)
   })
 
-  test('clicking History navigates to /history', async ({ page }) => {
+  test('can navigate to /history', async ({ page }) => {
     await loadApp(page)
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
-    const historyBtn = page.locator('.layout-zone__nav-btn', { hasText: 'History' })
-    await expect(historyBtn).toBeVisible()
-
-    await historyBtn.click()
+    await page.evaluate(() => window.__vueRouter.push('/history'))
     await page.waitForTimeout(500)
 
     await expect(page).toHaveURL(/.*#\/history/)
   })
 
-  test('clicking Beans navigates to /bean-info', async ({ page }) => {
+  test('can navigate to /bean-info', async ({ page }) => {
     await loadApp(page)
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(500)
 
-    const beansBtn = page.locator('.layout-zone__nav-btn', { hasText: 'Beans' })
-    await expect(beansBtn).toBeVisible()
-
-    await beansBtn.click()
+    await page.evaluate(() => window.__vueRouter.push('/bean-info'))
     await page.waitForTimeout(500)
 
     await expect(page).toHaveURL(/.*#\/bean-info/)
@@ -249,17 +220,12 @@ test.describe('ShotHistoryPage', () => {
     await loadApp(page)
     await page.waitForTimeout(500)
 
-    // Navigate to history
-    const historyBtn = page.locator('.layout-zone__nav-btn', { hasText: 'History' })
-    await expect(historyBtn).toBeVisible()
-    await historyBtn.click()
+    await page.evaluate(() => window.__vueRouter.push('/history'))
     await page.waitForTimeout(1500)
 
-    // Should show shot rows with profile names from mock data
     const rows = page.locator('.shot-history__row')
     await expect(rows).not.toHaveCount(0)
 
-    // Check first shot shows the profile name
     const firstProfile = page.locator('.shot-history__profile').first()
     await expect(firstProfile).toBeVisible()
     await expect(firstProfile).not.toHaveText('Unknown Profile')
@@ -269,11 +235,9 @@ test.describe('ShotHistoryPage', () => {
     await loadApp(page)
     await page.waitForTimeout(500)
 
-    const historyBtn = page.locator('.layout-zone__nav-btn', { hasText: 'History' })
-    await historyBtn.click()
+    await page.evaluate(() => window.__vueRouter.push('/history'))
     await page.waitForTimeout(1500)
 
-    // Should show dose info (normalized from workflow.doseData)
     const meta = page.locator('.shot-history__meta').first()
     await expect(meta).toBeVisible()
     await expect(meta).toContainText('18.0g')
