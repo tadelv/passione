@@ -115,18 +115,30 @@ function editShot(shot) {
   }
 }
 
-async function loadShotProfile(shot) {
+async function loadShotWorkflow(shot) {
   const profile = shot.profile || shot.workflow?.profile
   if (!profile) {
     if (toast) toast.warning('No profile data available for this shot')
     return
   }
   try {
-    await updateWorkflow({ profile })
-    if (toast) toast.success('Profile loaded')
+    const update = { profile }
+
+    // Restore full workflow context from the shot (coffee, grinder, dose)
+    const context = {}
+    if (shot.coffeeName) context.coffeeName = shot.coffeeName
+    if (shot.coffeeRoaster) context.coffeeRoaster = shot.coffeeRoaster
+    if (shot.grinderModel) context.grinderModel = shot.grinderModel
+    if (shot.grinderSetting != null) context.grinderSetting = String(shot.grinderSetting)
+    if (shot.doseIn) context.targetDoseWeight = shot.doseIn
+    if (shot.doseOut) context.targetYield = shot.doseOut
+    if (Object.keys(context).length > 0) update.context = context
+
+    await updateWorkflow(update)
+    if (toast) toast.success('Workflow loaded from shot')
     router.push('/')
   } catch {
-    if (toast) toast.error('Failed to load profile')
+    if (toast) toast.error('Failed to load workflow')
   }
 }
 
@@ -258,7 +270,7 @@ onMounted(loadInitial)
           <button
             v-if="!compareMode"
             class="shot-history__action-btn shot-history__action-btn--load"
-            @click.stop="loadShotProfile(shot)"
+            @click.stop="loadShotWorkflow(shot)"
             aria-label="Load profile"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
