@@ -569,7 +569,7 @@ onMounted(loadProfile)
                   :model-value="profile.stop_at_type === 'volume' ? (profile.target_volume || 36) : (profile.target_weight || 36)"
                   @update:model-value="v => { if (profile.stop_at_type === 'volume') { profile.target_volume = v } else { profile.target_weight = v }; triggerUpdate() }"
                   :min="0"
-                  :max="100"
+                  :max="500"
                   :step="1"
                   :decimals="0"
                   :suffix="profile.stop_at_type === 'volume' ? ' mL' : ' g'"

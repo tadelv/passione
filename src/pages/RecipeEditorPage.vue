@@ -723,7 +723,7 @@ onMounted(loadProfile)
                 :model-value="stopAtType === 'volume' ? targetVolume : targetWeight"
                 @update:model-value="v => { if (stopAtType === 'volume') { targetVolume = v } else { targetWeight = v } }"
                 :min="0"
-                :max="200"
+                :max="500"
                 :step="1"
                 :decimals="0"
                 :suffix="stopAtType === 'volume' ? ' mL' : ' g'"

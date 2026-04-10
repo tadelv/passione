@@ -9,6 +9,7 @@ Tracked items for future work.
 - [ ] **Shot history sort controls** — ReaPrime API only supports `orderBy: [timestamp]`. Needs API expansion or client-side sort.
 - [ ] **Steam calibration dialog** — blocked on ReaPrime orchestration API
 - [ ] **AI dialing assistant** — deferred per project decision
+- [ ] **Profile editors: styled confirm dialog** — ProfileEditorPage and RecipeEditorPage use browser `confirm()` for unsaved changes. Should use the same styled confirm overlay as SimpleProfileEditorPage and PostShotReviewPage.
 
 ## Done (v0.3.0)
 
