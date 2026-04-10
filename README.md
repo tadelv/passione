@@ -10,11 +10,11 @@ A modern web interface for the [DE1 espresso machine](https://decentespresso.com
 
 The home screen shows real-time machine data and quick-access operation buttons.
 
-- **Circular gauges** for group head temperature, steam temperature, and water level
+- **Status bar** with connection status, clock, mix/group/steam temperatures, and water level
 - **Operation buttons** (Espresso, Steam, Hot Water, Flush) with two-step confirmation to prevent accidental starts
 - **Shot plan** showing the active profile, dose, yield, ratio, and grinder setting
-- **Workflow presets** for one-tap switching between saved brewing configurations
-- **Status bar** with machine state, active profile, temperature, and water level
+- **Workflow combos** for one-tap switching between saved brewing configurations (profile + coffee + grinder + steam/hot water settings)
+- **Last shot** widget with mini graph and metrics
 
 ### Workflow Editor
 
@@ -23,9 +23,9 @@ Create and manage complete brewing workflows — profile, beans, grinder, dose, 
 ![Workflow Editor](docs/screenshots/bean-info.png)
 
 - Set profile, coffee, grinder, dose in/out, and ratio
-- Configure steam, flush, and hot water settings per workflow
-- Save as named presets for quick access from the home screen
-- Tap a preset to load all settings; double-tap to start espresso
+- Configure steam, flush, and hot water settings per workflow combo
+- Save as named combos for quick access from the home screen
+- Tap a combo to load all settings; double-tap to start espresso
 
 ### Profile Management
 
@@ -39,9 +39,12 @@ Browse, search, and manage espresso profiles.
 - Visual profile graph showing pressure, flow, and temperature curves
 - View step-by-step breakdown of each profile frame
 - Apply profiles to the current workflow with a single tap
-- **Simple Profile Editor** for classic 4-step pressure/flow profiles (Temperature, Preinfuse, Hold/Rise, Decline, Stop at Weight) -- perfect for beginners
-- Advanced frame-by-frame editor for power users
-- ProfileInfoPage automatically routes to the correct editor based on profile type
+- **Simple Profile Editor** for classic 4-step pressure/flow profiles -- perfect for beginners
+- **Profile Editor** with named phases (fill, bloom, rise, pour, hold, decline) for intermediate users
+- **Advanced Editor** with full frame-by-frame control for power users
+- Edit button automatically routes to the correct editor based on profile type
+
+![Simple Profile Editor](docs/screenshots/simple-editor.png)
 
 ### Shot History
 
@@ -56,6 +59,10 @@ Review past shots with detailed metrics.
 - Compare up to 3 shots side-by-side with overlaid graphs
 - Import shots from Visualizer
 
+![Shot Detail](docs/screenshots/shot-detail.png)
+
+![Shot Comparison](docs/screenshots/shot-comparison.png)
+
 ### Layout Customization
 
 Rearrange the home screen to show what matters to you.
@@ -67,14 +74,14 @@ Rearrange the home screen to show what matters to you.
 - Six configurable zones (top, center, bottom -- left and right)
 - Drag to reorder, add, or remove widgets from each zone
 - Changes apply in real time -- edit directly on the live home screen
-- Available widgets: gauges, action buttons, shot plan, workflow presets, clock, water level, navigation, connection status, scale info, fullscreen toggle
+- Available widgets: action buttons, shot plan, workflow combos, last shot, navigation, scale info, fullscreen toggle
 
 ### Settings
 
 ![Settings](docs/screenshots/settings-page.png)
 
 - **Device**: Scan and connect to DE1 machines and scales
-- **Preferences**: Water level units (mm/ml), brew dialog, post-shot review
+- **Preferences**: Water level units (mm/ml), post-shot linger, accessibility
 - **Layout**: Launch the visual layout editor or reset to defaults
 - **Visualizer**: Import shots from Decent Visualizer
 - **History**: Shot history management
@@ -94,9 +101,12 @@ Rearrange the home screen to show what matters to you.
 
 - **Post-shot review** with shot graph, notes, rating, TDS/EY
 - **Phase Summary Panel** -- collapsible per-phase metrics table showing duration, avg pressure, avg flow, and weight gained per extraction phase
-- Shot annotations support (new structured format alongside legacy fields)
+
+![Phase Summary](docs/screenshots/shot-detail-phase-summary.png)
 
 ### Auto-Favorites
+
+![Auto-Favorites](docs/screenshots/auto-favorites.png)
 
 Analyzes your shot history to surface your best-performing bean, profile, and grinder combinations.
 
