@@ -51,8 +51,8 @@ Review past shots with detailed metrics.
 
 - Paginated list of all shots with profile, dose, duration, and rating
 - Search across profile names, coffee, roaster, and grinder
-- **L** button to load a shot's profile into the current workflow
-- **E** button to edit shot notes and rating
+- **Load** button restores the shot's full workflow (profile, coffee, grinder, dose)
+- **Edit** button to edit shot notes and rating
 - Compare up to 3 shots side-by-side with overlaid graphs
 - Import shots from Visualizer
 
@@ -98,11 +98,15 @@ Rearrange the home screen to show what matters to you.
 
 ### Auto-Favorites
 
-Surface your best bean/profile/grinder combinations from shot history.
+Analyzes your shot history to surface your best-performing bean, profile, and grinder combinations.
 
-- Group by bean, profile, bean+profile, or all three
-- Average rating, dose, yield, and duration per combination
-- Load a combination's profile or view its shots directly
+**How it works:** The page fetches all your shots, groups them by the criteria you choose, computes average metrics per group, and sorts by rating. This lets you quickly see which setups produce your best espresso and reload them with one tap.
+
+- **Group by**: Bean, Profile, Bean + Profile, or Bean + Profile + Grinder
+- **Metrics per group**: average rating, average dose, average yield, average duration, shot count
+- **Load**: applies the group's profile, coffee, and grinder settings to your current workflow
+- **Show Shots**: navigates to shot history filtered to that combination
+- Accessible from the Shot History page via the "Favorites" link in the bottom bar
 
 ### Additional Features
 
