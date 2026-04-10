@@ -82,11 +82,15 @@ export function getProfile(id) {
 }
 
 export function createProfile(data) {
-  return sendCommand('/api/v1/profiles', 'POST', data)
+  // API expects { profile: { ... } }, not flat profile data
+  const body = data?.profile ? data : { profile: data }
+  return sendCommand('/api/v1/profiles', 'POST', body)
 }
 
 export function updateProfile(id, data) {
-  return sendCommand(`/api/v1/profiles/${encodeURIComponent(id)}`, 'PUT', data)
+  // API expects { profile: { ... } }, not flat profile data
+  const body = data?.profile ? data : { profile: data }
+  return sendCommand(`/api/v1/profiles/${encodeURIComponent(id)}`, 'PUT', body)
 }
 
 export function deleteProfile(id) {
