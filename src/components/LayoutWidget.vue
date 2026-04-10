@@ -157,6 +157,14 @@ watch(machineState, (newState, oldState) => {
   }
 })
 
+// Retry last shot fetch when machine connects (covers cold-start race)
+watch(machineConnected, (connected) => {
+  if (props.type !== 'lastShot') return
+  if (connected && !lastShot.value) {
+    fetchLastShot()
+  }
+})
+
 onUnmounted(() => {
   clearTimeout(lastShotRefreshTimer)
 })
