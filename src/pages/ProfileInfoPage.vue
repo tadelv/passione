@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
@@ -8,6 +8,8 @@ import { isSimpleProfile } from '../composables/useSimpleProfile'
 
 const router = useRouter()
 const route = useRoute()
+const updateWorkflow = inject('updateWorkflow')
+const toast = inject('toast', null)
 
 const record = ref(null)
 const loading = ref(false)
@@ -65,6 +67,17 @@ async function fetchProfile() {
     }
   } finally {
     loading.value = false
+  }
+}
+
+async function applyProfile() {
+  if (!record.value?.profile) return
+  try {
+    await updateWorkflow({ profile: record.value.profile })
+    toast?.success(`Profile "${record.value.profile.title}" loaded`)
+    router.push('/')
+  } catch {
+    toast?.error('Failed to apply profile')
   }
 }
 
@@ -157,6 +170,13 @@ onMounted(fetchProfile)
     </div>
 
     <BottomBar title="Profile Info" @back="goBack">
+      <button
+        v-if="record?.profile"
+        class="profile-info__apply-btn"
+        @click="applyProfile"
+      >
+        Apply
+      </button>
       <button
         v-if="record?.id"
         class="profile-info__edit-btn"
@@ -329,6 +349,17 @@ onMounted(fetchProfile)
 .profile-info__frame-detail {
   font-size: var(--font-caption);
   color: var(--color-text-secondary);
+}
+
+.profile-info__apply-btn {
+  padding: 8px 24px;
+  border: none;
+  border-radius: var(--radius-button);
+  background: var(--color-primary);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .profile-info__edit-btn {

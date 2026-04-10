@@ -114,7 +114,7 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 - **Operation pages:** Show preset pills AND stop button during active operation. Settings sync to workflow API with 300ms debounce.
 - **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Double-tap on unselected shows ProfilePreviewPopup
 - **BrewDialog:** Optional pre-brew dialog (controlled by `showBrewDialog` setting). Shows temperature, dose, yield, ratio, grinder fields. Integrates with workflow API.
-- **ProfileSelectorPage:** Single click applies profile (not just previews)
+- **ProfileSelectorPage:** Single click previews profile (shows graph + details in right panel). Explicit "Use Profile" button applies it. Toast confirmation on apply.
 - **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, tap opens detail. Server-side search with debounce and generation counter for race prevention. Shot count shows server total.
 - **PhaseTimeline:** Horizontal progress bar on EspressoPage showing Preheat/Pre-infusion/Pouring/Ending. Active segment expands. Tracking color (green/amber/red) based on QML-ported thresholds for pressure/flow deviation.
 - **PhaseSummaryPanel:** Collapsible table on ShotDetailPage and PostShotReviewPage. Computed client-side from measurements array.

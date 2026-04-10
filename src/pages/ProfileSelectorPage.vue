@@ -34,9 +34,11 @@ const SOURCE_FILTERS = [
 
 // Debounced search
 function onSearchInput(e) {
-  searchQuery.value = e.target.value
+  const val = e.target.value
   clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => {}, 300)
+  searchTimer = setTimeout(() => {
+    searchQuery.value = val
+  }, 300)
 }
 
 // Determine source badge for a profile record
@@ -88,20 +90,18 @@ const activeProfileId = computed(() => {
 // Selected profile for preview (right panel / detail)
 const selectedRecord = ref(null)
 
-// Single click: select only (preview) or select+apply depending on mode
+// Single click: always select for preview. Apply requires explicit button.
 function onProfileClick(record) {
   selectedRecord.value = record
-  if (!selectOnly.value) {
-    applyProfile(record)
-  }
 }
 
 // Apply profile to workflow
 async function applyProfile(record) {
   try {
     await updateWorkflow({ profile: record.profile })
+    toast?.success(`Profile "${record.profile?.title}" loaded`)
   } catch (e) {
-    console.warn('[ProfileSelectorPage] Failed to apply profile:', e.message)
+    toast?.error('Failed to apply profile')
   }
 }
 
@@ -228,9 +228,6 @@ onMounted(fetchProfiles)
       <button class="profile-selector__import-btn" @click="router.push('/visualizer-import')">
         Import
       </button>
-      <button class="profile-selector__import-btn" @click="router.push('/descaling')">
-        Descaling
-      </button>
     </BottomBar>
   </div>
 </template>
@@ -351,17 +348,17 @@ onMounted(fetchProfiles)
 
 .profile-selector__badge--d {
   background: var(--color-primary);
-  color: white;
+  color: var(--color-text);
 }
 
 .profile-selector__badge--v {
   background: var(--color-success);
-  color: white;
+  color: var(--color-text);
 }
 
 .profile-selector__badge--u {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-text);
 }
 
 .profile-selector__item-info {
