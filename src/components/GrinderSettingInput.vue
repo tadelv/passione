@@ -44,7 +44,9 @@ function onNumeric(v) {
     :modelValue="Number(modelValue) || 0"
     :step="grinder.settingSmallStep || 0.5"
     :min="0"
-    :max="100"
+    :max="grinder.settingMax || 1000"
+    :decimals="(grinder.settingSmallStep || 0.5) < 1 ? 1 : 0"
+    aria-label="Grind setting"
     @update:modelValue="onNumeric"
   />
 

@@ -209,7 +209,7 @@ const lastShotInfo = computed(() => {
         :min="0"
         :max="170"
         unit="&deg;C"
-        :label="t('common.steam')"
+        :label="t('idle.steam')"
         color="var(--color-accent)"
         :size="120"
       />

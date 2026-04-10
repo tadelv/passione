@@ -259,8 +259,8 @@ function onDialogKeydown(e) {
               <ValueInput
                 :model-value="localGrindSetting"
                 :min="0"
-                :max="100"
-                :step="0.5"
+                :max="1000"
+                :step="0.1"
                 :decimals="1"
                 suffix=""
                 value-color="var(--color-text)"

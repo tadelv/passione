@@ -10,6 +10,8 @@ const saving = ref(false)
 const LOG_LEVELS = ['debug', 'info', 'warn', 'error']
 const SCALE_POWER_MODES = ['disabled', 'displayOff', 'disconnect']
 
+const bridgeSettingsUrl = `${window.location.protocol}//${window.location.hostname}:8080/api/v1/plugins/settings.reaplugin/ui?backName=Passione`
+
 async function loadSettings() {
   loading.value = true
   try {
@@ -142,6 +144,17 @@ onMounted(loadSettings)
       </div>
     </div>
 
+    <div class="gateway-tab__links">
+      <a
+        :href="bridgeSettingsUrl"
+        target="_blank"
+        rel="noopener"
+        class="gateway-tab__link-btn"
+      >
+        Streamline-Bridge Settings
+      </a>
+    </div>
+
     <span v-if="saving" class="gateway-tab__saving">Saving...</span>
   </div>
 </template>
@@ -263,6 +276,29 @@ onMounted(loadSettings)
 .gateway-tab__hint {
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
+  opacity: 0.7;
+}
+
+.gateway-tab__links {
+  padding-top: 8px;
+}
+
+.gateway-tab__link-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--font-md);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gateway-tab__link-btn:active {
   opacity: 0.7;
 }
 
