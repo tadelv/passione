@@ -22,6 +22,10 @@ const emit = defineEmits([
 // the Vue re-render race (props.selectedIndex may not have updated yet)
 let lastEmittedSelectIndex = -1
 
+// Confirm state for activating selected presets (prevents accidental starts)
+const confirmIndex = ref(-1)
+let confirmTimer = null
+
 const pillRefs = ref([])
 
 const displayPresets = computed(() =>
@@ -32,9 +36,15 @@ const displayPresets = computed(() =>
   }))
 )
 
+function clearConfirm() {
+  confirmIndex.value = -1
+  if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null }
+}
+
 function onClick(index, event) {
   // Double-tap → edit (event.detail is the native click count)
   if (event.detail >= 2 && props.longPressEnabled) {
+    clearConfirm()
     emit('long-press', index)
     return
   }
@@ -43,13 +53,23 @@ function onClick(index, event) {
   const isSelected = index === props.selectedIndex || index === lastEmittedSelectIndex
 
   if (isSelected) {
-    // Tap on selected preset → activate (start operation)
-    lastEmittedSelectIndex = -1
-    emit('activate', index)
+    // Selected preset tapped — two-step confirm before activating
+    if (confirmIndex.value === index) {
+      // Second tap on confirmed → activate (start operation)
+      clearConfirm()
+      lastEmittedSelectIndex = -1
+      emit('activate', index)
+    } else {
+      // First tap on selected → enter confirm state
+      clearConfirm()
+      confirmIndex.value = index
+      confirmTimer = setTimeout(clearConfirm, 2000)
+    }
     return
   }
 
-  // First tap → select this preset
+  // First tap on unselected → select this preset
+  clearConfirm()
   lastEmittedSelectIndex = index
   emit('select', index)
 }
@@ -63,12 +83,15 @@ function onClick(index, event) {
         :key="preset.index"
         :ref="el => { if (el) pillRefs[preset.index] = el }"
         class="preset-pill-row__pill"
-        :class="{ 'preset-pill-row__pill--selected': preset.index === selectedIndex }"
+        :class="{
+          'preset-pill-row__pill--selected': preset.index === selectedIndex,
+          'preset-pill-row__pill--confirm': preset.index === confirmIndex,
+        }"
         role="option"
         :aria-selected="preset.index === selectedIndex"
         @click="onClick(preset.index, $event)"
       >
-        {{ preset.display }}
+        {{ preset.index === confirmIndex ? 'Tap to start' : preset.display }}
       </button>
     </div>
   </div>
@@ -110,5 +133,10 @@ function onClick(index, event) {
 .preset-pill-row__pill--selected {
   background: var(--color-primary);
   color: var(--color-text);
+}
+
+.preset-pill-row__pill--confirm {
+  box-shadow: 0 0 0 3px white, 0 0 12px rgba(255, 255, 255, 0.5);
+  filter: brightness(1.15);
 }
 </style>
