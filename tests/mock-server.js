@@ -125,6 +125,8 @@ const mockShotsData = {
   },
 }
 
+const mockBeans = []
+const mockGrinders = []
 const kvStore = {}
 
 // ---- MIME types --------------------------------------------------------
@@ -305,6 +307,13 @@ function routeApi(path, method, body, res, url) {
     const shot = mockShotsData[shotId]
     return shot ? json(shot) : json({ error: 'Not found' }, 404)
   }
+  if (path.match(/^\/api\/v1\/shots\/[^/]+$/) && method === 'PUT') {
+    const shotId = decodeURIComponent(path.split('/').pop())
+    const shot = mockShotsData[shotId]
+    if (!shot) return json({ error: 'Not found' }, 404)
+    if (body) Object.assign(shot, body)
+    return json(shot)
+  }
   if (path === '/api/v1/shots' && method === 'GET') {
     // Batch fetch with ?ids= or paginated list
     const idsParam = url?.searchParams?.get('ids')
@@ -383,6 +392,63 @@ function routeApi(path, method, body, res, url) {
   // Plugins
   if (path === '/api/v1/plugins' && method === 'GET') {
     return json([])
+  }
+
+  // Beans
+  if (path === '/api/v1/beans' && method === 'GET') {
+    return json(mockBeans)
+  }
+  if (path === '/api/v1/beans' && method === 'POST') {
+    if (body) {
+      const bean = { id: 'bean-' + Date.now(), ...body }
+      mockBeans.push(bean)
+      return json(bean, 201)
+    }
+    return json({ error: 'No body' }, 400)
+  }
+  if (path.match(/^\/api\/v1\/beans\/[^/]+\/batches$/) && method === 'GET') {
+    return json([])
+  }
+  if (path.match(/^\/api\/v1\/beans\/[^/]+\/batches$/) && method === 'POST') {
+    const batch = { id: 'batch-' + Date.now(), ...body }
+    return json(batch, 201)
+  }
+  if (path.match(/^\/api\/v1\/beans\/[^/]+$/) && method === 'GET') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const bean = mockBeans.find(b => b.id === id)
+    return bean ? json(bean) : json({ error: 'Not found' }, 404)
+  }
+  if (path.match(/^\/api\/v1\/beans\/[^/]+$/) && method === 'PUT') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const bean = mockBeans.find(b => b.id === id)
+    if (!bean) return json({ error: 'Not found' }, 404)
+    if (body) Object.assign(bean, body)
+    return json(bean)
+  }
+
+  // Grinders
+  if (path === '/api/v1/grinders' && method === 'GET') {
+    return json(mockGrinders)
+  }
+  if (path === '/api/v1/grinders' && method === 'POST') {
+    if (body) {
+      const grinder = { id: 'grinder-' + Date.now(), ...body }
+      mockGrinders.push(grinder)
+      return json(grinder, 201)
+    }
+    return json({ error: 'No body' }, 400)
+  }
+  if (path.match(/^\/api\/v1\/grinders\/[^/]+$/) && method === 'GET') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const grinder = mockGrinders.find(g => g.id === id)
+    return grinder ? json(grinder) : json({ error: 'Not found' }, 404)
+  }
+  if (path.match(/^\/api\/v1\/grinders\/[^/]+$/) && method === 'PUT') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const grinder = mockGrinders.find(g => g.id === id)
+    if (!grinder) return json({ error: 'Not found' }, 404)
+    if (body) Object.assign(grinder, body)
+    return json(grinder)
   }
 
   // Fallback
