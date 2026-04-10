@@ -172,7 +172,7 @@ function stopSteam() {
   height: 48px;
   border-radius: var(--radius-card);
   background: var(--color-surface);
-  border: 1px solid white;
+  border: 1px solid var(--color-border);
   color: var(--color-text);
   font-size: var(--font-body);
   cursor: pointer;

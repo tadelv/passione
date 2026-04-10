@@ -176,6 +176,7 @@ onMounted(loadInitial)
         class="shot-history__search"
         type="text"
         placeholder="Search shots..."
+        aria-label="Search shots"
         :value="searchQuery"
         @input="onSearchInput"
       />

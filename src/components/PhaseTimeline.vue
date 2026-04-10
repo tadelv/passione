@@ -129,24 +129,29 @@ watch(activeIndex, (idx) => {
       </span>
     </div>
 
+    </div>
     <!-- Shot time (always visible) -->
     <div class="phase-timeline__time">{{ timeText }}</div>
-    </div>
   </div>
 </template>
 
 <style scoped>
 .phase-timeline__wrapper {
-  flex-shrink: 0;
-}
-
-.phase-timeline {
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
   height: 44px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.phase-timeline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
 }
 

@@ -401,7 +401,7 @@ function goBack() {
 .hotwater-page__mode-btn.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: white;
+  color: var(--color-text);
 }
 
 .hotwater-page__separator {

@@ -11,6 +11,7 @@ const updateWorkflow = inject('updateWorkflow')
 
 const loading = ref(true)
 const groups = ref([])
+const allShotsCache = ref([])
 const groupBy = ref('bean+profile') // 'bean', 'profile', 'bean+profile', 'bean+profile+grinder'
 
 const GROUP_OPTIONS = [
@@ -52,6 +53,7 @@ async function loadAllShots() {
     toast?.error('Failed to load shots')
   }
 
+  allShotsCache.value = allShots
   computeGroups(allShots)
   loading.value = false
 }
@@ -113,8 +115,11 @@ function computeGroups(shots) {
 
 function changeGroupBy(mode) {
   groupBy.value = mode
-  // Recompute from already-loaded data would be ideal, but for simplicity reload
-  loadAllShots()
+  if (allShotsCache.value.length > 0) {
+    computeGroups(allShotsCache.value)
+  } else {
+    loadAllShots()
+  }
 }
 
 async function loadProfile(group) {
@@ -228,7 +233,8 @@ onMounted(loadAllShots)
 }
 
 .auto-fav__group-btn {
-  padding: 6px 14px;
+  padding: 10px 14px;
+  min-height: var(--touch-target-min);
   border-radius: 16px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -317,7 +323,8 @@ onMounted(loadAllShots)
 }
 
 .auto-fav__action-btn {
-  padding: 6px 16px;
+  padding: 10px 16px;
+  min-height: var(--touch-target-min);
   border-radius: 8px;
   border: none;
   background: var(--color-primary);
