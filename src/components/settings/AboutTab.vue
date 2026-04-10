@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { getBuildInfo } from '../../api/rest.js'
 
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
 const buildInfo = ref(null)
 
 onMounted(async () => {
@@ -17,7 +18,7 @@ onMounted(async () => {
   <div class="about-tab">
     <div class="about-tab__card">
       <h1 class="about-tab__title">Passione</h1>
-      <p class="about-tab__version">Version 1.0.0</p>
+      <p class="about-tab__version">Version {{ appVersion }}</p>
 
       <div class="about-tab__divider" />
 

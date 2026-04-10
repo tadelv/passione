@@ -453,11 +453,12 @@ onUnmounted(() => {
   <a href="#main-content" class="skip-to-content">Skip to content</a>
   <StatusBar
     :machine-state="machine.state.value"
+    :machine-substate="machine.substate.value"
     :machine-connected="machine.isConnected.value"
-    :scale-connected="scale.isConnected.value"
-    :temperature="machine.mixTemperature.value"
-    :target-temperature="machine.targetMixTemperature.value"
-    :profile-name="workflow.profile?.title ?? ''"
+    :mix-temperature="machine.mixTemperature.value"
+    :group-temperature="machine.groupTemperature.value"
+    :steam-temperature="machine.steamTemperature.value"
+    :water-level-display="waterLevelDisplay"
   />
   <main id="main-content" class="app-main">
     <router-view v-slot="{ Component }">

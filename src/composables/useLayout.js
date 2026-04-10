@@ -41,50 +41,41 @@ const ZONE_LABELS = {
 const STACK_ZONES = new Set(['centerLeft', 'centerRight'])
 
 const WIDGET_TYPES = [
-  'gauge',
-  'steamGauge',
-  'waterGauge',
   'actionButtons',
   'shotPlan',
   'lastShot',
   'workflowPresets',
-  'clock',
-  'waterLevel',
   'navButtons',
-  'connectionStatus',
   'scaleInfo',
   'fullscreen',
+  'steamPresets',
+  'hotWaterPresets',
+  'flushPresets',
 ]
 
 const WIDGET_LABELS = {
-  gauge: 'Group Temperature',
-  steamGauge: 'Steam Temperature',
-  waterGauge: 'Water Level Gauge',
   actionButtons: 'Action Buttons',
   shotPlan: 'Shot Plan',
   lastShot: 'Last Shot',
   workflowPresets: 'Workflow Presets',
-  clock: 'Clock',
-  waterLevel: 'Water Level Bar',
   navButtons: 'Navigation Buttons',
-  connectionStatus: 'Connection Status',
   scaleInfo: 'Scale Info',
   fullscreen: 'Fullscreen Toggle',
+  steamPresets: 'Steam Presets',
+  hotWaterPresets: 'Hot Water Presets',
+  flushPresets: 'Flush Presets',
 }
 
 // Which zones each widget type is allowed in
 const WIDGET_ZONE_RULES = {
-  gauge: 'center',
-  steamGauge: 'center',
-  waterGauge: 'center',
   actionButtons: 'center',
   shotPlan: 'center',
   lastShot: 'center',
   workflowPresets: 'center',
-  clock: 'any',
-  waterLevel: 'any',
+  steamPresets: 'center',
+  hotWaterPresets: 'center',
+  flushPresets: 'center',
   navButtons: 'edge',
-  connectionStatus: 'edge',
   scaleInfo: 'edge',
   fullscreen: 'edge',
 }
@@ -94,10 +85,10 @@ const WIDGET_ZONE_RULES = {
 const DEFAULT_LAYOUT = {
   version: 2,
   zones: {
-    topLeft:     { widgets: ['connectionStatus', 'scaleInfo'] },
+    topLeft:     { widgets: ['scaleInfo'] },
     topRight:    { widgets: ['fullscreen'] },
-    centerLeft:  { widgets: ['gauge', 'steamGauge', 'waterGauge'] },
-    centerRight: { widgets: ['actionButtons', 'shotPlan', 'workflowPresets'] },
+    centerLeft:  { widgets: ['actionButtons', 'shotPlan'] },
+    centerRight: { widgets: ['workflowPresets', 'lastShot'] },
     bottomLeft:  { widgets: ['navButtons'] },
     bottomRight: { widgets: [] },
   },

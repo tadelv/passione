@@ -8,9 +8,7 @@
 import { ref, computed, inject, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import CircularGauge from './CircularGauge.vue'
 import ActionButton from './ActionButton.vue'
-import ConnectionIndicator from './ConnectionIndicator.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
@@ -70,32 +68,9 @@ const scale = inject('scale', null)
 const scaleWeight = inject('weight', ref(0))
 const devices = inject('devices', null)
 
-// ---- Clock ----
-const clockTime = ref('')
-let clockInterval = null
-
-function updateClock() {
-  const now = new Date()
-  clockTime.value = now.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 onMounted(() => {
-  if (props.type === 'clock') {
-    updateClock()
-    clockInterval = setInterval(updateClock, 1000)
-  }
   if (props.type === 'lastShot') {
     fetchLastShot()
-  }
-})
-
-onUnmounted(() => {
-  if (clockInterval) {
-    clearInterval(clockInterval)
-    clockInterval = null
   }
 })
 
@@ -197,47 +172,8 @@ const lastShotInfo = computed(() => {
 
 <template>
   <div class="layout-widget" :class="`layout-widget--${type}`">
-    <!-- Gauge -->
-    <template v-if="type === 'gauge'">
-      <CircularGauge
-        :value="temperature"
-        :min="0"
-        :max="110"
-        unit="&deg;C"
-        :label="t('common.group')"
-        color="var(--color-temperature)"
-        :size="120"
-      />
-    </template>
-
-    <!-- Steam gauge -->
-    <template v-else-if="type === 'steamGauge'">
-      <CircularGauge
-        :value="steamTemperature"
-        :min="0"
-        :max="170"
-        unit="&deg;C"
-        :label="t('idle.steam')"
-        color="var(--color-accent)"
-        :size="120"
-      />
-    </template>
-
-    <!-- Water level gauge -->
-    <template v-else-if="type === 'waterGauge'">
-      <CircularGauge
-        :value="waterLevelPercent"
-        :min="0"
-        :max="100"
-        unit="%"
-        label="Water"
-        color="var(--color-flow)"
-        :size="120"
-      />
-    </template>
-
     <!-- Action buttons -->
-    <template v-else-if="type === 'actionButtons'">
+    <template v-if="type === 'actionButtons'">
       <div class="layout-widget__actions">
         <ActionButton :icon="espressoIcon" :label="t('idle.espresso')" :disabled="!isReady" @click="emit('start-espresso')" />
         <ActionButton :icon="steamIcon" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady" @click="emit('start-steam')" />
@@ -336,68 +272,6 @@ const lastShotInfo = computed(() => {
       </div>
     </template>
 
-    <!-- Clock -->
-    <template v-else-if="type === 'clock'">
-      <div class="layout-widget__clock">
-        {{ clockTime }}
-      </div>
-    </template>
-
-    <!-- Water Level -->
-    <template v-else-if="type === 'waterLevel'">
-      <div class="layout-widget__water">
-        <div class="layout-widget__water-bar">
-          <div class="layout-widget__water-fill" :style="{ transform: 'scaleY(' + waterLevelPercent / 100 + ')' }" />
-        </div>
-        <span class="layout-widget__water-label">{{ waterLevelDisplay }}</span>
-      </div>
-    </template>
-
-    <!-- Status Info (connection + scale + water + fullscreen) -->
-    <template v-else-if="type === 'statusInfo'">
-      <div class="layout-widget__status-info">
-        <div class="layout-widget__connection">
-          <ConnectionIndicator
-            :connected="machineConnected"
-            :size="12"
-            :detail="machineConnected && scaleConnected ? t('idle.machineAndScale') : machineConnected ? t('idle.machine') : ''"
-          />
-          <span class="layout-widget__connection-label">
-            {{ machineConnected ? t('common.online') : t('common.offline') }}
-          </span>
-        </div>
-        <div class="layout-widget__scale-info">
-          <template v-if="scaleConnected">
-            <span class="layout-widget__scale-weight">{{ scaleWeight.toFixed(1) }}g</span>
-            <span v-if="scale?.batteryLevel?.value != null" class="layout-widget__scale-battery">{{ scale.batteryLevel.value }}%</span>
-            <button class="layout-widget__scale-btn" @click="scale?.tare().catch(() => {})">Tare</button>
-          </template>
-          <template v-else>
-            <span class="layout-widget__scale-disconnected">No scale</span>
-            <button class="layout-widget__scale-btn" :disabled="devices?.scanning?.value" @click="devices?.scan({ connect: true })">
-              {{ devices?.scanning?.value ? 'Scanning...' : 'Scan' }}
-            </button>
-          </template>
-        </div>
-        <div class="layout-widget__water">
-          <div class="layout-widget__water-bar">
-            <div class="layout-widget__water-fill" :style="{ transform: 'scaleY(' + waterLevelPercent / 100 + ')' }" />
-          </div>
-          <span class="layout-widget__water-label">{{ waterLevelDisplay }}</span>
-        </div>
-        <button class="layout-widget__fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'">
-          <svg v-if="!isFullscreen" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
-            <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-          </svg>
-          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-            <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
-          </svg>
-        </button>
-      </div>
-    </template>
-
     <!-- Nav Buttons -->
     <template v-else-if="type === 'navButtons'">
       <div class="layout-widget__nav">
@@ -405,20 +279,6 @@ const lastShotInfo = computed(() => {
         <button class="layout-widget__nav-btn" @click="router.push('/history')">{{ t('idle.history') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/settings')">{{ t('idle.settings') }}</button>
         <button class="layout-widget__nav-btn layout-widget__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">{{ t('idle.sleep') }}</button>
-      </div>
-    </template>
-
-    <!-- Connection Status -->
-    <template v-else-if="type === 'connectionStatus'">
-      <div class="layout-widget__connection">
-        <ConnectionIndicator
-          :connected="machineConnected"
-          :size="12"
-          :detail="machineConnected && scaleConnected ? t('idle.machineAndScale') : machineConnected ? t('idle.machine') : ''"
-        />
-        <span class="layout-widget__connection-label">
-          {{ machineConnected ? t('common.online') : t('common.offline') }}
-        </span>
       </div>
     </template>
 

@@ -575,9 +575,9 @@ onUnmounted(() => {
 /* ---- Toggle switch ---- */
 
 .pref__toggle-switch {
-  width: 44px;
-  height: var(--touch-target-min);
-  border-radius: 22px;
+  width: 52px;
+  height: 30px;
+  border-radius: 15px;
   border: none;
   background: var(--color-border);
   position: relative;
@@ -585,6 +585,7 @@ onUnmounted(() => {
   transition: background-color 0.2s ease;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
+  padding: 0;
 }
 
 .pref__toggle-switch--on {
@@ -593,17 +594,19 @@ onUnmounted(() => {
 
 .pref__toggle-knob {
   position: absolute;
-  top: 8px;
-  left: 4px;
-  width: 28px;
-  height: 28px;
+  top: 50%;
+  left: 3px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #fff;
-  transition: transform 0.2s ease;
+  transform: translateY(-50%);
+  transition: left 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .pref__toggle-switch--on .pref__toggle-knob {
-  transform: translateX(8px);
+  left: 25px;
 }
 
 /* ---- Day pills ---- */
