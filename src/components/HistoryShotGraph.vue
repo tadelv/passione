@@ -151,15 +151,27 @@ function shotToData(shot) {
   const normalized = normalizeShotData(shot)
   if (!normalized || !normalized.elapsed?.length) return null
 
+  const w = normalized.weight ?? normalized.elapsed.map(() => 0)
+  const e = normalized.elapsed
+
+  // Compute weight flow (g/s) from weight deltas
+  const weightFlow = e.map((t, i) => {
+    if (i === 0) return 0
+    const dt = t - e[i - 1]
+    const dw = w[i] - w[i - 1]
+    return dt > 0.05 ? Math.max(0, dw / dt) : (i > 1 ? 0 : 0)
+  })
+
   return [
-    normalized.elapsed,
-    normalized.pressure ?? normalized.elapsed.map(() => 0),
-    normalized.targetPressure ?? normalized.elapsed.map(() => 0),
-    normalized.flow ?? normalized.elapsed.map(() => 0),
-    normalized.targetFlow ?? normalized.elapsed.map(() => 0),
-    normalized.temperature ?? normalized.elapsed.map(() => 0),
-    normalized.targetTemperature ?? normalized.elapsed.map(() => 0),
-    normalized.weight ?? normalized.elapsed.map(() => 0),
+    e,
+    normalized.pressure ?? e.map(() => 0),
+    normalized.targetPressure ?? e.map(() => 0),
+    normalized.flow ?? e.map(() => 0),
+    normalized.targetFlow ?? e.map(() => 0),
+    normalized.temperature ?? e.map(() => 0),
+    normalized.targetTemperature ?? e.map(() => 0),
+    w,
+    weightFlow,
   ]
 }
 
@@ -238,7 +250,7 @@ function initChart() {
     opts.scales.weight = { min: 0, max: maxWeight, auto: false }
   }
 
-  chart = new uPlot(opts, d || [[], [], [], [], [], [], [], []], chartEl.value)
+  chart = new uPlot(opts, d || [[], [], [], [], [], [], [], [], []], chartEl.value)
 }
 
 function handleResize() {
