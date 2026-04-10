@@ -180,7 +180,7 @@ onMounted(fetchProfile)
       <button
         v-if="record?.id"
         class="profile-info__edit-btn"
-        @click="router.push(isSimpleProfile(record?.profile ?? record) ? `/simple-editor/${encodeURIComponent(record.id)}` : `/recipe-editor/${encodeURIComponent(record.id)}`)"
+        @click="router.push(isSimpleProfile(record?.profile ?? record) ? `/simple-editor/${encodeURIComponent(record.id)}` : `/profile-editor/${encodeURIComponent(record.id)}`)"
       >
         Edit
       </button>

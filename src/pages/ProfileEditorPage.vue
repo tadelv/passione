@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, inject, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, inject, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
@@ -16,66 +16,416 @@ const route = useRoute()
 const toast = inject('toast', null)
 
 // ---------------------------------------------------------------------------
+// Phase definitions
+// ---------------------------------------------------------------------------
+
+/**
+ * Each recipe phase maps to 1-2 profile frames.
+ * The phase key is the canonical identifier; the label is for display.
+ */
+const PHASE_DEFS = [
+  { key: 'fill',    label: 'Fill',    description: 'Initial water fill at low pressure to saturate the puck' },
+  { key: 'bloom',   label: 'Bloom',   description: 'Pause/soak allowing CO2 to escape from fresh grounds' },
+  { key: 'infuse',  label: 'Infuse',  description: 'Low-pressure soak before main extraction' },
+  { key: 'ramp',    label: 'Ramp',    description: 'Gradual transition to extraction pressure or flow' },
+  { key: 'pour',    label: 'Pour',    description: 'Main extraction phase at target pressure or flow' },
+  { key: 'decline', label: 'Decline', description: 'Decreasing pressure/flow at end of shot' },
+]
+
+// ---------------------------------------------------------------------------
+// Recipe presets
+// ---------------------------------------------------------------------------
+
+function makePhase(overrides) {
+  return {
+    enabled: true,
+    pump: 'pressure',
+    target: 9.0,
+    temperature: 93.0,
+    seconds: 30,
+    transition: 'fast',
+    exitEnabled: false,
+    exitType: 'pressure_over',
+    exitValue: 0,
+    limiterValue: 0,
+    limiterRange: 0.6,
+    ...overrides,
+  }
+}
+
+const RECIPE_PRESETS = {
+  classic: {
+    name: 'Classic Espresso',
+    description: '9 bar flat pressure, short preinfusion',
+    temperature: 93.0,
+    targetWeight: 36,
+    phases: {
+      fill:    makePhase({ pump: 'flow', target: 4.0, seconds: 8, exitEnabled: true, exitType: 'pressure_over', exitValue: 4.0, limiterValue: 0 }),
+      bloom:   makePhase({ enabled: false, pump: 'flow', target: 0, seconds: 0 }),
+      infuse:  makePhase({ enabled: false, pump: 'pressure', target: 3.0, seconds: 0 }),
+      ramp:    makePhase({ enabled: false, pump: 'pressure', target: 9.0, seconds: 0 }),
+      pour:    makePhase({ pump: 'pressure', target: 9.0, seconds: 30, temperature: 93.0, limiterValue: 4.5 }),
+      decline: makePhase({ enabled: false, pump: 'pressure', target: 6.0, seconds: 0 }),
+    },
+  },
+  turbo: {
+    name: 'Turbo Shot',
+    description: 'High-flow, fast extraction',
+    temperature: 90.0,
+    targetWeight: 45,
+    phases: {
+      fill:    makePhase({ pump: 'flow', target: 8.0, seconds: 5, exitEnabled: true, exitType: 'pressure_over', exitValue: 2.0, limiterValue: 4.0 }),
+      bloom:   makePhase({ enabled: false, pump: 'flow', target: 0, seconds: 0 }),
+      infuse:  makePhase({ enabled: false, pump: 'pressure', target: 3.0, seconds: 0 }),
+      ramp:    makePhase({ enabled: false, pump: 'pressure', target: 6.0, seconds: 0 }),
+      pour:    makePhase({ pump: 'flow', target: 4.5, seconds: 25, temperature: 90.0, limiterValue: 6.0 }),
+      decline: makePhase({ enabled: false, pump: 'flow', target: 2.0, seconds: 0 }),
+    },
+  },
+  blooming: {
+    name: 'Blooming Espresso',
+    description: 'Long preinfusion with bloom pause for light roasts',
+    temperature: 95.0,
+    targetWeight: 60,
+    phases: {
+      fill:    makePhase({ pump: 'flow', target: 4.0, seconds: 5, exitEnabled: true, exitType: 'pressure_over', exitValue: 3.5 }),
+      bloom:   makePhase({ pump: 'flow', target: 0, seconds: 30, temperature: 90.0, transition: 'fast' }),
+      infuse:  makePhase({ enabled: false, pump: 'pressure', target: 3.0, seconds: 0 }),
+      ramp:    makePhase({ pump: 'flow', target: 2.2, seconds: 5, temperature: 92.0, transition: 'smooth' }),
+      pour:    makePhase({ pump: 'flow', target: 2.2, seconds: 20, temperature: 92.0, limiterValue: 8.6, limiterRange: 0.6 }),
+      decline: makePhase({ enabled: false, pump: 'flow', target: 1.0, seconds: 0 }),
+    },
+  },
+  allonge: {
+    name: 'Allonge',
+    description: 'Long blooming shot with high flow, 5:1 ratio',
+    temperature: 95.0,
+    targetWeight: 135,
+    phases: {
+      fill:    makePhase({ pump: 'flow', target: 4.5, seconds: 5, exitEnabled: true, exitType: 'pressure_over', exitValue: 3.5 }),
+      bloom:   makePhase({ pump: 'flow', target: 0, seconds: 30, temperature: 93.0 }),
+      infuse:  makePhase({ enabled: false, pump: 'pressure', target: 3.0, seconds: 0 }),
+      ramp:    makePhase({ pump: 'flow', target: 3.5, seconds: 7, temperature: 92.5, transition: 'smooth' }),
+      pour:    makePhase({ pump: 'flow', target: 3.5, seconds: 60, temperature: 91.0, limiterValue: 8.6, limiterRange: 0.6 }),
+      decline: makePhase({ enabled: false, pump: 'flow', target: 2.0, seconds: 0 }),
+    },
+  },
+  lever: {
+    name: 'Lever Style',
+    description: 'Pressure ramp up then decline, mimicking spring lever machines',
+    temperature: 93.0,
+    targetWeight: 36,
+    phases: {
+      fill:    makePhase({ pump: 'flow', target: 4.0, seconds: 8, exitEnabled: true, exitType: 'pressure_over', exitValue: 3.0 }),
+      bloom:   makePhase({ enabled: false, pump: 'flow', target: 0, seconds: 0 }),
+      infuse:  makePhase({ enabled: false, pump: 'pressure', target: 3.0, seconds: 0 }),
+      ramp:    makePhase({ pump: 'pressure', target: 9.0, seconds: 5, transition: 'smooth' }),
+      pour:    makePhase({ pump: 'pressure', target: 9.0, seconds: 10 }),
+      decline: makePhase({ pump: 'pressure', target: 4.0, seconds: 20, transition: 'smooth' }),
+    },
+  },
+}
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
 const loading = ref(false)
 const saving = ref(false)
 
-/** The profile record loaded from API (contains {id, profile, ...}) */
-const record = ref(null)
+/** Recipe name */
+const recipeName = ref('New Recipe')
+const recipeAuthor = ref('')
+const recipeNotes = ref('')
 
-/** Working copy of the profile object — mutated in-place by the editor */
-const profile = ref(null)
+/** Temperature applied to all enabled phases by default */
+const globalTemperature = ref(93.0)
 
-/** Snapshot of the original profile JSON for dirty detection */
+/** Stop target weight */
+const targetWeight = ref(36)
+
+/** Stop-at type */
+const stopAtType = ref('weight')
+
+/** Target volume (when stopAtType is volume) */
+const targetVolume = ref(0)
+
+/** Phase data keyed by phase key */
+const phases = ref({})
+
+/** Which phase card is expanded */
+const expandedPhase = ref('pour')
+
+/** Snapshot of original state for dirty detection */
 let originalSnapshot = ''
 
-const selectedFrame = ref(-1)
-const showSettings = ref(false)
+/** The record from the API (if loaded from existing profile) */
+const record = ref(null)
+
+/** Selected preset key (for UI display) */
+const selectedPreset = ref('')
+
+// ---------------------------------------------------------------------------
+// Initialize default phases
+// ---------------------------------------------------------------------------
+
+function initPhases() {
+  const p = {}
+  for (const def of PHASE_DEFS) {
+    p[def.key] = makePhase({
+      enabled: def.key === 'fill' || def.key === 'pour',
+      pump: def.key === 'fill' ? 'flow' : 'pressure',
+      target: def.key === 'fill' ? 4.0 : 9.0,
+      seconds: def.key === 'fill' ? 8 : 30,
+      temperature: globalTemperature.value,
+    })
+  }
+  return p
+}
 
 // ---------------------------------------------------------------------------
 // Computed helpers
 // ---------------------------------------------------------------------------
 
-const frames = computed(() => profile.value?.frames ?? profile.value?.steps ?? [])
-
 const isDirty = computed(() => {
-  if (!profile.value) return false
-  return JSON.stringify(profile.value) !== originalSnapshot
+  return JSON.stringify(buildRecipeState()) !== originalSnapshot
 })
 
-const frameCount = computed(() => frames.value.length)
+const enabledPhaseCount = computed(() => {
+  return Object.values(phases.value).filter(p => p.enabled).length
+})
 
 const totalDuration = computed(() => {
   let t = 0
-  for (const f of frames.value) t += f.seconds || 0
+  for (const def of PHASE_DEFS) {
+    const p = phases.value[def.key]
+    if (p && p.enabled) t += p.seconds || 0
+  }
   return t
 })
 
-const currentFrame = computed(() => {
-  if (selectedFrame.value < 0 || selectedFrame.value >= frames.value.length) return null
-  return frames.value[selectedFrame.value]
+/**
+ * Convert current recipe phases to profile frames for ProfileGraph preview.
+ */
+const previewProfile = computed(() => {
+  const frames = phasesToFrames()
+  return {
+    title: recipeName.value || 'Recipe Preview',
+    frames,
+    target_weight: targetWeight.value,
+    target_volume: targetVolume.value,
+    stop_at_type: stopAtType.value,
+  }
 })
 
-const stopAtLabel = computed(() => {
-  if (!profile.value) return ''
-  if (profile.value.stop_at_type === 'volume') {
-    return `${(profile.value.target_volume || 36).toFixed(0)}mL`
-  }
-  return `${(profile.value.target_weight || 36).toFixed(0)}g`
-})
+// ---------------------------------------------------------------------------
+// Phase-to-frame conversion
+// ---------------------------------------------------------------------------
 
-// The profile object passed to ProfileGraph needs `frames` key
-const graphProfile = computed(() => {
-  if (!profile.value) return null
-  const p = profile.value
-  // Ensure the profile has `frames` (ProfileGraph expects that key)
-  if (!p.frames && p.steps) {
-    return { ...p, frames: p.steps }
+/**
+ * Convert enabled recipe phases to profile frames.
+ * Each phase generates 1 frame (or 2 for Fill which adds a start + hold).
+ */
+function phasesToFrames() {
+  const frames = []
+
+  for (const def of PHASE_DEFS) {
+    const p = phases.value[def.key]
+    if (!p || !p.enabled) continue
+
+    const frame = {
+      name: def.label,
+      temperature: p.temperature,
+      sensor: 'coffee',
+      pump: p.pump,
+      transition: p.transition || 'fast',
+      pressure: p.pump === 'pressure' ? p.target : 0,
+      flow: p.pump === 'flow' ? p.target : 0,
+      seconds: p.seconds,
+      volume: 0,
+      exit_if: p.exitEnabled || false,
+      exit_type: p.exitType || 'pressure_over',
+      exit_pressure_over: 0,
+      exit_pressure_under: 0,
+      exit_flow_over: 6,
+      exit_flow_under: 0,
+      exit_weight: 0,
+      max_flow_or_pressure: p.limiterValue || 0,
+      max_flow_or_pressure_range: p.limiterRange || 0.6,
+    }
+
+    // Set the specific exit value
+    if (p.exitEnabled) {
+      switch (p.exitType) {
+        case 'pressure_over': frame.exit_pressure_over = p.exitValue; break
+        case 'pressure_under': frame.exit_pressure_under = p.exitValue; break
+        case 'flow_over': frame.exit_flow_over = p.exitValue; break
+        case 'flow_under': frame.exit_flow_under = p.exitValue; break
+        case 'weight': frame.exit_weight = p.exitValue; break
+      }
+    }
+
+    frames.push(frame)
   }
-  return p
-})
+
+  return frames
+}
+
+/**
+ * Build the complete profile object from the recipe state.
+ */
+function buildProfile() {
+  const frames = phasesToFrames()
+
+  // Build recipe metadata for round-trip
+  const recipeMeta = {}
+  for (const def of PHASE_DEFS) {
+    const p = phases.value[def.key]
+    if (p) {
+      recipeMeta[def.key] = { ...p }
+    }
+  }
+
+  return {
+    title: recipeName.value || 'Untitled Recipe',
+    author: recipeAuthor.value || '',
+    notes: recipeNotes.value || '',
+    beverage_type: 'espresso',
+    target_weight: stopAtType.value !== 'volume' ? targetWeight.value : 0,
+    target_volume: stopAtType.value === 'volume' ? targetVolume.value : 0,
+    stop_at_type: stopAtType.value,
+    mode: 'frame_based',
+    profile_type: 'settings_2c',
+    is_recipe_mode: true,
+    recipe: recipeMeta,
+    frames,
+  }
+}
+
+function buildRecipeState() {
+  return {
+    name: recipeName.value,
+    author: recipeAuthor.value,
+    notes: recipeNotes.value,
+    temperature: globalTemperature.value,
+    targetWeight: targetWeight.value,
+    targetVolume: targetVolume.value,
+    stopAtType: stopAtType.value,
+    phases: JSON.parse(JSON.stringify(phases.value)),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Frame-to-phase mapping (loading from existing profile)
+// ---------------------------------------------------------------------------
+
+/**
+ * Attempt to map raw profile frames back into named recipe phases.
+ * Uses heuristics: frame name matching, pressure/flow ranges, position.
+ */
+function framesToPhases(profile) {
+  const steps = profile.frames || profile.steps || []
+  if (!steps.length) return null
+
+  // If the profile already has recipe metadata, use it directly
+  if (profile.recipe && typeof profile.recipe === 'object') {
+    return mapRecipeMetaToPhases(profile.recipe)
+  }
+
+  // Heuristic mapping by frame name and characteristics
+  const mapped = {}
+  for (const def of PHASE_DEFS) {
+    mapped[def.key] = makePhase({ enabled: false, temperature: globalTemperature.value })
+  }
+
+  for (const frame of steps) {
+    const name = (frame.name || '').toLowerCase()
+    const pump = frame.pump || 'pressure'
+    const pressure = frame.pressure || 0
+    const flow = frame.flow || 0
+    const target = pump === 'flow' ? flow : pressure
+    const seconds = frame.seconds || 0
+
+    let phaseKey = null
+
+    // Match by name
+    if (name.includes('fill') || name.includes('preinfusion') || name.includes('pre-infusion') || name.includes('pre start')) {
+      phaseKey = 'fill'
+    } else if (name.includes('bloom') || name.includes('pause') || name.includes('soak')) {
+      phaseKey = 'bloom'
+    } else if (name.includes('infus')) {
+      phaseKey = 'infuse'
+    } else if (name.includes('ramp')) {
+      phaseKey = 'ramp'
+    } else if (name.includes('decline') || name.includes('decrease') || name.includes('taper')) {
+      phaseKey = 'decline'
+    } else if (name.includes('pour') || name.includes('extraction') || name.includes('flat') || name.includes('hold') || name.includes('turbo')) {
+      phaseKey = 'pour'
+    }
+
+    // Fallback: heuristic by position and characteristics
+    if (!phaseKey) {
+      if (pump === 'flow' && flow === 0 && seconds > 5) {
+        phaseKey = 'bloom'
+      } else if (pump === 'flow' && flow > 3 && seconds <= 10) {
+        // High flow, short duration — likely fill
+        if (!mapped.fill.enabled) phaseKey = 'fill'
+      } else if (frame.transition === 'smooth' && seconds > 0 && seconds <= 10) {
+        phaseKey = 'ramp'
+      }
+    }
+
+    // Last resort: if nothing matched, treat as pour
+    if (!phaseKey) {
+      phaseKey = mapped.pour.enabled ? 'decline' : 'pour'
+    }
+
+    // Skip if this phase is already filled (take first match)
+    if (mapped[phaseKey].enabled) continue
+
+    mapped[phaseKey] = makePhase({
+      enabled: true,
+      pump,
+      target,
+      temperature: frame.temperature || 93,
+      seconds,
+      transition: frame.transition || 'fast',
+      exitEnabled: !!frame.exit_if,
+      exitType: frame.exit_type || 'pressure_over',
+      exitValue: getExitValueFromFrame(frame),
+      limiterValue: frame.max_flow_or_pressure || 0,
+      limiterRange: frame.max_flow_or_pressure_range || 0.6,
+    })
+  }
+
+  return mapped
+}
+
+function getExitValueFromFrame(frame) {
+  switch (frame.exit_type) {
+    case 'pressure_over': return frame.exit_pressure_over || 0
+    case 'pressure_under': return frame.exit_pressure_under || 0
+    case 'flow_over': return frame.exit_flow_over || 0
+    case 'flow_under': return frame.exit_flow_under || 0
+    case 'weight': return frame.exit_weight || 0
+    default: return frame.exit_pressure_over || 0
+  }
+}
+
+/**
+ * Map stored recipe metadata object back to phases.
+ */
+function mapRecipeMetaToPhases(recipe) {
+  const mapped = {}
+  for (const def of PHASE_DEFS) {
+    if (recipe[def.key] && typeof recipe[def.key] === 'object') {
+      mapped[def.key] = makePhase(recipe[def.key])
+    } else {
+      mapped[def.key] = makePhase({ enabled: false, temperature: globalTemperature.value })
+    }
+  }
+  return mapped
+}
 
 // ---------------------------------------------------------------------------
 // Load profile
@@ -84,10 +434,9 @@ const graphProfile = computed(() => {
 async function loadProfile() {
   const id = route.params.id
   if (!id) {
-    // New profile — create a default
-    profile.value = createDefaultProfile()
-    originalSnapshot = JSON.stringify(profile.value)
-    selectedFrame.value = 0
+    // New recipe — use defaults
+    phases.value = initPhases()
+    originalSnapshot = JSON.stringify(buildRecipeState())
     return
   }
 
@@ -95,205 +444,107 @@ async function loadProfile() {
   try {
     const data = await getProfile(id)
     record.value = data
-    // Deep clone so we work on a mutable copy
-    const p = JSON.parse(JSON.stringify(data.profile || data))
-    // Normalise: some profiles use `steps`, some use `frames`
-    if (p.steps && !p.frames) {
-      p.frames = p.steps
-      delete p.steps
+    const profile = data.profile || data
+
+    recipeName.value = profile.title || 'Untitled'
+    recipeAuthor.value = profile.author || ''
+    recipeNotes.value = profile.notes || profile.profile_notes || ''
+    targetWeight.value = profile.target_weight || 36
+    targetVolume.value = profile.target_volume || 0
+    stopAtType.value = profile.stop_at_type || (profile.target_weight > 0 ? 'weight' : 'volume')
+
+    // Try to derive temperature from frames
+    const steps = profile.frames || profile.steps || []
+    if (steps.length > 0) {
+      globalTemperature.value = steps[0].temperature || 93
     }
-    profile.value = p
-    originalSnapshot = JSON.stringify(p)
-    if (p.frames && p.frames.length > 0) {
-      selectedFrame.value = 0
+
+    // Attempt to map frames to recipe phases
+    const mapped = framesToPhases(profile)
+    if (mapped) {
+      phases.value = mapped
+    } else {
+      phases.value = initPhases()
     }
+
+    // Expand the first enabled phase
+    const firstEnabled = PHASE_DEFS.find(d => phases.value[d.key]?.enabled)
+    if (firstEnabled) expandedPhase.value = firstEnabled.key
+
+    originalSnapshot = JSON.stringify(buildRecipeState())
   } catch (e) {
-    console.warn('[ProfileEditorPage] Failed to load profile:', e.message)
+    console.warn('[RecipeEditorPage] Failed to load profile:', e.message)
     if (toast) toast.error('Failed to load profile')
+    phases.value = initPhases()
+    originalSnapshot = JSON.stringify(buildRecipeState())
   } finally {
     loading.value = false
   }
 }
 
-function createDefaultProfile() {
-  return {
-    title: 'New Profile',
-    author: '',
-    notes: '',
-    beverage_type: 'espresso',
-    target_weight: 36,
-    target_volume: 0,
-    stop_at_type: 'weight',
-    frames: [
-      createDefaultFrame(1, 'Preinfusion', 'pressure', 4.0, 2.0),
-      createDefaultFrame(2, 'Infusion', 'pressure', 9.0, 2.0),
-    ],
-  }
-}
+// ---------------------------------------------------------------------------
+// Preset application
+// ---------------------------------------------------------------------------
 
-function createDefaultFrame(index, name, pump, pressure, flow) {
-  return {
-    name: name || `Frame ${index}`,
-    temperature: 93.0,
-    sensor: 'coffee',
-    pump: pump || 'pressure',
-    transition: 'fast',
-    pressure: pressure ?? 9.0,
-    flow: flow ?? 2.0,
-    seconds: 30,
-    volume: 0,
-    exit_if: false,
-    exit_type: 'pressure_over',
-    exit_pressure_over: 0,
-    exit_pressure_under: 0,
-    exit_flow_over: 0,
-    exit_flow_under: 0,
-    exit_weight: 0,
-    max_flow_or_pressure: 0,
-    max_flow_or_pressure_range: 0.6,
-    popup: '',
+function applyPreset(key) {
+  const preset = RECIPE_PRESETS[key]
+  if (!preset) return
+
+  selectedPreset.value = key
+  recipeName.value = preset.name
+  globalTemperature.value = preset.temperature
+  targetWeight.value = preset.targetWeight
+
+  // Deep clone the preset phases
+  const newPhases = {}
+  for (const def of PHASE_DEFS) {
+    if (preset.phases[def.key]) {
+      newPhases[def.key] = { ...preset.phases[def.key] }
+    } else {
+      newPhases[def.key] = makePhase({ enabled: false, temperature: preset.temperature })
+    }
   }
+  phases.value = newPhases
+
+  // Expand first enabled phase
+  const firstEnabled = PHASE_DEFS.find(d => newPhases[d.key]?.enabled)
+  if (firstEnabled) expandedPhase.value = firstEnabled.key
 }
 
 // ---------------------------------------------------------------------------
-// Frame manipulation
+// Phase manipulation
 // ---------------------------------------------------------------------------
 
-function addFrame() {
-  if (!profile.value) return
-  const f = frames.value
-  if (f.length >= 20) {
-    if (toast) toast.warning('Maximum 20 frames per profile')
-    return
-  }
-  const newFrame = createDefaultFrame(f.length + 1)
-  f.push(newFrame)
-  triggerUpdate()
-  selectedFrame.value = f.length - 1
-}
-
-function duplicateFrame(index) {
-  if (!profile.value || index < 0 || index >= frames.value.length) return
-  if (frames.value.length >= 20) {
-    if (toast) toast.warning('Maximum 20 frames per profile')
-    return
-  }
-  const copy = JSON.parse(JSON.stringify(frames.value[index]))
-  copy.name = (copy.name || 'Frame') + ' (copy)'
-  frames.value.splice(index + 1, 0, copy)
-  triggerUpdate()
-  selectedFrame.value = index + 1
-}
-
-function deleteFrame(index) {
-  if (!profile.value || index < 0 || index >= frames.value.length) return
-  if (frames.value.length <= 1) {
-    if (toast) toast.warning('Profile must have at least one frame')
-    return
-  }
-  frames.value.splice(index, 1)
-  if (selectedFrame.value >= frames.value.length) {
-    selectedFrame.value = frames.value.length - 1
-  }
+function togglePhase(key) {
+  const p = phases.value[key]
+  if (!p) return
+  p.enabled = !p.enabled
   triggerUpdate()
 }
 
-function moveFrame(fromIndex, direction) {
-  const toIndex = fromIndex + direction
-  if (!profile.value || toIndex < 0 || toIndex >= frames.value.length) return
-  const f = frames.value
-  const item = f.splice(fromIndex, 1)[0]
-  f.splice(toIndex, 0, item)
-  selectedFrame.value = toIndex
+function updatePhaseField(key, field, value) {
+  const p = phases.value[key]
+  if (!p) return
+  p[field] = value
   triggerUpdate()
 }
 
-// ---------------------------------------------------------------------------
-// Frame field updates
-// ---------------------------------------------------------------------------
+function setPhaseExpanded(key) {
+  expandedPhase.value = expandedPhase.value === key ? '' : key
+}
 
 /**
- * Force Vue reactivity to pick up deep changes inside frames.
- * We do this by reassigning the profile ref to a shallow copy.
+ * Force Vue reactivity to pick up deep changes inside phases.
  */
 function triggerUpdate() {
-  profile.value = { ...profile.value }
-}
-
-function updateFrameField(field, value) {
-  if (!currentFrame.value) return
-  currentFrame.value[field] = value
-  triggerUpdate()
-}
-
-function setPumpMode(mode) {
-  if (!currentFrame.value) return
-  currentFrame.value.pump = mode
-  triggerUpdate()
-}
-
-function setTransition(transition) {
-  if (!currentFrame.value) return
-  currentFrame.value.transition = transition
-  triggerUpdate()
-}
-
-function setSensor(sensor) {
-  if (!currentFrame.value) return
-  currentFrame.value.sensor = sensor
-  triggerUpdate()
-}
-
-function setExitEnabled(enabled) {
-  if (!currentFrame.value) return
-  currentFrame.value.exit_if = enabled
-  triggerUpdate()
-}
-
-function setExitType(type) {
-  if (!currentFrame.value) return
-  currentFrame.value.exit_type = type
-  triggerUpdate()
-}
-
-function updateExitValue(value) {
-  if (!currentFrame.value) return
-  const f = currentFrame.value
-  switch (f.exit_type) {
-    case 'pressure_over': f.exit_pressure_over = value; break
-    case 'pressure_under': f.exit_pressure_under = value; break
-    case 'flow_over': f.exit_flow_over = value; break
-    case 'flow_under': f.exit_flow_under = value; break
-    case 'weight': f.exit_weight = value; break
-  }
-  triggerUpdate()
-}
-
-function currentExitValue() {
-  const f = currentFrame.value
-  if (!f) return 0
-  switch (f.exit_type) {
-    case 'pressure_over': return f.exit_pressure_over || 0
-    case 'pressure_under': return f.exit_pressure_under || 0
-    case 'flow_over': return f.exit_flow_over || 0
-    case 'flow_under': return f.exit_flow_under || 0
-    case 'weight': return f.exit_weight || 0
-    default: return 0
-  }
-}
-
-// Profile-level settings
-function setStopAtType(type) {
-  if (!profile.value) return
-  profile.value.stop_at_type = type
-  triggerUpdate()
+  phases.value = { ...phases.value }
 }
 
 function updateGlobalTemp(newTemp) {
-  if (!profile.value || !frames.value.length) return
-  const delta = newTemp - (frames.value[0].temperature || 93)
-  for (const f of frames.value) {
-    f.temperature = (f.temperature || 93) + delta
+  globalTemperature.value = newTemp
+  // Apply to all phases
+  for (const key of Object.keys(phases.value)) {
+    phases.value[key].temperature = newTemp
   }
   triggerUpdate()
 }
@@ -303,45 +554,44 @@ function updateGlobalTemp(newTemp) {
 // ---------------------------------------------------------------------------
 
 async function saveProfile() {
-  if (!profile.value) return
+  if (enabledPhaseCount.value === 0) {
+    if (toast) toast.warning('Enable at least one phase before saving')
+    return
+  }
+
   saving.value = true
   try {
-    // Normalise: ensure frames key
-    const payload = { ...profile.value }
-    if (payload.steps && !payload.frames) {
-      payload.frames = payload.steps
-      delete payload.steps
-    }
-    const existingId = record.value?.id || profile.value?.id
+    const profile = buildProfile()
+    const existingId = record.value?.id || profile?.id
     const result = existingId
-      ? await updateProfile(existingId, payload)
-      : await createProfile(payload)
+      ? await updateProfile(existingId, profile)
+      : await createProfile(profile)
     if (result?.id) {
       record.value = result
     }
-    originalSnapshot = JSON.stringify(result || profile.value)
-    if (toast) toast.success('Profile saved')
+    originalSnapshot = JSON.stringify(buildRecipeState())
+    if (toast) toast.success('Recipe saved')
   } catch (e) {
-    console.warn('[ProfileEditorPage] Save failed:', e.message)
-    if (toast) toast.error('Failed to save profile: ' + e.message)
+    console.warn('[RecipeEditorPage] Save failed:', e.message)
+    if (toast) toast.error('Failed to save recipe: ' + e.message)
   } finally {
     saving.value = false
   }
 }
 
 async function uploadToMachine() {
-  if (!profile.value) return
+  if (enabledPhaseCount.value === 0) {
+    if (toast) toast.warning('Enable at least one phase before uploading')
+    return
+  }
+
   saving.value = true
   try {
-    const payload = { ...profile.value }
-    if (payload.steps && !payload.frames) {
-      payload.frames = payload.steps
-      delete payload.steps
-    }
-    await uploadProfileToMachine(payload)
-    if (toast) toast.success('Profile uploaded to machine')
+    const profile = buildProfile()
+    await uploadProfileToMachine(profile)
+    if (toast) toast.success('Recipe uploaded to machine')
   } catch (e) {
-    console.warn('[ProfileEditorPage] Upload failed:', e.message)
+    console.warn('[RecipeEditorPage] Upload failed:', e.message)
     if (toast) toast.error('Failed to upload: ' + e.message)
   } finally {
     saving.value = false
@@ -359,8 +609,19 @@ function goBack() {
   router.back()
 }
 
-function onFrameSelected(index) {
-  selectedFrame.value = index
+function switchToAdvanced() {
+  // Save current recipe as a profile, then open in ProfileEditorPage
+  const profile = buildProfile()
+  // Store in sessionStorage temporarily for handoff
+  try {
+    sessionStorage.setItem('recipe-handoff', JSON.stringify(profile))
+  } catch { /* ignore */ }
+
+  if (record.value?.id) {
+    router.push({ name: 'profile-editor', params: { id: record.value.id } })
+  } else {
+    router.push({ name: 'profile-editor' })
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -375,10 +636,8 @@ const EXIT_TYPES = [
   { value: 'weight', label: 'Weight Over' },
 ]
 
-function exitValueMax() {
-  const f = currentFrame.value
-  if (!f) return 12
-  switch (f.exit_type) {
+function exitMax(exitType) {
+  switch (exitType) {
     case 'flow_over':
     case 'flow_under': return 8
     case 'weight': return 100
@@ -386,15 +645,12 @@ function exitValueMax() {
   }
 }
 
-function exitValueStep() {
-  const f = currentFrame.value
-  return f?.exit_type === 'weight' ? 0.5 : 0.1
+function exitStep(exitType) {
+  return exitType === 'weight' ? 0.5 : 0.1
 }
 
-function exitValueSuffix() {
-  const f = currentFrame.value
-  if (!f) return ' bar'
-  switch (f.exit_type) {
+function exitSuffix(exitType) {
+  switch (exitType) {
     case 'flow_over':
     case 'flow_under': return ' mL/s'
     case 'weight': return ' g'
@@ -410,408 +666,299 @@ onMounted(loadProfile)
 </script>
 
 <template>
-  <div class="profile-editor">
+  <div class="recipe-editor">
     <!-- Loading state -->
-    <div v-if="loading" class="profile-editor__loading">
-      Loading profile...
+    <div v-if="loading" class="recipe-editor__loading">
+      Loading recipe...
     </div>
 
-    <template v-else-if="profile">
-      <div class="profile-editor__content">
-        <!-- Top: Mode banner -->
-        <div class="profile-editor__banner">
-          <span class="profile-editor__banner-title">Advanced Editor</span>
-          <span class="profile-editor__banner-hint">Full frame-by-frame control. Click frames to edit.</span>
-        </div>
+    <template v-else>
+      <div class="recipe-editor__content">
+        <!-- Top bar: name, presets, settings -->
+        <div class="recipe-editor__top">
+          <!-- Recipe name -->
+          <div class="recipe-editor__name-row">
+            <input
+              class="recipe-editor__name-input"
+              type="text"
+              :value="recipeName"
+              @change="recipeName = $event.target.value"
+              placeholder="Recipe name"
+              aria-label="Recipe name"
+            />
+          </div>
 
-        <!-- Main layout: graph + toolbar (left) / editor (right) -->
-        <div class="profile-editor__main">
-          <!-- LEFT: Graph + frame list -->
-          <div class="profile-editor__left">
-            <!-- Frame toolbar -->
-            <div class="profile-editor__toolbar">
-              <span class="profile-editor__toolbar-label">Frames</span>
-              <span class="profile-editor__toolbar-spacer"></span>
+          <!-- Preset selector -->
+          <div class="recipe-editor__preset-row">
+            <span class="recipe-editor__preset-label">Preset</span>
+            <div class="recipe-editor__preset-pills">
               <button
-                class="profile-editor__tool-btn profile-editor__tool-btn--primary"
-                @click="addFrame"
-                :disabled="frameCount >= 20"
-              >+ Add</button>
-              <button
-                class="profile-editor__tool-btn profile-editor__tool-btn--danger"
-                @click="deleteFrame(selectedFrame)"
-                :disabled="selectedFrame < 0 || frameCount <= 1"
-              >Delete</button>
-              <button
-                class="profile-editor__tool-btn profile-editor__tool-btn--primary"
-                @click="duplicateFrame(selectedFrame)"
-                :disabled="selectedFrame < 0 || frameCount >= 20"
-              >Copy</button>
-              <button
-                class="profile-editor__tool-btn"
-                @click="moveFrame(selectedFrame, -1)"
-                :disabled="selectedFrame <= 0"
-                aria-label="Move frame left"
-              >&#8592;</button>
-              <button
-                class="profile-editor__tool-btn"
-                @click="moveFrame(selectedFrame, 1)"
-                :disabled="selectedFrame < 0 || selectedFrame >= frameCount - 1"
-                aria-label="Move frame right"
-              >&#8594;</button>
+                v-for="(preset, key) in RECIPE_PRESETS"
+                :key="key"
+                class="recipe-editor__preset-pill"
+                :class="{ 'recipe-editor__preset-pill--active': selectedPreset === key }"
+                @click="applyPreset(key)"
+              >{{ preset.name }}</button>
             </div>
+          </div>
 
-            <!-- Profile graph -->
-            <div class="profile-editor__graph">
-              <ProfileGraph
-                :profile="graphProfile"
-                :selected-frame="selectedFrame"
-                @frame-selected="onFrameSelected"
+          <!-- Global settings row -->
+          <div class="recipe-editor__globals">
+            <div class="recipe-editor__global-field">
+              <span class="recipe-editor__field-label">Temperature</span>
+              <ValueInput
+                :model-value="globalTemperature"
+                @update:model-value="updateGlobalTemp"
+                :min="70"
+                :max="100"
+                :step="0.5"
+                :decimals="1"
+                suffix=" &deg;C"
+                aria-label="Global temperature"
               />
             </div>
-
-            <!-- Frame list (compact row for each frame) -->
-            <div class="profile-editor__frame-list">
-              <div
-                v-for="(frame, i) in frames"
-                :key="i"
-                class="profile-editor__frame-row"
-                :class="{
-                  'profile-editor__frame-row--selected': i === selectedFrame,
-                }"
-                @click="selectedFrame = i"
+            <div class="recipe-editor__global-field">
+              <span class="recipe-editor__field-label">{{ stopAtType === 'volume' ? 'Volume' : 'Weight' }}</span>
+              <ValueInput
+                :model-value="stopAtType === 'volume' ? targetVolume : targetWeight"
+                @update:model-value="v => { if (stopAtType === 'volume') { targetVolume = v } else { targetWeight = v } }"
+                :min="0"
+                :max="500"
+                :step="1"
+                :decimals="0"
+                :suffix="stopAtType === 'volume' ? ' mL' : ' g'"
+                aria-label="Stop-at value"
+              />
+            </div>
+            <div class="recipe-editor__global-field recipe-editor__global-field--toggle">
+              <button
+                class="recipe-editor__stop-toggle"
+                @click="stopAtType = stopAtType === 'volume' ? 'weight' : 'volume'"
               >
-                <span class="profile-editor__frame-index">{{ i + 1 }}</span>
-                <span
-                  class="profile-editor__frame-pump"
-                  :class="frame.pump === 'flow' ? 'profile-editor__frame-pump--flow' : 'profile-editor__frame-pump--pressure'"
-                >{{ frame.pump === 'flow' ? 'F' : 'P' }}</span>
-                <span class="profile-editor__frame-name">{{ frame.name || `Frame ${i + 1}` }}</span>
-                <span class="profile-editor__frame-detail">
-                  {{ frame.pump === 'flow' ? (frame.flow ?? 0).toFixed(1) + ' mL/s' : (frame.pressure ?? 0).toFixed(1) + ' bar' }}
+                {{ stopAtType === 'volume' ? 'Vol' : 'Wt' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main layout: phases (left) + graph preview (right) -->
+        <div class="recipe-editor__main">
+          <!-- LEFT: Phase cards -->
+          <div class="recipe-editor__phases">
+            <div
+              v-for="def in PHASE_DEFS"
+              :key="def.key"
+              class="recipe-editor__phase"
+              :class="{
+                'recipe-editor__phase--disabled': !phases[def.key]?.enabled,
+                'recipe-editor__phase--expanded': expandedPhase === def.key && phases[def.key]?.enabled,
+              }"
+            >
+              <!-- Phase header (always visible) -->
+              <div class="recipe-editor__phase-header" @click="setPhaseExpanded(def.key)">
+                <label
+                  class="recipe-editor__phase-toggle"
+                  @click.stop
+                >
+                  <input
+                    type="checkbox"
+                    :checked="phases[def.key]?.enabled"
+                    @change="togglePhase(def.key)"
+                  />
+                </label>
+                <span class="recipe-editor__phase-label">{{ def.label }}</span>
+                <template v-if="phases[def.key]?.enabled">
+                  <span class="recipe-editor__phase-summary">
+                    <span
+                      class="recipe-editor__phase-pump-badge"
+                      :class="phases[def.key]?.pump === 'flow' ? 'recipe-editor__phase-pump-badge--flow' : 'recipe-editor__phase-pump-badge--pressure'"
+                    >{{ phases[def.key]?.pump === 'flow' ? 'F' : 'P' }}</span>
+                    {{ (phases[def.key]?.target || 0).toFixed(1) }}{{ phases[def.key]?.pump === 'flow' ? ' mL/s' : ' bar' }}
+                    <span class="recipe-editor__phase-duration">{{ (phases[def.key]?.seconds || 0) }}s</span>
+                  </span>
+                </template>
+                <span class="recipe-editor__phase-chevron">
+                  {{ expandedPhase === def.key && phases[def.key]?.enabled ? '\u25B2' : '\u25BC' }}
                 </span>
-                <span class="profile-editor__frame-detail">{{ (frame.seconds || 0).toFixed(0) }}s</span>
-                <span class="profile-editor__frame-detail profile-editor__frame-detail--temp">{{ (frame.temperature || 93).toFixed(0) }}&deg;</span>
+              </div>
+
+              <!-- Phase body (expanded) -->
+              <div
+                v-if="expandedPhase === def.key && phases[def.key]?.enabled"
+                class="recipe-editor__phase-body"
+              >
+                <!-- Description -->
+                <p class="recipe-editor__phase-desc">{{ def.description }}</p>
+
+                <!-- Pump mode -->
+                <div class="recipe-editor__field-group">
+                  <span class="recipe-editor__field-label">Pump Mode</span>
+                  <div class="recipe-editor__radio-row">
+                    <label class="recipe-editor__radio" :class="{ 'recipe-editor__radio--active': phases[def.key]?.pump === 'pressure' }">
+                      <input type="radio" :checked="phases[def.key]?.pump === 'pressure'" @change="updatePhaseField(def.key, 'pump', 'pressure')" />
+                      Pressure
+                    </label>
+                    <label class="recipe-editor__radio" :class="{ 'recipe-editor__radio--active': phases[def.key]?.pump === 'flow' }">
+                      <input type="radio" :checked="phases[def.key]?.pump === 'flow'" @change="updatePhaseField(def.key, 'pump', 'flow')" />
+                      Flow
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Target setpoint -->
+                <div class="recipe-editor__field-row">
+                  <span class="recipe-editor__field-label">{{ phases[def.key]?.pump === 'flow' ? 'Flow' : 'Pressure' }}</span>
+                  <ValueInput
+                    :model-value="phases[def.key]?.target || 0"
+                    @update:model-value="v => updatePhaseField(def.key, 'target', v)"
+                    :min="0"
+                    :max="phases[def.key]?.pump === 'flow' ? 8 : 12"
+                    :step="0.1"
+                    :decimals="1"
+                    :suffix="phases[def.key]?.pump === 'flow' ? ' mL/s' : ' bar'"
+                    :aria-label="def.label + ' target'"
+                  />
+                </div>
+
+                <!-- Duration -->
+                <div class="recipe-editor__field-row">
+                  <span class="recipe-editor__field-label">Duration</span>
+                  <ValueInput
+                    :model-value="phases[def.key]?.seconds || 0"
+                    @update:model-value="v => updatePhaseField(def.key, 'seconds', v)"
+                    :min="0"
+                    :max="120"
+                    :step="1"
+                    :decimals="0"
+                    suffix="s"
+                    :aria-label="def.label + ' duration'"
+                  />
+                </div>
+
+                <!-- Temperature (per-phase override) -->
+                <div class="recipe-editor__field-row">
+                  <span class="recipe-editor__field-label">Temp</span>
+                  <ValueInput
+                    :model-value="phases[def.key]?.temperature || 93"
+                    @update:model-value="v => updatePhaseField(def.key, 'temperature', v)"
+                    :min="70"
+                    :max="100"
+                    :step="0.5"
+                    :decimals="1"
+                    suffix="&deg;C"
+                    :aria-label="def.label + ' temperature'"
+                  />
+                </div>
+
+                <!-- Transition -->
+                <div class="recipe-editor__field-group">
+                  <span class="recipe-editor__field-label">Transition</span>
+                  <div class="recipe-editor__radio-row">
+                    <label class="recipe-editor__radio" :class="{ 'recipe-editor__radio--active': phases[def.key]?.transition === 'fast' }">
+                      <input type="radio" :checked="phases[def.key]?.transition === 'fast'" @change="updatePhaseField(def.key, 'transition', 'fast')" />
+                      Fast
+                    </label>
+                    <label class="recipe-editor__radio" :class="{ 'recipe-editor__radio--active': phases[def.key]?.transition === 'smooth' }">
+                      <input type="radio" :checked="phases[def.key]?.transition === 'smooth'" @change="updatePhaseField(def.key, 'transition', 'smooth')" />
+                      Smooth
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Exit condition -->
+                <div class="recipe-editor__field-group recipe-editor__section">
+                  <span class="recipe-editor__field-label">Exit Condition</span>
+                  <label class="recipe-editor__checkbox">
+                    <input
+                      type="checkbox"
+                      :checked="phases[def.key]?.exitEnabled"
+                      @change="updatePhaseField(def.key, 'exitEnabled', $event.target.checked)"
+                    />
+                    Enable early exit
+                  </label>
+
+                  <template v-if="phases[def.key]?.exitEnabled">
+                    <select
+                      class="recipe-editor__select"
+                      :value="phases[def.key]?.exitType || 'pressure_over'"
+                      @change="updatePhaseField(def.key, 'exitType', $event.target.value)"
+                    >
+                      <option v-for="et in EXIT_TYPES" :key="et.value" :value="et.value">{{ et.label }}</option>
+                    </select>
+
+                    <ValueInput
+                      :model-value="phases[def.key]?.exitValue || 0"
+                      @update:model-value="v => updatePhaseField(def.key, 'exitValue', v)"
+                      :min="0"
+                      :max="exitMax(phases[def.key]?.exitType)"
+                      :step="exitStep(phases[def.key]?.exitType)"
+                      :decimals="1"
+                      :suffix="exitSuffix(phases[def.key]?.exitType)"
+                      :aria-label="def.label + ' exit value'"
+                    />
+                  </template>
+                </div>
+
+                <!-- Limiter -->
+                <div class="recipe-editor__field-group recipe-editor__section">
+                  <span class="recipe-editor__field-label">
+                    {{ phases[def.key]?.pump === 'flow' ? 'Pressure Limit' : 'Flow Limit' }}
+                  </span>
+                  <div class="recipe-editor__field-row">
+                    <span class="recipe-editor__field-label recipe-editor__field-label--small">Limit</span>
+                    <ValueInput
+                      :model-value="phases[def.key]?.limiterValue || 0"
+                      @update:model-value="v => updatePhaseField(def.key, 'limiterValue', v)"
+                      :min="0"
+                      :max="phases[def.key]?.pump === 'flow' ? 12 : 8"
+                      :step="0.1"
+                      :decimals="1"
+                      :suffix="phases[def.key]?.pump === 'flow' ? ' bar' : ' mL/s'"
+                      :aria-label="def.label + ' limiter'"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- RIGHT: Frame editor panel -->
-          <div class="profile-editor__right">
-            <!-- Profile settings toggle -->
-            <button
-              class="profile-editor__settings-btn"
-              @click="showSettings = !showSettings"
-            >
-              {{ showSettings ? 'Frame Editor' : 'Profile Settings' }}
-              <span v-if="!showSettings" class="profile-editor__settings-hint">
-                ({{ stopAtLabel }}, {{ (frames[0]?.temperature || 93).toFixed(0) }}&deg;C)
+          <!-- RIGHT: Preview graph -->
+          <div class="recipe-editor__preview">
+            <div class="recipe-editor__preview-header">
+              <span class="recipe-editor__preview-title">Preview</span>
+              <span class="recipe-editor__preview-info">
+                {{ enabledPhaseCount }} phase{{ enabledPhaseCount !== 1 ? 's' : '' }}
+                &middot;
+                {{ totalDuration }}s
               </span>
-            </button>
+            </div>
+            <div class="recipe-editor__preview-graph">
+              <ProfileGraph
+                :profile="previewProfile"
+              />
+            </div>
 
-            <!-- Profile settings panel -->
-            <div v-if="showSettings" class="profile-editor__settings-panel">
-              <!-- Title -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Name</label>
+            <!-- Metadata fields -->
+            <div class="recipe-editor__meta">
+              <div class="recipe-editor__meta-field">
+                <label class="recipe-editor__field-label">Author</label>
                 <input
-                  class="profile-editor__text-input"
+                  class="recipe-editor__text-input"
                   type="text"
-                  :value="profile.title || ''"
-                  @change="profile.title = $event.target.value; triggerUpdate()"
-                  placeholder="Profile name"
-                />
-              </div>
-
-              <!-- Author -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Author</label>
-                <input
-                  class="profile-editor__text-input"
-                  type="text"
-                  :value="profile.author || ''"
-                  @change="profile.author = $event.target.value; triggerUpdate()"
+                  :value="recipeAuthor"
+                  @change="recipeAuthor = $event.target.value"
                   placeholder="Author"
                 />
               </div>
-
-              <!-- Notes -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Notes</label>
+              <div class="recipe-editor__meta-field">
+                <label class="recipe-editor__field-label">Notes</label>
                 <textarea
-                  class="profile-editor__textarea"
-                  :value="profile.notes || profile.profile_notes || ''"
-                  @change="profile.notes = $event.target.value; triggerUpdate()"
-                  placeholder="Profile description"
+                  class="recipe-editor__textarea"
+                  :value="recipeNotes"
+                  @change="recipeNotes = $event.target.value"
+                  placeholder="Recipe notes"
                   rows="2"
                 ></textarea>
-              </div>
-
-              <!-- Stop at type -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Stop At</label>
-                <div class="profile-editor__radio-row">
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': profile.stop_at_type !== 'volume' }">
-                    <input type="radio" :checked="profile.stop_at_type !== 'volume'" @change="setStopAtType('weight')" />
-                    Weight
-                  </label>
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': profile.stop_at_type === 'volume' }">
-                    <input type="radio" :checked="profile.stop_at_type === 'volume'" @change="setStopAtType('volume')" />
-                    Volume
-                  </label>
-                </div>
-              </div>
-
-              <!-- Stop value -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">{{ profile.stop_at_type === 'volume' ? 'Volume' : 'Weight' }}</span>
-                <ValueInput
-                  :model-value="profile.stop_at_type === 'volume' ? (profile.target_volume || 36) : (profile.target_weight || 36)"
-                  @update:model-value="v => { if (profile.stop_at_type === 'volume') { profile.target_volume = v } else { profile.target_weight = v }; triggerUpdate() }"
-                  :min="0"
-                  :max="500"
-                  :step="1"
-                  :decimals="0"
-                  :suffix="profile.stop_at_type === 'volume' ? ' mL' : ' g'"
-                  aria-label="Stop-at value"
-                />
-              </div>
-
-              <!-- Global temperature -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">All temps</span>
-                <ValueInput
-                  :model-value="frames[0]?.temperature || 93"
-                  @update:model-value="updateGlobalTemp"
-                  :min="70"
-                  :max="100"
-                  :step="0.5"
-                  :decimals="1"
-                  suffix=" &deg;C"
-                  aria-label="Global temperature"
-                />
-              </div>
-            </div>
-
-            <!-- Frame editor (when frame selected and not in settings) -->
-            <div v-else-if="currentFrame" class="profile-editor__frame-editor">
-              <!-- Frame name -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Frame Name</label>
-                <input
-                  class="profile-editor__text-input"
-                  type="text"
-                  :value="currentFrame.name || ''"
-                  @change="updateFrameField('name', $event.target.value)"
-                  placeholder="Frame name"
-                />
-              </div>
-
-              <!-- Pump mode -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Pump Mode</label>
-                <div class="profile-editor__radio-row">
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': currentFrame.pump === 'pressure' }">
-                    <input type="radio" :checked="currentFrame.pump === 'pressure'" @change="setPumpMode('pressure')" />
-                    Pressure
-                  </label>
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': currentFrame.pump === 'flow' }">
-                    <input type="radio" :checked="currentFrame.pump === 'flow'" @change="setPumpMode('flow')" />
-                    Flow
-                  </label>
-                </div>
-              </div>
-
-              <!-- Setpoint (pressure or flow depending on pump mode) -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">{{ currentFrame.pump === 'flow' ? 'Flow' : 'Pressure' }}</span>
-                <ValueInput
-                  :model-value="currentFrame.pump === 'flow' ? (currentFrame.flow ?? 0) : (currentFrame.pressure ?? 0)"
-                  @update:model-value="v => updateFrameField(currentFrame.pump === 'flow' ? 'flow' : 'pressure', v)"
-                  :min="0"
-                  :max="currentFrame.pump === 'flow' ? 8 : 12"
-                  :step="0.1"
-                  :decimals="1"
-                  :suffix="currentFrame.pump === 'flow' ? ' mL/s' : ' bar'"
-                  :aria-label="currentFrame.pump === 'flow' ? 'Flow setpoint' : 'Pressure setpoint'"
-                />
-              </div>
-
-              <!-- Temperature -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">Temp</span>
-                <ValueInput
-                  :model-value="currentFrame.temperature ?? 93"
-                  @update:model-value="v => updateFrameField('temperature', v)"
-                  :min="70"
-                  :max="100"
-                  :step="0.5"
-                  :decimals="1"
-                  suffix="&deg;C"
-                  aria-label="Frame temperature"
-                />
-              </div>
-
-              <!-- Duration -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">Duration</span>
-                <ValueInput
-                  :model-value="currentFrame.seconds ?? 30"
-                  @update:model-value="v => updateFrameField('seconds', v)"
-                  :min="0"
-                  :max="120"
-                  :step="1"
-                  :decimals="0"
-                  suffix="s"
-                  aria-label="Frame duration"
-                />
-              </div>
-
-              <!-- Transition -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Transition</label>
-                <div class="profile-editor__radio-row">
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': currentFrame.transition === 'fast' }">
-                    <input type="radio" :checked="currentFrame.transition === 'fast'" @change="setTransition('fast')" />
-                    Fast
-                  </label>
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': currentFrame.transition === 'smooth' }">
-                    <input type="radio" :checked="currentFrame.transition === 'smooth'" @change="setTransition('smooth')" />
-                    Smooth
-                  </label>
-                </div>
-              </div>
-
-              <!-- Exit condition -->
-              <div class="profile-editor__field-group profile-editor__section">
-                <label class="profile-editor__label">Exit Condition</label>
-                <label class="profile-editor__checkbox">
-                  <input
-                    type="checkbox"
-                    :checked="currentFrame.exit_if"
-                    @change="setExitEnabled($event.target.checked)"
-                  />
-                  Enable early exit
-                </label>
-
-                <template v-if="currentFrame.exit_if">
-                  <select
-                    class="profile-editor__select"
-                    :value="currentFrame.exit_type || 'pressure_over'"
-                    @change="setExitType($event.target.value)"
-                  >
-                    <option v-for="et in EXIT_TYPES" :key="et.value" :value="et.value">{{ et.label }}</option>
-                  </select>
-
-                  <ValueInput
-                    :model-value="currentExitValue()"
-                    @update:model-value="updateExitValue"
-                    :min="0"
-                    :max="exitValueMax()"
-                    :step="exitValueStep()"
-                    :decimals="1"
-                    :suffix="exitValueSuffix()"
-                    aria-label="Exit condition value"
-                  />
-                </template>
-              </div>
-
-              <!-- Sensor -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Sensor</label>
-                <div class="profile-editor__radio-row">
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': currentFrame.sensor === 'coffee' }">
-                    <input type="radio" :checked="currentFrame.sensor === 'coffee'" @change="setSensor('coffee')" />
-                    Coffee
-                  </label>
-                  <label class="profile-editor__radio" :class="{ 'profile-editor__radio--active': currentFrame.sensor === 'water' }">
-                    <input type="radio" :checked="currentFrame.sensor === 'water'" @change="setSensor('water')" />
-                    Water
-                  </label>
-                </div>
-              </div>
-
-              <!-- Limiter -->
-              <div class="profile-editor__field-group profile-editor__section">
-                <label class="profile-editor__label">
-                  {{ currentFrame.pump === 'flow' ? 'Pressure Limit' : 'Flow Limit' }}
-                </label>
-                <div class="profile-editor__field-row">
-                  <span class="profile-editor__label profile-editor__label--small">Limit</span>
-                  <ValueInput
-                    :model-value="currentFrame.max_flow_or_pressure ?? 0"
-                    @update:model-value="v => updateFrameField('max_flow_or_pressure', v)"
-                    :min="0"
-                    :max="currentFrame.pump === 'flow' ? 12 : 8"
-                    :step="0.1"
-                    :decimals="1"
-                    :suffix="currentFrame.pump === 'flow' ? ' bar' : ' mL/s'"
-                    aria-label="Limiter value"
-                  />
-                </div>
-                <div class="profile-editor__field-row">
-                  <span class="profile-editor__label profile-editor__label--small">Range</span>
-                  <ValueInput
-                    :model-value="currentFrame.max_flow_or_pressure_range ?? 0.6"
-                    @update:model-value="v => updateFrameField('max_flow_or_pressure_range', v)"
-                    :min="0.1"
-                    :max="2.0"
-                    :step="0.1"
-                    :decimals="1"
-                    :suffix="currentFrame.pump === 'flow' ? ' bar' : ' mL/s'"
-                    aria-label="Limiter range"
-                  />
-                </div>
-              </div>
-
-              <!-- Volume limit -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">Vol. limit</span>
-                <ValueInput
-                  :model-value="currentFrame.volume ?? 0"
-                  @update:model-value="v => updateFrameField('volume', v)"
-                  :min="0"
-                  :max="500"
-                  :step="1"
-                  :decimals="0"
-                  suffix=" mL"
-                  aria-label="Frame volume limit"
-                />
-              </div>
-
-              <!-- Weight exit (independent of exit_if) -->
-              <div class="profile-editor__field-row">
-                <span class="profile-editor__label">Wt. exit</span>
-                <ValueInput
-                  :model-value="currentFrame.exit_weight ?? 0"
-                  @update:model-value="v => { updateFrameField('exit_weight', v); currentFrame.weight = v }"
-                  :min="0"
-                  :max="100"
-                  :step="0.5"
-                  :decimals="1"
-                  suffix=" g"
-                  aria-label="Weight exit"
-                />
-              </div>
-
-              <!-- Popup message -->
-              <div class="profile-editor__field-group">
-                <label class="profile-editor__label">Popup</label>
-                <input
-                  class="profile-editor__text-input"
-                  type="text"
-                  :value="currentFrame.popup || ''"
-                  @change="updateFrameField('popup', $event.target.value)"
-                  placeholder="e.g., Swirl now, $weight"
-                />
-              </div>
-            </div>
-
-            <!-- No frame selected -->
-            <div v-else class="profile-editor__no-selection">
-              <div class="profile-editor__no-selection-title">Select a frame</div>
-              <div class="profile-editor__no-selection-hint">
-                Click on the graph or frame list<br/>to select a frame for editing
               </div>
             </div>
           </div>
@@ -819,30 +966,32 @@ onMounted(loadProfile)
       </div>
     </template>
 
-    <div v-else class="profile-editor__loading">Profile not found</div>
-
     <!-- Bottom bar -->
     <BottomBar title="Profile Editor" @back="goBack">
-      <template v-if="profile">
-        <span v-if="isDirty" class="profile-editor__dirty-badge">Modified</span>
+      <template v-if="!loading">
+        <span v-if="isDirty" class="recipe-editor__dirty-badge">Modified</span>
         <span style="opacity: 0.3">|</span>
-        <span>{{ frameCount }} frames</span>
+        <span>{{ enabledPhaseCount }} phases</span>
         <span style="opacity: 0.3">|</span>
-        <span :style="{ color: profile.stop_at_type === 'volume' ? 'var(--color-flow-goal)' : 'var(--color-weight)' }">
-          {{ stopAtLabel }}
+        <span :style="{ color: stopAtType === 'volume' ? 'var(--color-flow-goal)' : 'var(--color-weight)' }">
+          {{ stopAtType === 'volume' ? targetVolume + 'mL' : targetWeight + 'g' }}
         </span>
         <span style="opacity: 0.3">|</span>
-        <span>{{ totalDuration.toFixed(0) }}s</span>
-        <span class="profile-editor__bar-spacer"></span>
+        <span>{{ totalDuration }}s</span>
+        <span class="recipe-editor__bar-spacer"></span>
         <button
-          class="profile-editor__bar-btn"
+          class="recipe-editor__bar-btn"
+          @click="switchToAdvanced"
+        >Advanced</button>
+        <button
+          class="recipe-editor__bar-btn"
           @click="uploadToMachine"
-          :disabled="saving"
+          :disabled="saving || enabledPhaseCount === 0"
         >Upload</button>
         <button
-          class="profile-editor__bar-btn profile-editor__bar-btn--save"
+          class="recipe-editor__bar-btn recipe-editor__bar-btn--save"
           @click="saveProfile"
-          :disabled="saving"
+          :disabled="saving || enabledPhaseCount === 0"
         >Save</button>
       </template>
     </BottomBar>
@@ -854,13 +1003,13 @@ onMounted(loadProfile)
    Layout
    ====================================================================== */
 
-.profile-editor {
+.recipe-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.profile-editor__content {
+.recipe-editor__content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -869,7 +1018,7 @@ onMounted(loadProfile)
   gap: 8px;
 }
 
-.profile-editor__loading {
+.recipe-editor__loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -877,298 +1026,405 @@ onMounted(loadProfile)
   color: var(--color-text-secondary);
 }
 
-/* Banner */
-.profile-editor__banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  background: var(--color-warning, #ffcc00);
-  border-radius: var(--radius-card, 8px);
-  flex-shrink: 0;
-}
+/* ======================================================================
+   Top section: name + presets + globals
+   ====================================================================== */
 
-.profile-editor__banner-title {
-  font-size: var(--font-title, 16px);
-  font-weight: bold;
-  color: var(--color-background);
-}
-
-.profile-editor__banner-hint {
-  font-size: var(--font-caption, 11px);
-  color: rgba(26, 26, 46, 0.75);
-}
-
-/* Main two-column layout */
-.profile-editor__main {
-  flex: 1;
-  display: flex;
-  gap: 12px;
-  min-height: 0;
-}
-
-.profile-editor__left {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface, #252538);
-  border-radius: var(--radius-card, 8px);
-  min-height: 0;
-  overflow: hidden;
-}
-
-.profile-editor__right {
-  width: 320px;
+.recipe-editor__top {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--color-surface, #252538);
-  border-radius: var(--radius-card, 8px);
-  padding: 12px;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* ======================================================================
-   Toolbar
-   ====================================================================== */
-
-.profile-editor__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.profile-editor__toolbar-label {
-  font-size: var(--font-caption, 11px);
-  color: var(--color-text, #fff);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.profile-editor__toolbar-spacer {
-  flex: 1;
-}
-
-.profile-editor__tool-btn {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
-  background: transparent;
-  color: var(--color-text, #fff);
-  font-size: var(--font-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  -webkit-tap-highlight-color: transparent;
-  min-width: var(--touch-target-min);
-  min-height: var(--touch-target-min);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.profile-editor__tool-btn:disabled {
-  background-color: var(--button-disabled);
-  color: var(--button-disabled-text);
-  border-color: transparent;
-  cursor: default;
-}
-
-.profile-editor__tool-btn:active:not(:disabled) {
-  filter: brightness(0.8);
-}
-
-.profile-editor__tool-btn--primary {
-  background: var(--color-primary, #4e85f4);
-  border-color: var(--color-primary, #4e85f4);
-  color: var(--color-text);
-}
-
-.profile-editor__tool-btn--danger {
-  background: var(--color-accent, #e94560);
-  border-color: var(--color-accent, #e94560);
-  color: var(--color-text);
-}
-
-/* ======================================================================
-   Graph
-   ====================================================================== */
-
-.profile-editor__graph {
-  flex: 1;
-  min-height: 120px;
-}
-
-/* ======================================================================
-   Frame list
-   ====================================================================== */
-
-.profile-editor__frame-list {
-  max-height: 180px;
-  overflow-y: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
-}
-
-.profile-editor__frame-row {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-.profile-editor__frame-row:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.profile-editor__frame-row--selected {
-  background: rgba(233, 69, 96, 0.18);
-}
-
-.profile-editor__frame-index {
-  width: 22px;
-  height: 22px;
+.recipe-editor__name-row {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--color-primary, #4e85f4);
-  color: var(--color-text);
-  font-size: var(--font-sm);
-  font-weight: bold;
-  flex-shrink: 0;
 }
 
-.profile-editor__frame-pump {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: var(--font-sm);
-  font-weight: bold;
-  flex-shrink: 0;
-  color: var(--color-text);
-}
-
-.profile-editor__frame-pump--pressure {
-  background: var(--color-pressure);
-}
-
-.profile-editor__frame-pump--flow {
-  background: var(--color-flow);
-}
-
-.profile-editor__frame-name {
+.recipe-editor__name-input {
   flex: 1;
-  font-size: var(--font-body, 14px);
+  padding: 10px 14px;
+  border-radius: var(--radius-card, 8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-surface, #252538);
   color: var(--color-text, #fff);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
+  font-size: var(--font-title, 16px);
+  font-weight: 600;
+  font-family: inherit;
 }
 
-.profile-editor__frame-detail {
-  font-size: var(--font-caption, 11px);
-  color: var(--color-text-secondary, #a0a8b8);
-  white-space: nowrap;
-  flex-shrink: 0;
+.recipe-editor__name-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #4e85f4);
 }
 
-.profile-editor__frame-detail--temp {
-  color: #ffa5a6;
-}
-
-/* ======================================================================
-   Right panel — editor fields
-   ====================================================================== */
-
-.profile-editor__settings-btn {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--color-text-secondary, #a0a8b8);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--color-text, #fff);
-  font-size: var(--font-caption, 11px);
-  cursor: pointer;
-  text-align: center;
-  flex-shrink: 0;
-  margin-bottom: 10px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.profile-editor__settings-btn:active {
-  filter: brightness(0.85);
-}
-
-.profile-editor__settings-hint {
-  color: var(--color-text-secondary, #a0a8b8);
-  margin-left: 4px;
-}
-
-.profile-editor__settings-panel,
-.profile-editor__frame-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 1;
-  min-height: 0;
-}
-
-/* Field groups */
-.profile-editor__field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.profile-editor__field-row {
+.recipe-editor__preset-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.profile-editor__field-row > .profile-editor__label {
+.recipe-editor__preset-label {
+  font-size: var(--font-caption, 11px);
+  color: var(--color-text-secondary, #a0a8b8);
+  text-transform: uppercase;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.recipe-editor__preset-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recipe-editor__preset-pill {
+  padding: 5px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
+  background: transparent;
+  color: var(--color-text, #fff);
+  font-size: var(--font-caption, 11px);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recipe-editor__preset-pill:active {
+  filter: brightness(0.8);
+}
+
+.recipe-editor__preset-pill--active {
+  background: var(--color-primary, #4e85f4);
+  border-color: var(--color-primary, #4e85f4);
+  color: var(--color-text);
+}
+
+.recipe-editor__globals {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recipe-editor__global-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.recipe-editor__global-field--toggle {
+  flex: 0 0 auto;
+}
+
+.recipe-editor__stop-toggle {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text, #fff);
+  font-size: var(--font-caption, 11px);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recipe-editor__stop-toggle:active {
+  filter: brightness(0.8);
+}
+
+/* ======================================================================
+   Main two-column layout
+   ====================================================================== */
+
+.recipe-editor__main {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  min-height: 0;
+}
+
+/* ======================================================================
+   Phase cards (left column)
+   ====================================================================== */
+
+.recipe-editor__phases {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.recipe-editor__phase {
+  background: var(--color-surface, #252538);
+  border-radius: var(--radius-card, 8px);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.recipe-editor__phase--disabled {
+  color: var(--button-disabled-text);
+  pointer-events: none;
+}
+
+.recipe-editor__phase-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recipe-editor__phase-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.recipe-editor__phase-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+}
+
+.recipe-editor__phase-toggle input[type="checkbox"] {
+  accent-color: var(--color-primary, #4e85f4);
+  width: 16px;
+  height: 16px;
+}
+
+.recipe-editor__phase-label {
+  font-size: var(--font-body, 14px);
+  font-weight: 600;
+  color: var(--color-text, #fff);
+  min-width: 60px;
+}
+
+.recipe-editor__phase-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-caption, 11px);
+  color: var(--color-text-secondary, #a0a8b8);
+  flex: 1;
+  min-width: 0;
+}
+
+.recipe-editor__phase-pump-badge {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: var(--font-xs);
+  font-weight: bold;
+  color: var(--color-text);
+  flex-shrink: 0;
+}
+
+.recipe-editor__phase-pump-badge--pressure {
+  background: var(--color-pressure);
+}
+
+.recipe-editor__phase-pump-badge--flow {
+  background: var(--color-flow);
+}
+
+.recipe-editor__phase-duration {
+  color: var(--color-text-secondary, #a0a8b8);
+}
+
+.recipe-editor__phase-chevron {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary, #a0a8b8);
+  flex-shrink: 0;
+}
+
+.recipe-editor__phase-body {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.recipe-editor__phase-desc {
+  margin: 10px 0 0;
+  font-size: var(--font-caption, 11px);
+  color: var(--color-text-secondary, #a0a8b8);
+  line-height: 1.4;
+}
+
+/* ======================================================================
+   Field layout (shared with phase body)
+   ====================================================================== */
+
+.recipe-editor__field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recipe-editor__field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recipe-editor__field-row > .recipe-editor__field-label {
   width: 72px;
   flex-shrink: 0;
 }
 
-.profile-editor__field-row > .value-input {
+.recipe-editor__field-row > .value-input {
   flex: 1;
 }
 
-.profile-editor__label {
+.recipe-editor__field-label {
   font-size: var(--font-caption, 11px);
   color: var(--color-text-secondary, #a0a8b8);
   text-transform: uppercase;
   font-weight: 600;
 }
 
-.profile-editor__label--small {
+.recipe-editor__field-label--small {
   font-size: var(--font-xs);
   width: 48px;
   flex-shrink: 0;
 }
 
-.profile-editor__section {
+.recipe-editor__section {
   padding: 10px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 8px;
 }
 
+/* Radio buttons */
+.recipe-editor__radio-row {
+  display: flex;
+  gap: 16px;
+}
+
+.recipe-editor__radio {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-body, 14px);
+  color: var(--color-text, #fff);
+  cursor: pointer;
+}
+
+.recipe-editor__radio--active {
+  color: var(--color-primary, #4e85f4);
+}
+
+.recipe-editor__radio input[type="radio"] {
+  accent-color: var(--color-primary, #4e85f4);
+}
+
+/* Checkbox */
+.recipe-editor__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-body, 14px);
+  color: var(--color-text, #fff);
+  cursor: pointer;
+}
+
+.recipe-editor__checkbox input[type="checkbox"] {
+  accent-color: var(--color-primary, #4e85f4);
+}
+
+/* Select */
+.recipe-editor__select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-background, #1a1a2e);
+  color: var(--color-text, #fff);
+  font-size: var(--font-body, 14px);
+  font-family: inherit;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.recipe-editor__select:focus {
+  outline: none;
+  border-color: var(--color-primary, #4e85f4);
+}
+
+.recipe-editor__select option {
+  background: var(--color-surface, #252538);
+  color: var(--color-text, #fff);
+}
+
+/* ======================================================================
+   Preview (right column)
+   ====================================================================== */
+
+.recipe-editor__preview {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface, #252538);
+  border-radius: var(--radius-card, 8px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.recipe-editor__preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.recipe-editor__preview-title {
+  font-size: var(--font-body, 14px);
+  font-weight: 600;
+  color: var(--color-text, #fff);
+}
+
+.recipe-editor__preview-info {
+  font-size: var(--font-caption, 11px);
+  color: var(--color-text-secondary, #a0a8b8);
+}
+
+.recipe-editor__preview-graph {
+  flex: 1;
+  min-height: 140px;
+}
+
+.recipe-editor__meta {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.recipe-editor__meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* Text inputs */
-.profile-editor__text-input,
-.profile-editor__textarea,
-.profile-editor__select {
+.recipe-editor__text-input,
+.recipe-editor__textarea {
   width: 100%;
   padding: 8px 12px;
   border-radius: 6px;
@@ -1179,101 +1435,31 @@ onMounted(loadProfile)
   font-family: inherit;
 }
 
-.profile-editor__text-input:focus,
-.profile-editor__textarea:focus,
-.profile-editor__select:focus {
+.recipe-editor__text-input:focus,
+.recipe-editor__textarea:focus {
   outline: none;
   border-color: var(--color-primary, #4e85f4);
 }
 
-.profile-editor__textarea {
+.recipe-editor__textarea {
   resize: vertical;
   min-height: 40px;
-}
-
-.profile-editor__select {
-  cursor: pointer;
-  appearance: auto;
-}
-
-.profile-editor__select option {
-  background: var(--color-surface, #252538);
-  color: var(--color-text, #fff);
-}
-
-/* Radio buttons */
-.profile-editor__radio-row {
-  display: flex;
-  gap: 16px;
-}
-
-.profile-editor__radio {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-body, 14px);
-  color: var(--color-text, #fff);
-  cursor: pointer;
-}
-
-.profile-editor__radio--active {
-  color: var(--color-primary, #4e85f4);
-}
-
-.profile-editor__radio input[type="radio"] {
-  accent-color: var(--color-primary, #4e85f4);
-}
-
-/* Checkbox */
-.profile-editor__checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--font-body, 14px);
-  color: var(--color-text, #fff);
-  cursor: pointer;
-}
-
-.profile-editor__checkbox input[type="checkbox"] {
-  accent-color: var(--color-primary, #4e85f4);
-}
-
-/* No selection */
-.profile-editor__no-selection {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  gap: 10px;
-  text-align: center;
-}
-
-.profile-editor__no-selection-title {
-  font-size: var(--font-title, 16px);
-  color: var(--color-text-secondary, #a0a8b8);
-}
-
-.profile-editor__no-selection-hint {
-  font-size: var(--font-body, 14px);
-  color: var(--color-text-secondary, #a0a8b8);
-  line-height: 1.5;
 }
 
 /* ======================================================================
    Bottom bar additions
    ====================================================================== */
 
-.profile-editor__dirty-badge {
+.recipe-editor__dirty-badge {
   color: #ffcc00;
   font-weight: 600;
 }
 
-.profile-editor__bar-spacer {
+.recipe-editor__bar-spacer {
   flex: 1;
 }
 
-.profile-editor__bar-btn {
+.recipe-editor__bar-btn {
   padding: 5px 14px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -1285,18 +1471,18 @@ onMounted(loadProfile)
   -webkit-tap-highlight-color: transparent;
 }
 
-.profile-editor__bar-btn:disabled {
+.recipe-editor__bar-btn:disabled {
   background-color: var(--button-disabled);
   color: var(--button-disabled-text);
   border-color: transparent;
   cursor: default;
 }
 
-.profile-editor__bar-btn:active:not(:disabled) {
+.recipe-editor__bar-btn:active:not(:disabled) {
   filter: brightness(0.8);
 }
 
-.profile-editor__bar-btn--save {
+.recipe-editor__bar-btn--save {
   background: #fff;
   color: var(--color-primary, #4e85f4);
   border-color: var(--color-text);
@@ -1307,17 +1493,21 @@ onMounted(loadProfile)
    ====================================================================== */
 
 @media (max-width: 720px) {
-  .profile-editor__main {
+  .recipe-editor__main {
     flex-direction: column;
   }
 
-  .profile-editor__right {
+  .recipe-editor__preview {
     width: 100%;
-    max-height: 50vh;
+    max-height: 280px;
   }
 
-  .profile-editor__graph {
-    min-height: 160px;
+  .recipe-editor__preview-graph {
+    min-height: 120px;
+  }
+
+  .recipe-editor__globals {
+    flex-wrap: wrap;
   }
 }
 </style>

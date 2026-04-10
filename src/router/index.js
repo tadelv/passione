@@ -19,7 +19,7 @@ const VisualizerBrowserPage = () => import('../pages/VisualizerBrowserPage.vue')
 const VisualizerMultiImportPage = () => import('../pages/VisualizerMultiImportPage.vue')
 const BeanInfoPage = () => import('../pages/BeanInfoPage.vue')
 const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
-const RecipeEditorPage = () => import('../pages/RecipeEditorPage.vue')
+const AdvancedProfileEditorPage = () => import('../pages/AdvancedProfileEditorPage.vue')
 const SimpleProfileEditorPage = () => import('../pages/SimpleProfileEditorPage.vue')
 const AutoFavoritesPage = () => import('../pages/AutoFavoritesPage.vue')
 
@@ -32,6 +32,7 @@ const routes = [
   { path: '/profiles', name: 'profiles', component: ProfileSelectorPage },
   { path: '/profile-info/:id', name: 'profile-info', component: ProfileInfoPage },
   { path: '/profile-editor/:id?', name: 'profile-editor', component: ProfileEditorPage },
+  { path: '/advanced-editor/:id?', name: 'advanced-editor', component: AdvancedProfileEditorPage },
   { path: '/settings/:tab?', name: 'settings', component: SettingsPage },
   { path: '/history', name: 'history', component: ShotHistoryPage },
   { path: '/shot/:id', name: 'shot-detail', component: ShotDetailPage },
@@ -42,7 +43,6 @@ const routes = [
   { path: '/visualizer-import', name: 'visualizer-import', component: VisualizerBrowserPage },
   { path: '/visualizer-multi-import', name: 'visualizer-multi-import', component: VisualizerMultiImportPage },
   { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
-  { path: '/recipe-editor/:id?', name: 'recipe-editor', component: RecipeEditorPage },
   { path: '/simple-editor/:id?', name: 'simple-editor', component: SimpleProfileEditorPage },
   { path: '/auto-favorites', name: 'auto-favorites', component: AutoFavoritesPage },
 ]

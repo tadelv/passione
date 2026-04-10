@@ -94,7 +94,7 @@ async function loadProfile(id) {
 
     if (!isSimpleProfile(profile)) {
       toast?.warning('This profile uses the advanced editor')
-      router.replace(`/recipe-editor/${encodeURIComponent(id)}`)
+      router.replace(`/profile-editor/${encodeURIComponent(id)}`)
       return
     }
 
@@ -136,7 +136,7 @@ async function saveProfile() {
 
 function switchToAdvanced() {
   if (profileId.value) {
-    router.push(`/profile-editor/${encodeURIComponent(profileId.value)}`)
+    router.push(`/advanced-editor/${encodeURIComponent(profileId.value)}`)
   }
 }
 
