@@ -332,16 +332,6 @@ async function stopAndGoBack() {
         </svg>
       </button>
 
-      <!-- Timer -->
-      <div class="espresso-page__metric" aria-live="polite" aria-atomic="true">
-        <span class="espresso-page__metric-value espresso-page__metric-value--timer">
-          {{ displayShotTime }}
-        </span>
-        <span class="espresso-page__metric-label">Time</span>
-      </div>
-
-      <div class="espresso-page__divider" />
-
       <!-- Pressure -->
       <div class="espresso-page__metric">
         <span class="espresso-page__metric-value" style="color: var(--color-pressure)">
@@ -356,14 +346,6 @@ async function stopAndGoBack() {
           {{ flow.toFixed(1) }}
         </span>
         <span class="espresso-page__metric-label">mL/s</span>
-      </div>
-
-      <!-- Temperature -->
-      <div class="espresso-page__metric">
-        <span class="espresso-page__metric-value" style="color: var(--color-temperature)">
-          {{ temperature.toFixed(1) }}
-        </span>
-        <span class="espresso-page__metric-label">&deg;C</span>
       </div>
 
       <div class="espresso-page__divider" />

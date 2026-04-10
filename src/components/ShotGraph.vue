@@ -57,7 +57,7 @@ function initChart() {
   // Start with empty data if none provided yet
   const initial = props.data && props.data[0]?.length
     ? props.data
-    : [[], [], [], [], [], [], [], []]
+    : [[], [], [], [], [], [], [], [], []]
 
   chart = new uPlot(opts, initial, chartEl.value)
 }

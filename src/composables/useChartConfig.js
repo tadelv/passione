@@ -19,6 +19,7 @@ export const COLORS = {
   temperature:     '#e73249',
   temperatureGoal: '#ffa5a6',
   weight:          '#a2693d',
+  weightFlow:      '#d4a76a',
   grid:            '#3a3a4e',
   surface:         '#252538',
   background:      '#1a1a2e',
@@ -37,7 +38,7 @@ const GOAL_DASH = [6, 4]
  *
  * Series order must match useShotData.js:
  *   0: time, 1: pressure, 2: targetPressure, 3: flow, 4: targetFlow,
- *   5: temperature, 6: targetTemperature, 7: weight
+ *   5: temperature, 6: targetTemperature, 7: weight, 8: weightFlow
  */
 export function createShotChartOpts(width, height, opts = {}) {
   const { interactive = true } = opts
@@ -167,6 +168,14 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: LINE_WIDTH,
         scale: 'weight',
         value: (u, v) => v != null ? v.toFixed(1) + ' g' : '--',
+      },
+      // 8: weightFlow (g/s from scale)
+      {
+        label: 'Weight Flow',
+        stroke: COLORS.weightFlow,
+        width: LINE_WIDTH - 0.5,
+        scale: 'pressure',
+        value: (u, v) => v != null ? v.toFixed(1) + ' g/s' : '--',
       },
     ],
   }

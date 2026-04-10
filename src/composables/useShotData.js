@@ -15,6 +15,7 @@ import { ref, shallowRef } from 'vue'
  *   5 - mixTemperature
  *   6 - targetMixTemperature
  *   7 - weight
+ *   8 - weightFlow (g/s derived from scale weight delta)
  */
 
 const MAX_POINTS = 500
@@ -35,13 +36,14 @@ export function useShotData() {
     temperature: new Float64Array(MAX_POINTS),
     targetTemperature: new Float64Array(MAX_POINTS),
     weight: new Float64Array(MAX_POINTS),
+    weightFlow: new Float64Array(MAX_POINTS),
   }
 
   // Shallow ref — we replace the value on each update so uPlot picks up the change.
   const data = shallowRef(emptyData())
 
   function emptyData() {
-    return [[], [], [], [], [], [], [], []]
+    return [[], [], [], [], [], [], [], [], []]
   }
 
   function reset() {
@@ -89,6 +91,14 @@ export function useShotData() {
     buf.temperature[len] = machineSnapshot.mixTemperature ?? 0
     buf.targetTemperature[len] = machineSnapshot.targetMixTemperature ?? 0
     buf.weight[len] = scaleSnapshot?.weight ?? 0
+    // Compute weight flow rate (g/s) from weight delta
+    if (len > 0) {
+      const dt = elapsed - buf.time[len - 1]
+      const dw = buf.weight[len] - buf.weight[len - 1]
+      buf.weightFlow[len] = dt > 0.05 ? Math.max(0, dw / dt) : (len > 1 ? buf.weightFlow[len - 1] : 0)
+    } else {
+      buf.weightFlow[len] = 0
+    }
     len++
 
     // Build uPlot-compatible array of arrays (plain JS arrays sliced from typed arrays).
@@ -101,6 +111,7 @@ export function useShotData() {
       Array.from(buf.temperature.subarray(0, len)),
       Array.from(buf.targetTemperature.subarray(0, len)),
       Array.from(buf.weight.subarray(0, len)),
+      Array.from(buf.weightFlow.subarray(0, len)),
     ]
   }
 
