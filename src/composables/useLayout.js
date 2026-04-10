@@ -48,9 +48,6 @@ const WIDGET_TYPES = [
   'navButtons',
   'scaleInfo',
   'fullscreen',
-  'steamPresets',
-  'hotWaterPresets',
-  'flushPresets',
 ]
 
 const WIDGET_LABELS = {
@@ -61,9 +58,6 @@ const WIDGET_LABELS = {
   navButtons: 'Navigation Buttons',
   scaleInfo: 'Scale Info',
   fullscreen: 'Fullscreen Toggle',
-  steamPresets: 'Steam Presets',
-  hotWaterPresets: 'Hot Water Presets',
-  flushPresets: 'Flush Presets',
 }
 
 // Which zones each widget type is allowed in
@@ -72,9 +66,6 @@ const WIDGET_ZONE_RULES = {
   shotPlan: 'center',
   lastShot: 'center',
   workflowPresets: 'center',
-  steamPresets: 'center',
-  hotWaterPresets: 'center',
-  flushPresets: 'center',
   navButtons: 'edge',
   scaleInfo: 'edge',
   fullscreen: 'edge',

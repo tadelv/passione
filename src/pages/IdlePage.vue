@@ -192,45 +192,6 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-// ---- Quick-start presets ----
-const steamPresets = computed(() => settings?.settings?.steamPitcherPresets ?? [])
-const selectedSteamPreset = computed(() => settings?.settings?.selectedSteamPitcherPreset ?? -1)
-const hotWaterPresets = computed(() => settings?.settings?.waterVesselPresets ?? [])
-const selectedHotWaterPreset = computed(() => settings?.settings?.selectedWaterVesselPreset ?? -1)
-const flushPresets = computed(() => settings?.settings?.flushPresets ?? [])
-const selectedFlushPreset = computed(() => settings?.settings?.selectedFlushPreset ?? -1)
-
-function onSteamPresetSelect(index) {
-  if (!settings) return
-  settings.settings.selectedSteamPitcherPreset = index
-  const preset = steamPresets.value[index]
-  if (preset) {
-    settings.settings.steamDuration = preset.duration ?? settings.settings.steamDuration
-    settings.settings.steamFlow = preset.flow ?? settings.settings.steamFlow
-    settings.settings.steamTemperature = preset.temperature ?? settings.settings.steamTemperature
-  }
-}
-
-function onHotWaterPresetSelect(index) {
-  if (!settings) return
-  settings.settings.selectedWaterVesselPreset = index
-  const preset = hotWaterPresets.value[index]
-  if (preset) {
-    settings.settings.hotWaterVolume = preset.volume ?? settings.settings.hotWaterVolume
-    settings.settings.hotWaterTemperature = preset.temperature ?? settings.settings.hotWaterTemperature
-  }
-}
-
-function onFlushPresetSelect(index) {
-  if (!settings) return
-  settings.settings.selectedFlushPreset = index
-  const preset = flushPresets.value[index]
-  if (preset) {
-    settings.settings.flushDuration = preset.duration ?? settings.settings.flushDuration
-    settings.settings.flushFlowRate = preset.flow ?? settings.settings.flushFlowRate
-  }
-}
-
 async function startEspresso() {
   if (!isReady.value) return
   await setMachineState('espresso').catch(() => {})
@@ -280,9 +241,6 @@ const widgetEvents = {
   'start-flush': startFlush,
   'workflow-combo-select': onComboSelect,
   'workflow-combo-long-press': onComboLongPress,
-  'steam-preset-select': onSteamPresetSelect,
-  'hot-water-preset-select': onHotWaterPresetSelect,
-  'flush-preset-select': onFlushPresetSelect,
 }
 
 onMounted(() => {
@@ -307,12 +265,6 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
-          :steam-presets="steamPresets"
-          :selected-steam-preset="selectedSteamPreset"
-          :hot-water-presets="hotWaterPresets"
-          :selected-hot-water-preset="selectedHotWaterPreset"
-          :flush-presets="flushPresets"
-          :selected-flush-preset="selectedFlushPreset"
           v-on="widgetEvents"
         />
       </div>
@@ -325,12 +277,6 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
-          :steam-presets="steamPresets"
-          :selected-steam-preset="selectedSteamPreset"
-          :hot-water-presets="hotWaterPresets"
-          :selected-hot-water-preset="selectedHotWaterPreset"
-          :flush-presets="flushPresets"
-          :selected-flush-preset="selectedFlushPreset"
           v-on="widgetEvents"
         />
       </div>
@@ -387,12 +333,6 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
-          :steam-presets="steamPresets"
-          :selected-steam-preset="selectedSteamPreset"
-          :hot-water-presets="hotWaterPresets"
-          :selected-hot-water-preset="selectedHotWaterPreset"
-          :flush-presets="flushPresets"
-          :selected-flush-preset="selectedFlushPreset"
           v-on="widgetEvents"
         />
       </div>
@@ -405,12 +345,6 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
-          :steam-presets="steamPresets"
-          :selected-steam-preset="selectedSteamPreset"
-          :hot-water-presets="hotWaterPresets"
-          :selected-hot-water-preset="selectedHotWaterPreset"
-          :flush-presets="flushPresets"
-          :selected-flush-preset="selectedFlushPreset"
           v-on="widgetEvents"
         />
       </div>

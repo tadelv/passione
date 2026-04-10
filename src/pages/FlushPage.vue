@@ -1,25 +1,13 @@
 <script setup>
-import { ref, computed, inject, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import BottomBar from '../components/BottomBar.vue'
-import ValueInput from '../components/ValueInput.vue'
-import PresetPillRow from '../components/PresetPillRow.vue'
-import PresetEditPopup from '../components/PresetEditPopup.vue'
+import { computed, inject } from 'vue'
 import { setMachineState } from '../api/rest.js'
 
-const router = useRouter()
-
-// Injected from App.vue
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
 
+const isFlushing = computed(() => machineState.value === 'flush')
 
-const isFlushing = computed(() =>
-  machineState.value === 'flush'
-)
-
-// Settings-backed values
 const flushSeconds = computed({
   get: () => settings.settings.flushDuration,
   set: (v) => { settings.settings.flushDuration = v },
@@ -34,99 +22,20 @@ const timerProgress = computed(() =>
   flushSeconds.value > 0 ? Math.min(1, shotTime.value / flushSeconds.value) : 0
 )
 
-// Flush/rinse settings are synced to the workflow API by useOperationSettings
-// (watches settings.flushDuration/flushFlowRate/flushTemperature with debounce).
-
-// ---- Presets ----
-const presets = computed(() => settings.settings.flushPresets)
-const selectedPreset = computed({
-  get: () => settings.settings.selectedFlushPreset,
-  set: (v) => { settings.settings.selectedFlushPreset = v },
-})
-
-function onPresetSelect(index) {
-  selectedPreset.value = index
-  const preset = presets.value[index]
-  if (preset) {
-    flushSeconds.value = preset.duration ?? flushSeconds.value
-    flushFlow.value = preset.flow ?? flushFlow.value
-  }
-}
-
-function onPresetActivate() {
-  if (machineState.value !== 'idle') return
-  setMachineState('flush').catch(() => {})
-}
-
-const editPopupVisible = ref(false)
-const editPresetIndex = ref(-1)
-const editPresetData = ref(null)
-
-function onPresetLongPress(index) {
-  editPresetIndex.value = index
-  editPresetData.value = { ...presets.value[index] }
-  editPopupVisible.value = true
-}
-
-function onAddPreset() {
-  editPresetIndex.value = -1
-  editPresetData.value = {
-    name: '',
-    emoji: '',
-    duration: flushSeconds.value,
-    flow: flushFlow.value,
-  }
-  editPopupVisible.value = true
-}
-
-function onPresetSave(data) {
-  const list = [...presets.value]
-  if (editPresetIndex.value >= 0) {
-    list[editPresetIndex.value] = data
-  } else {
-    list.push(data)
-    selectedPreset.value = list.length - 1
-  }
-  settings.settings.flushPresets = list
-  editPopupVisible.value = false
-}
-
-function onPresetDelete() {
-  const list = [...presets.value]
-  list.splice(editPresetIndex.value, 1)
-  settings.settings.flushPresets = list
-  if (selectedPreset.value >= list.length) {
-    selectedPreset.value = list.length - 1
-  }
-  editPopupVisible.value = false
-}
-
-function onPresetCancel() {
-  editPopupVisible.value = false
-}
-
 function stopFlush() {
   setMachineState('idle').catch(() => {})
 }
 
-function goBack() {
-  router.push('/')
+function startFlush() {
+  setMachineState('flush').catch(() => {})
 }
 </script>
 
 <template>
   <div class="flush-page">
     <div class="flush-page__content">
-      <!-- FLUSHING VIEW -->
-      <div v-if="isFlushing" class="flush-page__live">
-        <!-- Presets during flushing -->
-        <PresetPillRow
-          v-if="presets.length"
-          :presets="presets"
-          :selected-index="selectedPreset"
-          @select="onPresetSelect"
-        />
-
+      <!-- ACTIVE: flushing -->
+      <template v-if="isFlushing">
         <div class="flush-page__spacer" />
 
         <div class="flush-page__timer-section">
@@ -134,89 +43,34 @@ function goBack() {
             {{ shotTime.toFixed(1) }}s / {{ flushSeconds.toFixed(0) }}s
           </span>
           <div class="flush-page__progress-bar">
-            <div
-              class="flush-page__progress-fill"
-              :style="{ transform: 'scaleX(' + timerProgress + ')' }"
-            />
+            <div class="flush-page__progress-fill" :style="{ transform: 'scaleX(' + timerProgress + ')' }" />
           </div>
         </div>
 
         <div class="flush-page__spacer" />
 
-        <!-- Stop button -->
-        <button class="flush-page__stop-btn" @click="stopFlush">
+        <button class="flush-page__stop-btn" aria-label="Stop flushing" @click="stopFlush">
           Stop
         </button>
-      </div>
+      </template>
 
-      <!-- SETTINGS VIEW -->
-      <div v-else class="flush-page__settings">
-        <!-- Flush presets -->
-        <PresetPillRow
-          :presets="presets"
-          :selected-index="selectedPreset"
-          :long-press-enabled="true"
-          @select="onPresetSelect"
-          @activate="onPresetActivate"
-          @long-press="onPresetLongPress"
-        />
-        <button class="flush-page__add-preset" @click="onAddPreset">+ Add Preset</button>
-
-        <div class="flush-page__card">
-          <!-- Duration -->
-          <div class="flush-page__setting-row">
-            <span class="flush-page__setting-label">Duration</span>
-            <ValueInput
-              :model-value="flushSeconds"
-              :min="1"
-              :max="30"
-              :step="0.5"
-              :decimals="1"
-              suffix=" s"
-              value-color="var(--color-primary)"
-              @update:model-value="flushSeconds = $event"
-            />
+      <!-- IDLE: fallback -->
+      <template v-else>
+        <div class="flush-page__idle">
+          <div class="flush-page__idle-info">
+            <span class="flush-page__idle-value">{{ flushSeconds.toFixed(1) }}s</span>
+            <span class="flush-page__idle-label">Duration</span>
           </div>
-
-          <div class="flush-page__separator" />
-
-          <!-- Flow Rate -->
-          <div class="flush-page__setting-row">
-            <span class="flush-page__setting-label">Flow Rate</span>
-            <ValueInput
-              :model-value="flushFlow"
-              :min="2"
-              :max="10"
-              :step="0.5"
-              :decimals="1"
-              suffix=" mL/s"
-              value-color="var(--color-flow)"
-              @update:model-value="flushFlow = $event"
-            />
+          <div class="flush-page__idle-info">
+            <span class="flush-page__idle-value">{{ flushFlow.toFixed(1) }} mL/s</span>
+            <span class="flush-page__idle-label">Flow</span>
           </div>
+          <button class="flush-page__start-btn" @click="startFlush">
+            Start Flush
+          </button>
         </div>
-      </div>
+      </template>
     </div>
-
-    <BottomBar
-      v-if="!isFlushing"
-      title="Flush"
-      @back="goBack"
-    >
-      <span>{{ flushSeconds.toFixed(1) }}s</span>
-      <span style="opacity: 0.3">|</span>
-      <span>{{ flushFlow.toFixed(1) }} mL/s</span>
-    </BottomBar>
-
-    <PresetEditPopup
-      :visible="editPopupVisible"
-      :preset="editPresetData"
-      :is-existing="editPresetIndex >= 0"
-      operation-type="flush"
-      @save="onPresetSave"
-      @delete="onPresetDelete"
-      @cancel="onPresetCancel"
-    />
   </div>
 </template>
 
@@ -230,14 +84,8 @@ function goBack() {
 .flush-page__content {
   flex: 1;
   padding: var(--margin-standard);
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.flush-page__live {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .flush-page__spacer {
@@ -274,14 +122,14 @@ function goBack() {
   transition: transform 0.1s linear;
 }
 
-.flush-page__stop-btn {
+.flush-page__stop-btn,
+.flush-page__start-btn {
   align-self: center;
   width: 100%;
   max-width: 300px;
   height: 56px;
   border-radius: var(--radius-card);
   border: none;
-  background: var(--color-error);
   color: var(--color-text);
   font-size: var(--font-title);
   font-weight: 700;
@@ -290,56 +138,43 @@ function goBack() {
   -webkit-tap-highlight-color: transparent;
 }
 
-.flush-page__stop-btn:active {
+.flush-page__stop-btn {
+  background: var(--color-error);
+}
+
+.flush-page__start-btn {
+  background: var(--color-primary);
+}
+
+.flush-page__stop-btn:active,
+.flush-page__start-btn:active {
   filter: brightness(0.85);
 }
 
-.flush-page__add-preset {
-  align-self: center;
-  padding: 6px 16px;
-  border-radius: 8px;
-  border: 1px dashed var(--color-text-secondary);
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--font-label);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.flush-page__add-preset:active {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.flush-page__settings {
+.flush-page__idle {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.flush-page__card {
-  background: var(--color-surface);
-  border-radius: var(--radius-card);
-  padding: var(--spacing-medium);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.flush-page__setting-row {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-medium);
+  justify-content: center;
+  gap: 24px;
+  flex: 1;
 }
 
-.flush-page__setting-label {
+.flush-page__idle-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.flush-page__idle-value {
   font-size: var(--font-title);
+  font-weight: 600;
   color: var(--color-text);
 }
 
-.flush-page__separator {
-  height: 1px;
-  background: var(--color-text-secondary);
-  opacity: 0.3;
+.flush-page__idle-label {
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
 }
 </style>

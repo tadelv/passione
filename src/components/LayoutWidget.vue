@@ -27,18 +27,6 @@ const props = defineProps({
   workflowCombos: { type: Array, default: () => [] },
   /** Selected workflow combo index */
   selectedWorkflowCombo: { type: Number, default: -1 },
-  /** Steam presets */
-  steamPresets: { type: Array, default: () => [] },
-  /** Selected steam preset index */
-  selectedSteamPreset: { type: Number, default: -1 },
-  /** Hot water presets */
-  hotWaterPresets: { type: Array, default: () => [] },
-  /** Selected hot water preset index */
-  selectedHotWaterPreset: { type: Number, default: -1 },
-  /** Flush presets */
-  flushPresets: { type: Array, default: () => [] },
-  /** Selected flush preset index */
-  selectedFlushPreset: { type: Number, default: -1 },
 })
 
 const emit = defineEmits([
@@ -48,9 +36,6 @@ const emit = defineEmits([
   'start-flush',
   'workflow-combo-select',
   'workflow-combo-long-press',
-  'steam-preset-select',
-  'hot-water-preset-select',
-  'flush-preset-select',
 ])
 
 const { t } = useI18n()
@@ -230,45 +215,6 @@ const lastShotInfo = computed(() => {
         <button class="layout-widget__new-combo-btn" @click="router.push('/bean-info')">
           + New Combo
         </button>
-      </div>
-    </template>
-
-    <!-- Steam Presets -->
-    <template v-else-if="type === 'steamPresets'">
-      <div v-if="steamPresets.length" class="layout-widget__preset-section">
-        <span class="layout-widget__section-label">{{ t('idle.steam') }}</span>
-        <PresetPillRow
-          :presets="steamPresets"
-          :selected-index="selectedSteamPreset"
-          @select="idx => emit('steam-preset-select', idx)"
-          @activate="() => emit('start-steam')"
-        />
-      </div>
-    </template>
-
-    <!-- Hot Water Presets -->
-    <template v-else-if="type === 'hotWaterPresets'">
-      <div v-if="hotWaterPresets.length" class="layout-widget__preset-section">
-        <span class="layout-widget__section-label">{{ t('idle.hotWater') }}</span>
-        <PresetPillRow
-          :presets="hotWaterPresets"
-          :selected-index="selectedHotWaterPreset"
-          @select="idx => emit('hot-water-preset-select', idx)"
-          @activate="() => emit('start-hot-water')"
-        />
-      </div>
-    </template>
-
-    <!-- Flush Presets -->
-    <template v-else-if="type === 'flushPresets'">
-      <div v-if="flushPresets.length" class="layout-widget__preset-section">
-        <span class="layout-widget__section-label">{{ t('idle.flush') }}</span>
-        <PresetPillRow
-          :presets="flushPresets"
-          :selected-index="selectedFlushPreset"
-          @select="idx => emit('flush-preset-select', idx)"
-          @activate="() => emit('start-flush')"
-        />
       </div>
     </template>
 
