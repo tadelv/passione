@@ -76,9 +76,6 @@ const DEFAULT_SETTINGS = {
   waterRefillThreshold: 10,
   autoSleepMinutes: 30,
 
-  // Espresso / Brew Dialog
-  showBrewDialog: false,
-
   // Accessibility
   accessibilityEnabled: false,
   voiceAnnouncements: false,
@@ -193,7 +190,7 @@ export function useSettings() {
       'waterRefillThreshold',
     ],
     espresso: [
-      'showBrewDialog', 'lingerOnEspressoPage',
+      'lingerOnEspressoPage',
     ],
     accessibility: [
       'accessibilityEnabled', 'voiceAnnouncements', 'frameTickSounds',

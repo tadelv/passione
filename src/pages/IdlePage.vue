@@ -233,13 +233,8 @@ function onFlushPresetSelect(index) {
 
 async function startEspresso() {
   if (!isReady.value) return
-  if (settings?.settings?.showBrewDialog) {
-    // Navigate first — BrewDialog will show and handle the start
-    router.push('/espresso')
-  } else {
-    await setMachineState('espresso').catch(() => {})
-    router.push('/espresso')
-  }
+  await setMachineState('espresso').catch(() => {})
+  router.push('/espresso')
 }
 
 async function startSteam() {

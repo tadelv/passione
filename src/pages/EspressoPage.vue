@@ -1,12 +1,10 @@
 <script setup>
-import { ref, computed, inject, watch, onMounted } from 'vue'
+import { ref, computed, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ShotGraph from '../components/ShotGraph.vue'
 import PhaseTimeline from '../components/PhaseTimeline.vue'
 import CupFillView from '../components/CupFillView.vue'
-import BrewDialog from '../components/BrewDialog.vue'
-import { setMachineState, tareScale, getLatestShot } from '../api/rest.js'
-import { normalizeShot } from '../composables/useShotNormalize'
+import { setMachineState } from '../api/rest.js'
 
 const router = useRouter()
 
@@ -21,11 +19,7 @@ const machineState = inject('machineState', ref('idle'))
 const substate = inject('substate', ref(''))
 const profileFrame = inject('profileFrame', ref(0))
 const machine = inject('machine', null)
-const workflow = inject('workflow', null)
-const updateWorkflow = inject('updateWorkflow')
-const settings = inject('settings', null)
 const toast = inject('toast', null)
-const scale = inject('scale', null)
 
 // Shot data for the chart (provided by App.vue from useShotData)
 const shotData = inject('shotData', null)
@@ -33,142 +27,6 @@ const shotData = inject('shotData', null)
 // Volume mode composable (provided by App.vue)
 const volumeMode = inject('volumeMode', null)
 const markUserStop = inject('markUserStop', null)
-
-// P1-6: Brew Dialog integration
-const showBrewDialog = computed(() => settings?.settings?.showBrewDialog ?? false)
-const brewDialogVisible = ref(false)
-
-// Show brew dialog when navigated to espresso page if enabled and not already in espresso
-onMounted(() => {
-  if (showBrewDialog.value && machineState.value !== 'espresso') {
-    brewDialogVisible.value = true
-  }
-})
-
-// Brew dialog props derived from workflow
-const brewProfileName = computed(() => workflow?.profile?.title ?? '')
-const brewTemperature = computed(() => {
-  // Get target temperature from profile or shot settings
-  const targetTemp = machine?.targetMixTemperature?.value ?? machine?.targetGroupTemperature?.value ?? 93
-  return targetTemp
-})
-const brewDoseIn = computed(() => workflow?.context?.targetDoseWeight ?? 18)
-const brewDoseOut = computed(() => workflow?.context?.targetYield ?? 36)
-const brewGrinderName = computed(() => workflow?.context?.grinderModel ?? '')
-const brewGrindSetting = computed(() => {
-  const s = workflow?.context?.grinderSetting
-  return s != null ? Number(s) || 0 : 0
-})
-const scaleWeight = computed(() => scale?.weight?.value ?? weight.value ?? 0)
-
-async function onBrewDialogStart(params) {
-  brewDialogVisible.value = false
-  try {
-    // Apply settings to workflow before starting
-    const workflowUpdate = {
-      context: {
-        ...workflow?.context,
-        targetDoseWeight: params.doseIn,
-        targetYield: params.doseOut,
-      },
-    }
-    await updateWorkflow(workflowUpdate)
-    await setMachineState('espresso')
-  } catch (e) {
-    if (toast) toast.error('Failed to start espresso: ' + (e.message || 'Unknown error'))
-  }
-}
-
-async function onBrewDialogUpdateTemperature(temp) {
-  try {
-    // Update the profile temperature via workflow
-    if (workflow?.profile) {
-      const profile = { ...workflow.profile }
-      // Update the target temperature in profile frames
-      const frameKey = profile.frames ? 'frames' : profile.steps ? 'steps' : null
-      if (frameKey && profile[frameKey].length > 0) {
-        // Only update frame 0's temperature — advanced profiles use per-frame
-        // temperature curves (e.g. turbo profiles that ramp down mid-shot).
-        // Flattening all frames would destroy intentional thermal variation.
-        profile[frameKey] = profile[frameKey].map((f, i) => i === 0
-          ? { ...f, temperature: temp }
-          : f
-        )
-      }
-      await updateWorkflow({ profile })
-      if (toast) toast.success('Profile temperature updated')
-    }
-  } catch (e) {
-    if (toast) toast.error('Failed to update temperature: ' + (e.message || 'Unknown error'))
-  }
-}
-
-async function onBrewDialogUpdateYield(yieldVal) {
-  try {
-    await updateWorkflow({
-      context: {
-        ...workflow?.context,
-        targetYield: yieldVal,
-      },
-    })
-    if (toast) toast.success('Yield updated')
-  } catch (e) {
-    if (toast) toast.error('Failed to update yield: ' + (e.message || 'Unknown error'))
-  }
-}
-
-async function onBrewDialogTareScale() {
-  try {
-    await tareScale()
-  } catch (e) {
-    if (toast) toast.error('Failed to tare scale: ' + (e.message || 'Unknown error'))
-  }
-}
-
-function onBrewDialogCancel() {
-  brewDialogVisible.value = false
-  router.push('/')
-}
-
-async function onBrewDialogUseLastShot() {
-  try {
-    const raw = await getLatestShot()
-    if (raw) {
-      const lastShot = normalizeShot(raw)
-      const contextUpdate = {}
-      if (lastShot.doseIn != null) {
-        contextUpdate.targetDoseWeight = lastShot.doseIn
-      }
-      if (lastShot.doseOut != null) {
-        contextUpdate.targetYield = lastShot.doseOut
-      }
-      if (Object.keys(contextUpdate).length > 0) {
-        await updateWorkflow({
-          context: { ...workflow?.context, ...contextUpdate },
-        })
-      }
-      if (toast) toast.info('Loaded settings from last shot')
-    } else {
-      if (toast) toast.warning('No previous shot found')
-    }
-  } catch (e) {
-    if (toast) toast.error('Failed to load last shot: ' + (e.message || 'Unknown error'))
-  }
-}
-
-async function onBrewDialogUpdateGrinder(grinder) {
-  try {
-    await updateWorkflow({
-      context: {
-        ...workflow?.context,
-        grinderModel: grinder.name,
-        grinderSetting: String(grinder.setting),
-      },
-    })
-  } catch (e) {
-    if (toast) toast.error('Failed to update grinder: ' + (e.message || 'Unknown error'))
-  }
-}
 
 // P1-7: Track frame transitions for phase markers on the chart
 const frameMarkers = ref([])
@@ -260,26 +118,6 @@ async function stopAndGoBack() {
 
 <template>
   <div class="espresso-page">
-    <!-- P1-6: Brew Dialog -->
-    <BrewDialog
-      :visible="brewDialogVisible"
-      :profile-name="brewProfileName"
-      :temperature="brewTemperature"
-      :dose-in="brewDoseIn"
-      :dose-out="brewDoseOut"
-      :scale-weight="scaleWeight"
-      :grinder-name="brewGrinderName"
-      :grind-setting="brewGrindSetting"
-      :show-extended-fields="!!workflow?.context?.grinderModel"
-      @start="onBrewDialogStart"
-      @cancel="onBrewDialogCancel"
-      @update-temperature="onBrewDialogUpdateTemperature"
-      @update-yield="onBrewDialogUpdateYield"
-      @tare-scale="onBrewDialogTareScale"
-      @update-grinder="onBrewDialogUpdateGrinder"
-      @use-last-shot="onBrewDialogUseLastShot"
-    />
-
     <!-- Phase timeline -->
     <PhaseTimeline
       :phase="machine?.phase?.value ?? ''"
