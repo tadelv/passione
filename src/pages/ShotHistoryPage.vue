@@ -235,6 +235,9 @@ onMounted(loadInitial)
           <span class="shot-history__profile">
             {{ shot.profileName || shot.profile?.title || 'Unknown Profile' }}
           </span>
+          <span v-if="shot.coffeeName || shot.coffeeRoaster" class="shot-history__coffee">
+            {{ [shot.coffeeRoaster, shot.coffeeName].filter(Boolean).join(' — ') }}
+          </span>
           <span class="shot-history__meta">
             {{ formatDoseYield(shot) }}
           </span>
@@ -251,24 +254,28 @@ onMounted(loadInitial)
             {{ shot.rating }}%
           </span>
 
-          <!-- Per-row action buttons (matching QML: Load, Edit, Detail) -->
+          <!-- Per-row action buttons -->
           <button
             v-if="!compareMode"
             class="shot-history__action-btn shot-history__action-btn--load"
             @click.stop="loadShotProfile(shot)"
-            title="Load profile"
             aria-label="Load profile"
           >
-            L
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Load
           </button>
           <button
             v-if="!compareMode"
             class="shot-history__action-btn shot-history__action-btn--edit"
             @click.stop="editShot(shot)"
-            title="Edit metadata"
             aria-label="Edit metadata"
           >
-            E
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            Edit
           </button>
           <svg class="shot-history__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6" />
@@ -282,7 +289,11 @@ onMounted(loadInitial)
       </div>
     </div>
 
-    <BottomBar title="Shot History" @back="router.back()" />
+    <BottomBar title="Shot History" @back="router.back()">
+      <button class="shot-history__bottom-btn" @click="router.push('/auto-favorites')">
+        Favorites
+      </button>
+    </BottomBar>
   </div>
 </template>
 
@@ -406,17 +417,25 @@ onMounted(loadInitial)
   color: var(--color-warning);
 }
 
+.shot-history__coffee {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .shot-history__action-btn {
-  min-width: var(--touch-target-min);
-  min-height: var(--touch-target-min);
-  border-radius: 50%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 8px;
   border: none;
-  font-size: var(--font-md);
-  font-weight: 700;
+  font-size: var(--font-sm);
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
@@ -511,5 +530,21 @@ onMounted(loadInitial)
 
 .shot-history__row--selected {
   border-color: var(--color-primary);
+}
+
+.shot-history__bottom-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shot-history__bottom-btn:active {
+  opacity: 0.7;
 }
 </style>
