@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
+import { normalizeShotData } from '../composables/useChartNormalize.js'
 
 const props = defineProps({
   /** Array of shot objects (max 3) */
@@ -31,13 +32,14 @@ function buildData() {
   // Merge all time points, then interpolate each shot's data
   const allTimes = new Set()
   const shotDatasets = props.shots.map(shot => {
-    const elapsed = shot.elapsed ?? []
+    const flat = normalizeShotData(shot) || {}
+    const elapsed = flat.elapsed ?? []
     for (const t of elapsed) allTimes.add(t)
     return {
       elapsed,
-      pressure: shot.pressure ?? [],
-      flow: shot.flow ?? [],
-      weight: shot.weight ?? [],
+      pressure: flat.pressure ?? [],
+      flow: flat.flow ?? [],
+      weight: flat.weight ?? [],
     }
   })
 

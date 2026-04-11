@@ -333,7 +333,7 @@ watch(machine.state, (newState, oldState) => {
       if (oldState === 'hotWater') {
         completionValue.value = (scale.weight.value ?? 0).toFixed(0) + 'g'
       } else {
-        const elapsed = shotData.elapsed()
+        const elapsed = machine.shotTime.value
         completionValue.value = elapsed > 0 ? elapsed.toFixed(1) + 's' : ''
       }
       completionVisible.value = true

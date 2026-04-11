@@ -202,6 +202,10 @@ onUnmounted(() => {
         <span class="shot-graph__dot" :style="{ background: COLORS.weight }"></span>
         Weight
       </span>
+      <span class="shot-graph__legend-item">
+        <span class="shot-graph__dot" :style="{ background: COLORS.weightFlow }"></span>
+        Wt Flow
+      </span>
     </div>
   </div>
 </template>

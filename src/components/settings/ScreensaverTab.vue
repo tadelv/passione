@@ -9,6 +9,8 @@ const TYPES = [
   { value: 'flipClock', label: 'Flip Clock', desc: 'Classic flip clock display' },
   { value: 'lastShot', label: 'Last Shot', desc: 'Stats and graph from your last espresso' },
   { value: 'ambientGlow', label: 'Ambient Glow', desc: 'Slow-drifting colors' },
+  { value: 'fluid', label: 'Fluid', desc: 'Flowing colors with fluid dynamics' },
+  { value: 'gameOfLife', label: 'Game of Life', desc: "Conway's cellular automaton" },
 ]
 </script>
 

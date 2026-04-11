@@ -172,17 +172,21 @@ export function useMachine() {
     if (newState === oldState) return
 
     if (FLOWING_STATES.has(newState)) {
-      // Entering any flowing state: reset timer, wait for preparingForShot to end
+      // Entering any flowing state: reset timer
       _resetShotTimer()
+      // Espresso waits for substate to exit preparingForShot; others start immediately
+      if (newState !== 'espresso') {
+        _startShotTimer()
+      }
     } else if (FLOWING_STATES.has(oldState)) {
       // Leaving a flowing operation — keep final time visible but stop ticking
       _stopShotTimer()
     }
   })
 
-  // Start the timer when the machine exits preparingForShot (applies to all operations)
+  // Start the espresso timer when the machine exits preparingForShot
   watch(substate, (newSubstate) => {
-    if (!FLOWING_STATES.has(state.value)) return
+    if (state.value !== 'espresso') return
     if (newSubstate === 'preparingForShot' || _shotStartTime.value !== null) return
     _startShotTimer()
   })

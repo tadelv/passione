@@ -2,6 +2,8 @@
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import ShotSilhouette from '../components/ShotSilhouette.vue'
+import FluidCanvas from '../components/FluidCanvas.vue'
+import GameOfLifeCanvas from '../components/GameOfLifeCanvas.vue'
 import { normalizeShot } from '../composables/useShotNormalize'
 
 const settingsInstance = inject('settings', null)
@@ -161,6 +163,17 @@ onUnmounted(() => {
       <div class="screensaver__particle screensaver__particle--5" />
       <div class="screensaver__particle screensaver__particle--6" />
       <span class="screensaver__glow-clock">{{ hours }}:{{ minutes }}</span>
+    </div>
+
+    <!-- Fluid Dynamics Mode -->
+    <div v-else-if="ssType === 'fluid'" class="screensaver__fluid">
+      <FluidCanvas />
+      <span class="screensaver__fluid-clock">{{ hours }}:{{ minutes }}</span>
+    </div>
+
+    <!-- Game of Life Mode -->
+    <div v-else-if="ssType === 'gameOfLife'" class="screensaver__gol">
+      <GameOfLifeCanvas :hours="hours" :minutes="minutes" />
     </div>
 
     <!-- Black Screen Mode (disabled type or fallback) -->
@@ -344,7 +357,7 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   font-size: var(--font-timer);
   font-weight: 200;
-  color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.4);
   font-variant-numeric: tabular-nums;
   letter-spacing: 4px;
   z-index: var(--z-chart);
@@ -367,7 +380,7 @@ onUnmounted(() => {
 .screensaver__blob--green {
   width: 350px;
   height: 350px;
-  background: radial-gradient(circle, rgba(24, 195, 126, 0.45), transparent 70%);
+  background: radial-gradient(circle, rgba(24, 195, 126, 0.7), transparent 70%);
   top: 15%;
   left: 10%;
   animation: drift1 45s ease-in-out infinite;
@@ -376,7 +389,7 @@ onUnmounted(() => {
 .screensaver__blob--blue {
   width: 400px;
   height: 400px;
-  background: radial-gradient(circle, rgba(78, 133, 244, 0.35), transparent 70%);
+  background: radial-gradient(circle, rgba(78, 133, 244, 0.6), transparent 70%);
   top: 40%;
   left: 55%;
   animation: drift2 55s ease-in-out infinite;
@@ -385,7 +398,7 @@ onUnmounted(() => {
 .screensaver__blob--red {
   width: 320px;
   height: 320px;
-  background: radial-gradient(circle, rgba(233, 69, 96, 0.4), transparent 70%);
+  background: radial-gradient(circle, rgba(233, 69, 96, 0.65), transparent 70%);
   top: 60%;
   left: 25%;
   animation: drift3 50s ease-in-out infinite;
@@ -394,7 +407,7 @@ onUnmounted(() => {
 .screensaver__blob--brown {
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(162, 105, 61, 0.4), transparent 70%);
+  background: radial-gradient(circle, rgba(162, 105, 61, 0.65), transparent 70%);
   top: 20%;
   left: 65%;
   animation: drift4 40s ease-in-out infinite;
@@ -403,7 +416,7 @@ onUnmounted(() => {
 .screensaver__blob--green2 {
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(24, 195, 126, 0.3), transparent 70%);
+  background: radial-gradient(circle, rgba(24, 195, 126, 0.55), transparent 70%);
   top: 70%;
   left: 70%;
   animation: drift1 60s ease-in-out infinite reverse;
@@ -439,7 +452,7 @@ onUnmounted(() => {
 .screensaver__particle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.35);
   will-change: transform;
 }
 
@@ -495,8 +508,33 @@ onUnmounted(() => {
   left: 50%;
   transform: translateX(-50%);
   font-size: var(--font-md);
-  color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.25);
   font-variant-numeric: tabular-nums;
+}
+
+/* Fluid Dynamics */
+.screensaver__fluid {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.screensaver__fluid-clock {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--font-md);
+  color: rgba(255, 255, 255, 0.25);
+  font-variant-numeric: tabular-nums;
+  z-index: 1;
+}
+
+/* Game of Life */
+.screensaver__gol {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
 /* Black screen mode */
