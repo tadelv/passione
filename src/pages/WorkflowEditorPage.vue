@@ -50,6 +50,22 @@ const profileTitle = ref('')
 const profileId = ref(null)
 const awaitingProfileFromPicker = ref(false)
 
+// ---- Unsaved-changes dialog state ----
+const unsavedDialogVisible = ref(false)
+const workflowSnapshot = ref(null)
+
+onMounted(() => {
+  if (workflow) {
+    workflowSnapshot.value = {
+      profile: workflow.profile ? JSON.parse(JSON.stringify(workflow.profile)) : null,
+      context: workflow.context ? JSON.parse(JSON.stringify(workflow.context)) : null,
+      steamSettings: workflow.steamSettings ? JSON.parse(JSON.stringify(workflow.steamSettings)) : null,
+      hotWaterData: workflow.hotWaterData ? JSON.parse(JSON.stringify(workflow.hotWaterData)) : null,
+      rinseData: workflow.rinseData ? JSON.parse(JSON.stringify(workflow.rinseData)) : null,
+    }
+  }
+})
+
 // ---- Optional operation settings (for combo) ----
 const includeSteam = ref(false)
 const steamDuration = ref(30)
@@ -435,12 +451,57 @@ function onChangeProfile() {
   router.push('/profiles?from=workflow')
 }
 
-// ---- Back button + save placeholders (dialog wiring added in Task 9) ----
+// ---- Back button + dialog handlers ----
 function onSaveClick() {
   saveToSelectedCombo()
 }
+
 function onBackClick() {
+  if (dirty.value) {
+    unsavedDialogVisible.value = true
+  } else {
+    router.back()
+  }
+}
+
+function onDialogSave() {
+  saveToSelectedCombo()
+  unsavedDialogVisible.value = false
   router.back()
+}
+
+function onDialogSaveAsNew() {
+  saveAsNew()
+  unsavedDialogVisible.value = false
+  router.back()
+}
+
+async function onDialogDiscard() {
+  if (workflowSnapshot.value) {
+    try {
+      await updateWorkflow({
+        context: workflowSnapshot.value.context ?? undefined,
+        steamSettings: workflowSnapshot.value.steamSettings ?? undefined,
+        hotWaterData: workflowSnapshot.value.hotWaterData ?? undefined,
+        rinseData: workflowSnapshot.value.rinseData ?? undefined,
+      })
+    } catch {
+      // Silent — best effort revert
+    }
+  }
+  unsavedDialogVisible.value = false
+  router.back()
+}
+
+function onDialogKeepChanges() {
+  // Live workflow already reflects form state via the live-apply watcher.
+  // Combo is not touched. Just navigate back.
+  unsavedDialogVisible.value = false
+  router.back()
+}
+
+function onDialogClose() {
+  unsavedDialogVisible.value = false
 }
 
 // Sync profile title when returning from ProfileSelectorPage.
@@ -746,6 +807,16 @@ watch(() => workflow?.profile, (newProfile) => {
       @save="onComboEditSave"
       @delete="onComboEditDelete"
       @cancel="onComboEditCancel"
+    />
+
+    <UnsavedChangesDialog
+      :visible="unsavedDialogVisible"
+      :combo-selected="selectedIndex >= 0"
+      @save="onDialogSave"
+      @save-as-new="onDialogSaveAsNew"
+      @discard="onDialogDiscard"
+      @keep-changes="onDialogKeepChanges"
+      @close="onDialogClose"
     />
   </div>
 </template>
