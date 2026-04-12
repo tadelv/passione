@@ -1,9 +1,43 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getBuildInfo } from '../../api/rest.js'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { getBuildInfo, checkForSkinUpdates, getSkin } from '../../api/rest.js'
+
+const SKIN_ID = 'passione'
+const { t } = useI18n()
 
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
 const buildInfo = ref(null)
+
+// Update-check state machine: 'idle' | 'checking' | 'updated' | 'current' | 'error'
+const updateState = ref('idle')
+let resetTimer = null
+
+async function handleCheckForUpdates() {
+  if (updateState.value === 'checking') return
+  updateState.value = 'checking'
+  clearTimeout(resetTimer)
+
+  try {
+    await checkForSkinUpdates()
+    const skin = await getSkin(SKIN_ID)
+    const newVersion = skin?.version
+    if (newVersion && newVersion !== appVersion) {
+      updateState.value = 'updated'
+      // Brief pause so the user sees the message, then reload with cache-busting
+      setTimeout(() => {
+        const url = window.location.pathname + '?v=' + Date.now() + window.location.hash
+        window.location.href = url
+      }, 800)
+    } else {
+      updateState.value = 'current'
+      resetTimer = setTimeout(() => { updateState.value = 'idle' }, 3000)
+    }
+  } catch (_err) {
+    updateState.value = 'error'
+    resetTimer = setTimeout(() => { updateState.value = 'idle' }, 5000)
+  }
+}
 
 onMounted(async () => {
   try {
@@ -11,6 +45,10 @@ onMounted(async () => {
   } catch {
     // Gateway may not support /info yet
   }
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(resetTimer)
 })
 </script>
 
@@ -55,6 +93,24 @@ onMounted(async () => {
           </p>
         </div>
       </template>
+
+      <div class="about-tab__divider" />
+
+      <div class="about-tab__section">
+        <button
+          class="about-tab__update-btn"
+          :disabled="updateState === 'checking'"
+          :aria-busy="updateState === 'checking'"
+          data-testid="check-for-updates"
+          @click="handleCheckForUpdates"
+        >
+          <span v-if="updateState === 'idle'">{{ t('about.update.check') }}</span>
+          <span v-else-if="updateState === 'checking'">{{ t('about.update.checking') }}</span>
+          <span v-else-if="updateState === 'updated'">{{ t('about.update.updated') }}</span>
+          <span v-else-if="updateState === 'current'">{{ t('about.update.current') }}</span>
+          <span v-else>{{ t('about.update.error') }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -126,5 +182,29 @@ onMounted(async () => {
   font-style: italic;
   line-height: 1.5;
   max-width: 400px;
+}
+
+.about-tab__update-btn {
+  min-width: 200px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.about-tab__update-btn:hover:not(:disabled) {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.about-tab__update-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 </style>
