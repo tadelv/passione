@@ -87,19 +87,25 @@ async function onComboSelect(index) {
   const update = {}
 
   if (combo.profileId || combo.profileTitle) {
-    try {
-      const records = await getProfiles()
-      const allRecords = Array.isArray(records) ? records : []
-      // Match by ID first, fall back to title match (Profile objects don't carry the ProfileRecord ID)
-      const record = allRecords.find(r => r.id === combo.profileId)
-        || (combo.profileTitle && allRecords.find(r => r.profile?.title === combo.profileTitle))
-      if (record?.profile) {
-        update.profile = record.profile
-      } else {
-        toast?.warning(`Profile "${combo.profileTitle || combo.profileId}" not found — keeping current profile`)
+    const currentProfile = workflow?.profile
+    const alreadyLoaded =
+      (combo.profileId && currentProfile?.id === combo.profileId) ||
+      (combo.profileTitle && currentProfile?.title === combo.profileTitle)
+    if (!alreadyLoaded) {
+      try {
+        const records = await getProfiles()
+        const allRecords = Array.isArray(records) ? records : []
+        // Match by ID first, fall back to title match (Profile objects don't carry the ProfileRecord ID)
+        const record = allRecords.find(r => r.id === combo.profileId)
+          || (combo.profileTitle && allRecords.find(r => r.profile?.title === combo.profileTitle))
+        if (record?.profile) {
+          update.profile = record.profile
+        } else {
+          toast?.warning(`Profile "${combo.profileTitle || combo.profileId}" not found — keeping current profile`)
+        }
+      } catch {
+        toast?.warning('Could not load profile — keeping current profile')
       }
-    } catch {
-      toast?.warning('Could not load profile — keeping current profile')
     }
   }
 
