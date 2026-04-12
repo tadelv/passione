@@ -1,18 +1,21 @@
 <script setup>
-import { ref, computed, inject, watch } from 'vue'
+import { ref, computed, inject, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PresetPillRow from '../components/PresetPillRow.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
+import UnsavedChangesDialog from '../components/UnsavedChangesDialog.vue'
 
 const settings = inject('settings', null)
 const workflow = inject('workflow', null)
 const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
 const router = useRouter()
+const { t } = useI18n()
 
 const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
@@ -285,28 +288,50 @@ function comboValues() {
   return vals
 }
 
-let saveTimer = null
-function debouncedSaveToCombo() {
-  if (!settings || selectedIndex.value < 0 || _updating) return
-  clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    const combos = [...workflowCombos.value]
-    const existing = combos[selectedIndex.value]
-    combos[selectedIndex.value] = {
-      ...existing,
-      ...comboValues(),
-    }
-    settings.settings.workflowCombos = combos
-  }, 500)
+// ---- Build workflow update payload from current form state ----
+function buildWorkflowUpdate() {
+  const ctx = {
+    targetDoseWeight: doseIn.value,
+    targetYield: doseOut.value,
+    coffeeName: coffeeName.value || null,
+    coffeeRoaster: roaster.value || null,
+    grinderModel: selectedGrinder.value?.model ?? (grinder.value || null),
+    grinderSetting: grinderSetting.value != null ? String(grinderSetting.value) : null,
+  }
+  if (selectedGrinderId.value) ctx.grinderId = String(selectedGrinderId.value)
+  if (selectedBatchId.value) ctx.beanBatchId = String(selectedBatchId.value)
+
+  const payload = { context: ctx }
+  payload.steamSettings = includeSteam.value
+    ? { targetTemperature: steamTemperature.value, duration: steamDuration.value, flow: steamFlow.value }
+    : { targetTemperature: settings?.settings?.steamTemperature ?? 160, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
+  payload.rinseData = includeFlush.value
+    ? { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: flushDuration.value, flow: flushFlowRate.value }
+    : { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: 0, flow: settings?.settings?.flushFlowRate ?? 6.0 }
+  payload.hotWaterData = includeHotWater.value
+    ? { targetTemperature: hotWaterTemperature.value, volume: hotWaterVolume.value, duration: settings?.settings?.hotWaterDuration ?? 60, flow: settings?.settings?.hotWaterFlow ?? 6.0 }
+    : { targetTemperature: settings?.settings?.hotWaterTemperature ?? 80, volume: 0, duration: 0, flow: settings?.settings?.hotWaterFlow ?? 6.0 }
+  return payload
 }
 
-// Watch all fields for auto-save
-watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
-       selectedBeanId, selectedBatchId, selectedGrinderId,
-       profileId, profileTitle,
-       includeSteam, steamDuration, steamFlow, steamTemperature,
-       includeFlush, flushDuration, flushFlowRate,
-       includeHotWater, hotWaterVolume, hotWaterTemperature], debouncedSaveToCombo)
+// ---- Apply current form state to the live workflow (no combo mutation) ----
+async function applyToLiveWorkflow() {
+  try {
+    await updateWorkflow(buildWorkflowUpdate())
+  } catch {
+    // Silent — live-apply fires often; errors shouldn't toast-spam
+  }
+}
+
+// ---- Persist current form state to the selected combo ----
+function saveToSelectedCombo() {
+  if (!settings || selectedIndex.value < 0) return
+  const combos = [...workflowCombos.value]
+  const existing = combos[selectedIndex.value]
+  combos[selectedIndex.value] = { ...existing, ...comboValues() }
+  settings.settings.workflowCombos = combos
+  toast?.success(t('workflowEditor.toastSaved'))
+}
 
 // ---- Save as new combo ----
 function saveAsNew() {
@@ -323,43 +348,18 @@ function saveAsNew() {
   toast?.success('Combo saved')
 }
 
-// ---- Save to workflow ----
-async function saveToWorkflow() {
-  try {
-    const ctx = {
-      targetDoseWeight: doseIn.value,
-      targetYield: doseOut.value,
-      coffeeName: coffeeName.value || null,
-      coffeeRoaster: roaster.value || null,
-      grinderModel: selectedGrinder.value?.model ?? (grinder.value || null),
-      grinderSetting: grinderSetting.value != null ? String(grinderSetting.value) : null,
-    }
-    if (selectedGrinderId.value) ctx.grinderId = String(selectedGrinderId.value)
-    if (selectedBatchId.value) ctx.beanBatchId = String(selectedBatchId.value)
-
-    const workflowUpdate = { context: ctx }
-    workflowUpdate.steamSettings = includeSteam.value
-      ? { targetTemperature: steamTemperature.value, duration: steamDuration.value, flow: steamFlow.value }
-      : { targetTemperature: settings?.settings?.steamTemperature ?? 160, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
-    workflowUpdate.rinseData = includeFlush.value
-      ? { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: flushDuration.value, flow: flushFlowRate.value }
-      : { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: 0, flow: settings?.settings?.flushFlowRate ?? 6.0 }
-    workflowUpdate.hotWaterData = includeHotWater.value
-      ? { targetTemperature: hotWaterTemperature.value, volume: hotWaterVolume.value, duration: settings?.settings?.hotWaterDuration ?? 60, flow: settings?.settings?.hotWaterFlow ?? 6.0 }
-      : { targetTemperature: settings?.settings?.hotWaterTemperature ?? 80, volume: 0, duration: 0, flow: settings?.settings?.hotWaterFlow ?? 6.0 }
-    await updateWorkflow(workflowUpdate)
-    // Also save to combo if one is selected
-    if (settings && selectedIndex.value >= 0) {
-      const combos = [...workflowCombos.value]
-      const existing = combos[selectedIndex.value]
-      combos[selectedIndex.value] = { ...existing, ...comboValues() }
-      settings.settings.workflowCombos = combos
-    }
-    toast?.success('Applied & saved')
-  } catch {
-    toast?.error('Failed to save to workflow')
-  }
-}
+// ---- Live-apply: push every field change to the workflow (300ms debounce) ----
+let liveApplyTimer = null
+watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
+       selectedBeanId, selectedBatchId, selectedGrinderId,
+       profileId, profileTitle,
+       includeSteam, steamDuration, steamFlow, steamTemperature,
+       includeFlush, flushDuration, flushFlowRate,
+       includeHotWater, hotWaterVolume, hotWaterTemperature], () => {
+  if (_updating) return
+  clearTimeout(liveApplyTimer)
+  liveApplyTimer = setTimeout(applyToLiveWorkflow, 300)
+})
 
 // ---- Suggestion lists from existing combos ----
 const coffeeSuggestions = computed(() =>
@@ -681,8 +681,8 @@ watch(() => workflow?.profile, (newProfile) => {
     </div><!-- end scroll -->
 
     <BottomBar :title="selectedIndex >= 0 ? (workflowCombos[selectedIndex]?.name || 'Workflow Editor') : 'Workflow Editor'" @back="router.back()">
-      <button class="bean-info__save-btn bean-info__save-btn--secondary" @click="saveToWorkflow">
-        {{ selectedIndex >= 0 ? 'Apply & Save' : 'Apply' }}
+      <button class="bean-info__save-btn bean-info__save-btn--secondary" @click="applyToLiveWorkflow">
+        Apply
       </button>
       <button class="bean-info__save-btn" @click="saveAsNew">
         Save as New
