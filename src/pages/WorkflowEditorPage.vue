@@ -45,6 +45,7 @@ const showBatchList = ref(false)
 // ---- Profile state ----
 const profileTitle = ref('')
 const profileId = ref(null)
+const awaitingProfileFromPicker = ref(false)
 
 // ---- Optional operation settings (for combo) ----
 const includeSteam = ref(false)
@@ -399,13 +400,24 @@ watch(ratioValue, (val) => {
   _updating = false
 })
 
-// Sync profile title when returning from ProfileSelectorPage
+// ---- Profile change navigation ----
+function onChangeProfile() {
+  awaitingProfileFromPicker.value = true
+  router.push('/profiles?from=workflow')
+}
+
+// Sync profile title when returning from ProfileSelectorPage.
+// Accepts workflow.profile updates in two cases:
+//   1. No combo selected — ambient safety default
+//   2. User explicitly picked a profile via the Change button (awaitingProfileFromPicker)
 watch(() => workflow?.profile, (newProfile) => {
-  if (newProfile && !_updating && selectedIndex.value < 0) {
-    // Only sync from workflow when no combo is selected — combos carry
-    // their own profileId/profileTitle and must not be overwritten.
+  if (!newProfile || _updating) return
+  const explicitlyPicked = awaitingProfileFromPicker.value
+  const noComboSelected = selectedIndex.value < 0
+  if (explicitlyPicked || noComboSelected) {
     profileTitle.value = newProfile.title ?? ''
     profileId.value = newProfile.id ?? null
+    awaitingProfileFromPicker.value = false
   }
 }, { deep: true })
 </script>
@@ -434,7 +446,7 @@ watch(() => workflow?.profile, (newProfile) => {
       <h4 class="bean-info__section-title">Profile</h4>
       <div class="bean-info__profile-row">
         <span class="bean-info__profile-name">{{ profileTitle || 'No profile selected' }}</span>
-        <button class="bean-info__change-btn" @click="router.push('/profiles?from=workflow')">Change</button>
+        <button class="bean-info__change-btn" @click="onChangeProfile">Change</button>
       </div>
     </div>
 
