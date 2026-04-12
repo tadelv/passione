@@ -264,7 +264,7 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-// ---- Auto-save to selected combo ----
+// ---- Combo values snapshot ----
 function comboValues() {
   const vals = {
     profileId: profileId.value,
@@ -287,6 +287,35 @@ function comboValues() {
   }
   return vals
 }
+
+// ---- Dirty tracking ----
+const dirty = computed(() => {
+  if (selectedIndex.value < 0) {
+    // No combo selected — dirty if any identifiable field has a non-initial value
+    return !!(
+      coffeeName.value || roaster.value || grinder.value || grinderSetting.value ||
+      profileTitle.value || profileId.value ||
+      selectedBeanId.value || selectedBatchId.value || selectedGrinderId.value ||
+      includeSteam.value || includeFlush.value || includeHotWater.value
+    )
+  }
+  const saved = workflowCombos.value[selectedIndex.value]
+  if (!saved) return false
+  const current = comboValues()
+  const keys = [
+    'profileId', 'profileTitle', 'coffeeName', 'roaster',
+    'doseIn', 'doseOut', 'grinder', 'grinderSetting',
+    'selectedBeanId', 'selectedBatchId', 'selectedGrinderId',
+    'includeSteam', 'includeFlush', 'includeHotWater',
+  ]
+  for (const k of keys) {
+    if ((current[k] ?? null) !== (saved[k] ?? null)) return true
+  }
+  if (JSON.stringify(current.steamSettings) !== JSON.stringify(saved.steamSettings)) return true
+  if (JSON.stringify(current.flushSettings) !== JSON.stringify(saved.flushSettings)) return true
+  if (JSON.stringify(current.hotWaterSettings) !== JSON.stringify(saved.hotWaterSettings)) return true
+  return false
+})
 
 // ---- Build workflow update payload from current form state ----
 function buildWorkflowUpdate() {
@@ -406,6 +435,14 @@ function onChangeProfile() {
   router.push('/profiles?from=workflow')
 }
 
+// ---- Back button + save placeholders (dialog wiring added in Task 9) ----
+function onSaveClick() {
+  saveToSelectedCombo()
+}
+function onBackClick() {
+  router.back()
+}
+
 // Sync profile title when returning from ProfileSelectorPage.
 // Accepts workflow.profile updates in two cases:
 //   1. No combo selected — ambient safety default
@@ -425,7 +462,7 @@ watch(() => workflow?.profile, (newProfile) => {
 <template>
   <div class="bean-info">
     <!-- Workflow combos -->
-    <div class="bean-info__presets">
+    <div class="bean-info__presets" :class="{ 'bean-info__presets--dirty': dirty && selectedIndex >= 0 }">
       <PresetPillRow
         :presets="workflowCombos"
         :selected-index="selectedIndex"
@@ -680,13 +717,25 @@ watch(() => workflow?.profile, (newProfile) => {
 
     </div><!-- end scroll -->
 
-    <BottomBar :title="selectedIndex >= 0 ? (workflowCombos[selectedIndex]?.name || 'Workflow Editor') : 'Workflow Editor'" @back="router.back()">
-      <button class="bean-info__save-btn bean-info__save-btn--secondary" @click="applyToLiveWorkflow">
-        Apply
-      </button>
-      <button class="bean-info__save-btn" @click="saveAsNew">
-        Save as New
-      </button>
+    <BottomBar
+      :title="selectedIndex >= 0
+        ? (workflowCombos[selectedIndex]?.name || t('workflowEditor.title')) + (dirty ? ' \u25CF' : '')
+        : t('workflowEditor.title')"
+      @back="onBackClick"
+    >
+      <template v-if="selectedIndex >= 0 && dirty">
+        <button class="bean-info__save-btn" data-testid="wfe-save" @click="onSaveClick">
+          {{ t('workflowEditor.save') }}
+        </button>
+        <button class="bean-info__save-btn bean-info__save-btn--secondary" data-testid="wfe-save-as-new" @click="saveAsNew">
+          {{ t('workflowEditor.saveAsNew') }}
+        </button>
+      </template>
+      <template v-else-if="selectedIndex < 0 && dirty">
+        <button class="bean-info__save-btn" data-testid="wfe-save-as-new" @click="saveAsNew">
+          {{ t('workflowEditor.saveAsNew') }}
+        </button>
+      </template>
     </BottomBar>
 
     <PresetEditPopup
@@ -1005,5 +1054,10 @@ watch(() => workflow?.profile, (newProfile) => {
   .bean-info__grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dirty indicator — orange outline on the selected combo pill */
+.bean-info__presets--dirty :deep(.preset-pill-row__pill--selected) {
+  box-shadow: 0 0 0 2px #c89b3c;
 }
 </style>
