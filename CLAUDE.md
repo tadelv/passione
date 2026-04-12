@@ -112,10 +112,12 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 
 ## Interaction Patterns
 
-- **Preset pills:** Single tap selects, double-tap on selected activates (starts operation), double-tap on unselected opens edit popup
+- **Terminology.** *Operation presets* (steam / hot-water / flush) are quick-switch parameter sets for a single operation — they live on operation pages and have tap-to-start. *Workflow combos* are bundled recipe state (profile + bean + grinder + dose + optional steam/hot-water/flush overrides) — they live on IdlePage and in `WorkflowEditorPage`, and they never start an operation directly. Both render via the `PresetPillRow` component, but with different interaction contracts.
+- **Operation preset pills** (SteamPage / HotWaterPage / FlushPage): Single tap selects, double-tap on selected activates (starts operation), double-tap on unselected opens edit popup.
 - **ValueInput:** +/- buttons with press-and-hold repeat (80ms), drag-to-adjust on display (20px = 1 step), full keyboard support (arrows, PageUp/Down, Home/End)
 - **Operation pages:** Show preset pills AND stop button during active operation. Settings sync to workflow API with 300ms debounce.
-- **IdlePage espresso presets:** Two-step — first tap loads profile into workflow, second tap starts espresso. Double-tap on unselected shows ProfilePreviewPopup
+- **IdlePage workflow combos:** Tap to load combo into workflow. Double-tap to open the Workflow Editor (`/workflow/edit`). The Espresso action button is the one and only way to start a shot — tapping a workflow combo never starts an operation.
+- **WorkflowEditorPage** (`/workflow/edit`, legacy `/bean-info` redirects): Edit workflow combos. Field changes are **live-applied** to the running workflow (300ms debounce) without touching the saved combo. Explicit `Save` / `Save as New` buttons persist changes to the combo. Back with unsaved changes opens `UnsavedChangesDialog` with four actions: Save, Save as New, Discard (reverts live workflow to the pre-edit snapshot), Keep changes (keeps live workflow values; combo untouched).
 - **BrewDialog:** Optional pre-brew dialog (controlled by `showBrewDialog` setting). Shows temperature, dose, yield, ratio, grinder fields. Integrates with workflow API.
 - **ProfileSelectorPage:** Single click previews profile (shows graph + details in right panel). Explicit "Use Profile" button applies it. Toast confirmation on apply.
 - **ShotHistoryPage:** Per-row Load (L) and Edit (E) buttons, tap opens detail. Server-side search with debounce and generation counter for race prevention. Shot count shows server total.
