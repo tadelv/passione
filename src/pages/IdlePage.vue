@@ -161,7 +161,7 @@ async function onComboSelect(index) {
   toast?.success(`Loaded ${combo.name || 'combo'}`)
 }
 
-function onComboLongPress(index) {
+function onComboEdit(index) {
   const combo = workflowCombos.value[index]
   if (!combo) return
   editPopupPreset.value = combo
@@ -240,7 +240,7 @@ const widgetEvents = {
   'start-hot-water': startHotWater,
   'start-flush': startFlush,
   'workflow-combo-select': onComboSelect,
-  'workflow-combo-long-press': onComboLongPress,
+  'workflow-combo-edit': onComboEdit,
 }
 
 onMounted(() => {

@@ -7,7 +7,9 @@ const props = defineProps({
   /** Index of the currently selected preset (-1 = none) */
   selectedIndex: { type: Number, default: -1 },
   /** Enable double-tap interaction (opens edit popup) */
-  longPressEnabled: { type: Boolean, default: false },
+  editEnabled: { type: Boolean, default: false },
+  /** When false, tap-on-selected becomes a no-op (no confirm state, no activate emit) */
+  confirmActivate: { type: Boolean, default: true },
   /** P6-4: Accessible label for the preset list */
   ariaLabel: { type: String, default: 'Presets' },
 })
@@ -15,7 +17,7 @@ const props = defineProps({
 const emit = defineEmits([
   'select',
   'activate',
-  'long-press',
+  'edit',
 ])
 
 // Track which index we last emitted 'select' for, to handle
@@ -43,9 +45,9 @@ function clearConfirm() {
 
 function onClick(index, event) {
   // Double-tap → edit (event.detail is the native click count)
-  if (event.detail >= 2 && props.longPressEnabled) {
+  if (event.detail >= 2 && props.editEnabled) {
     clearConfirm()
-    emit('long-press', index)
+    emit('edit', index)
     return
   }
 
@@ -53,6 +55,11 @@ function onClick(index, event) {
   const isSelected = index === props.selectedIndex || index === lastEmittedSelectIndex
 
   if (isSelected) {
+    // If activation is disabled, tap-on-selected is a no-op
+    if (!props.confirmActivate) {
+      clearConfirm()
+      return
+    }
     // Selected preset tapped — two-step confirm before activating
     if (confirmIndex.value === index) {
       // Second tap on confirmed → activate (start operation)

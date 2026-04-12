@@ -224,12 +224,12 @@ function onPresetSelect(index) {
   loadFromPreset(index)
 }
 
-// ---- Combo edit popup (long-press) ----
+// ---- Combo edit popup ----
 const editPopupVisible = ref(false)
 const editPopupPreset = ref(null)
 const editPopupIndex = ref(-1)
 
-function onComboLongPress(index) {
+function onComboEdit(index) {
   const combo = workflowCombos.value[index]
   if (!combo) return
   editPopupPreset.value = combo
@@ -417,9 +417,9 @@ watch(() => workflow?.profile, (newProfile) => {
       <PresetPillRow
         :presets="workflowCombos"
         :selected-index="selectedIndex"
-        :long-press-enabled="true"
+        :edit-enabled="true"
         @select="onPresetSelect"
-        @long-press="onComboLongPress"
+        @edit="onComboEdit"
       />
       <button class="bean-info__add-btn" @click="saveAsNew">
         + New Combo

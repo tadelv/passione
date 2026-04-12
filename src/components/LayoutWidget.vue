@@ -35,7 +35,7 @@ const emit = defineEmits([
   'start-hot-water',
   'start-flush',
   'workflow-combo-select',
-  'workflow-combo-long-press',
+  'workflow-combo-edit',
 ])
 
 const { t } = useI18n()
@@ -205,10 +205,10 @@ const lastShotInfo = computed(() => {
         <PresetPillRow
           :presets="workflowCombos"
           :selected-index="selectedWorkflowCombo"
-          :long-press-enabled="true"
+          :edit-enabled="true"
           @select="idx => emit('workflow-combo-select', idx)"
           @activate="() => emit('start-espresso')"
-          @long-press="idx => emit('workflow-combo-long-press', idx)"
+          @edit="idx => emit('workflow-combo-edit', idx)"
         />
       </div>
       <div v-else class="layout-widget__preset-section">
