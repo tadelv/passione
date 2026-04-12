@@ -1,13 +1,33 @@
 <script setup>
+import { ref, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-defineProps({
+const props = defineProps({
   visible: { type: Boolean, default: false },
   comboSelected: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['save', 'save-as-new', 'discard', 'keep-changes', 'close'])
 const { t } = useI18n()
+
+// Focus the primary button (first visible) when the dialog opens so keyboard
+// users have a sensible starting point and Escape → close works without
+// having to tab into the dialog first.
+const primaryBtnRef = ref(null)
+watch(() => props.visible, (isVisible) => {
+  if (isVisible) {
+    nextTick(() => {
+      primaryBtnRef.value?.focus?.()
+    })
+  }
+})
+
+function onKeyDown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    emit('close')
+  }
+}
 </script>
 
 <template>
@@ -18,7 +38,9 @@ const { t } = useI18n()
       role="dialog"
       aria-modal="true"
       aria-labelledby="ucd-title"
+      tabindex="-1"
       @click.self="emit('close')"
+      @keydown="onKeyDown"
     >
       <div class="ucd__panel">
         <h2 id="ucd-title" class="ucd__title">{{ t('workflowEditor.unsavedTitle') }}</h2>
@@ -26,6 +48,7 @@ const { t } = useI18n()
         <div class="ucd__actions">
           <button
             v-if="comboSelected"
+            ref="primaryBtnRef"
             class="ucd__btn ucd__btn--primary"
             data-testid="ucd-save"
             @click="emit('save')"
@@ -33,6 +56,7 @@ const { t } = useI18n()
             {{ t('workflowEditor.unsavedSave') }}
           </button>
           <button
+            :ref="comboSelected ? undefined : el => { primaryBtnRef = el }"
             class="ucd__btn"
             data-testid="ucd-save-as-new"
             @click="emit('save-as-new')"

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject, watch, onMounted } from 'vue'
+import { ref, computed, inject, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PresetPillRow from '../components/PresetPillRow.vue'
@@ -53,14 +53,34 @@ const profileId = ref(null)
 // Must survive the /workflow/edit → /profiles → /workflow/edit round-trip.
 // Pages unmount between route changes, so this can't live in a ref — we
 // use sessionStorage as a minimal cross-mount signal.
+//
+// We store the baseline profile id at the moment the user clicks "Change"
+// so that a subsequent mount only honors the flag if workflow.profile has
+// ACTUALLY changed since then. Without the baseline check, an abandoned
+// round-trip (user clicked Change, then navigated away via Settings/Home
+// instead of completing Use Profile) would leave the flag set and silently
+// overwrite the profile row the next time the editor was opened.
 const AWAITING_PROFILE_KEY = 'wfe:awaitingProfileFromPicker'
+const AWAITING_PROFILE_BASELINE_KEY = 'wfe:awaitingProfileBaseline'
 function isAwaitingProfileFromPicker() {
   try { return sessionStorage.getItem(AWAITING_PROFILE_KEY) === '1' } catch { return false }
 }
-function setAwaitingProfileFromPicker(v) {
+function getAwaitingProfileBaselineId() {
+  try { return sessionStorage.getItem(AWAITING_PROFILE_BASELINE_KEY) } catch { return null }
+}
+function setAwaitingProfileFromPicker(v, baselineId = null) {
   try {
-    if (v) sessionStorage.setItem(AWAITING_PROFILE_KEY, '1')
-    else sessionStorage.removeItem(AWAITING_PROFILE_KEY)
+    if (v) {
+      sessionStorage.setItem(AWAITING_PROFILE_KEY, '1')
+      if (baselineId != null) {
+        sessionStorage.setItem(AWAITING_PROFILE_BASELINE_KEY, String(baselineId))
+      } else {
+        sessionStorage.removeItem(AWAITING_PROFILE_BASELINE_KEY)
+      }
+    } else {
+      sessionStorage.removeItem(AWAITING_PROFILE_KEY)
+      sessionStorage.removeItem(AWAITING_PROFILE_BASELINE_KEY)
+    }
   } catch { /* no-op */ }
 }
 
@@ -82,11 +102,34 @@ onMounted(() => {
   // between navigations, so loadFromPreset() ran first and overwrote the
   // form's profileTitle with the combo's saved value. Re-sync from workflow
   // if the user came back from the picker.
+  //
+  // Wrap the assignments in the _updating guard so the live-apply watcher
+  // doesn't re-fire buildWorkflowUpdate() from stale form values set by
+  // loadFromPreset — that would silently clobber any user-side diverged
+  // context fields (grinderSetting, coffeeName, etc.) back to the combo's
+  // saved defaults.
   if (isAwaitingProfileFromPicker() && workflow?.profile) {
-    profileTitle.value = workflow.profile.title ?? ''
-    profileId.value = workflow.profile.id ?? null
+    const baselineId = getAwaitingProfileBaselineId()
+    const currentKey = workflow.profile.id ?? workflow.profile.title ?? ''
+    // Only honor the flag if workflow.profile has actually changed since
+    // the user clicked "Change" — otherwise this is an abandoned round-trip
+    // (user bailed out without picking) and we'd wrongly stomp the form.
+    if (baselineId !== String(currentKey)) {
+      _updating = true
+      profileTitle.value = workflow.profile.title ?? ''
+      profileId.value = workflow.profile.id ?? null
+      nextTick(() => { _updating = false })
+    }
     setAwaitingProfileFromPicker(false)
   }
+})
+
+// Cancel any pending live-apply / batch-restore work when the page unmounts.
+onBeforeUnmount(() => {
+  clearTimeout(liveApplyTimer)
+  liveApplyTimer = null
+  _pendingBatchWatch?.()
+  _pendingBatchWatch = null
 })
 
 // ---- Optional operation settings (for combo) ----
@@ -328,6 +371,23 @@ function comboValues() {
 }
 
 // ---- Dirty tracking ----
+// Compare op sub-settings semantically: when the op is off, only `duration`
+// (or `volume` for hot water) matters. A saved combo that persisted extra
+// sub-fields alongside `duration: 0` must NOT make the form look dirty
+// just because the current form re-builds the "off" shape differently.
+function effectiveSteam(s) {
+  if (!s || (s.duration ?? 0) === 0) return { duration: 0 }
+  return { duration: s.duration ?? 0, flow: s.flow ?? null, temperature: s.temperature ?? null }
+}
+function effectiveFlush(s) {
+  if (!s || (s.duration ?? 0) === 0) return { duration: 0 }
+  return { duration: s.duration ?? 0, flow: s.flow ?? null }
+}
+function effectiveHotWater(s) {
+  if (!s || (s.volume ?? 0) === 0) return { volume: 0 }
+  return { volume: s.volume ?? 0, temperature: s.temperature ?? null }
+}
+
 const dirty = computed(() => {
   if (selectedIndex.value < 0) {
     // No combo selected — dirty if any identifiable field has a non-initial value
@@ -350,9 +410,9 @@ const dirty = computed(() => {
   for (const k of keys) {
     if ((current[k] ?? null) !== (saved[k] ?? null)) return true
   }
-  if (JSON.stringify(current.steamSettings) !== JSON.stringify(saved.steamSettings)) return true
-  if (JSON.stringify(current.flushSettings) !== JSON.stringify(saved.flushSettings)) return true
-  if (JSON.stringify(current.hotWaterSettings) !== JSON.stringify(saved.hotWaterSettings)) return true
+  if (JSON.stringify(effectiveSteam(current.steamSettings)) !== JSON.stringify(effectiveSteam(saved.steamSettings))) return true
+  if (JSON.stringify(effectiveFlush(current.flushSettings)) !== JSON.stringify(effectiveFlush(saved.flushSettings))) return true
+  if (JSON.stringify(effectiveHotWater(current.hotWaterSettings)) !== JSON.stringify(effectiveHotWater(saved.hotWaterSettings))) return true
   return false
 })
 
@@ -413,7 +473,7 @@ function saveAsNew() {
   const combos = [...workflowCombos.value, vals]
   settings.settings.workflowCombos = combos
   settings.settings.selectedWorkflowCombo = combos.length - 1
-  toast?.success('Combo saved')
+  toast?.success(t('workflowEditor.toastSaved'))
 }
 
 // ---- Live-apply: push every field change to the workflow (300ms debounce) ----
@@ -470,7 +530,10 @@ watch(ratioValue, (val) => {
 
 // ---- Profile change navigation ----
 function onChangeProfile() {
-  setAwaitingProfileFromPicker(true)
+  // Snapshot the current workflow profile id so onMounted can verify that
+  // an ACTUAL profile pick occurred before honoring the flag.
+  const baselineId = workflow?.profile?.id ?? workflow?.profile?.title ?? ''
+  setAwaitingProfileFromPicker(true, baselineId)
   router.push('/profiles?from=workflow')
 }
 
@@ -500,6 +563,11 @@ function onDialogSaveAsNew() {
 }
 
 async function onDialogDiscard() {
+  // Cancel any pending live-apply timer first — otherwise it would fire
+  // 0-300ms later with stale form state and overwrite the snapshot we're
+  // about to restore.
+  clearTimeout(liveApplyTimer)
+  liveApplyTimer = null
   if (workflowSnapshot.value) {
     try {
       await updateWorkflow({
