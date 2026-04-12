@@ -4,6 +4,7 @@ import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import ShotSilhouette from '../components/ShotSilhouette.vue'
 import FluidCanvas from '../components/FluidCanvas.vue'
 import GameOfLifeCanvas from '../components/GameOfLifeCanvas.vue'
+import ScreensaverWaterWarning from '../components/ScreensaverWaterWarning.vue'
 import { normalizeShot } from '../composables/useShotNormalize'
 
 const settingsInstance = inject('settings', null)
@@ -102,6 +103,8 @@ onUnmounted(() => {
 
 <template>
   <div class="screensaver" @click="wake" @touchstart.passive="wake">
+    <ScreensaverWaterWarning v-if="ssType !== 'disabled'" />
+
     <!-- Flip Clock Mode -->
     <div v-if="ssType === 'flipClock'" class="screensaver__clock" :class="{ 'screensaver__clock--3d': is3d }">
       <div class="screensaver__flip-group">
