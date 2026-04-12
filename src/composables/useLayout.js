@@ -44,7 +44,7 @@ const WIDGET_TYPES = [
   'actionButtons',
   'shotPlan',
   'lastShot',
-  'workflowPresets',
+  'workflowCombos',
   'navButtons',
   'scaleInfo',
   'fullscreen',
@@ -54,7 +54,7 @@ const WIDGET_LABELS = {
   actionButtons: 'Action Buttons',
   shotPlan: 'Shot Plan',
   lastShot: 'Last Shot',
-  workflowPresets: 'Workflow Presets',
+  workflowCombos: 'Workflows',
   navButtons: 'Navigation Buttons',
   scaleInfo: 'Scale Info',
   fullscreen: 'Fullscreen Toggle',
@@ -65,7 +65,7 @@ const WIDGET_ZONE_RULES = {
   actionButtons: 'center',
   shotPlan: 'center',
   lastShot: 'center',
-  workflowPresets: 'center',
+  workflowCombos: 'center',
   navButtons: 'edge',
   scaleInfo: 'edge',
   fullscreen: 'edge',
@@ -79,7 +79,7 @@ const DEFAULT_LAYOUT = {
     topLeft:     { widgets: ['scaleInfo'] },
     topRight:    { widgets: ['fullscreen'] },
     centerLeft:  { widgets: ['actionButtons', 'shotPlan'] },
-    centerRight: { widgets: ['workflowPresets', 'lastShot'] },
+    centerRight: { widgets: ['workflowCombos', 'lastShot'] },
     bottomLeft:  { widgets: ['navButtons'] },
     bottomRight: { widgets: [] },
   },
@@ -113,7 +113,9 @@ export function useLayout() {
         validated.zones[zoneName] = { widgets: [] }
         continue
       }
-      const widgets = zoneConfig.widgets.filter(w => WIDGET_TYPES.includes(w))
+      const widgets = zoneConfig.widgets
+        .map(w => (w === 'workflowPresets' ? 'workflowCombos' : w))
+        .filter(w => WIDGET_TYPES.includes(w))
       validated.zones[zoneName] = { widgets }
     }
 

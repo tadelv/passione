@@ -198,8 +198,8 @@ const lastShotInfo = computed(() => {
       </div>
     </template>
 
-    <!-- Workflow Presets -->
-    <template v-else-if="type === 'workflowPresets'">
+    <!-- Workflow Combos -->
+    <template v-else-if="type === 'workflowCombos'">
       <div v-if="workflowCombos.length" class="layout-widget__preset-section">
         <span class="layout-widget__section-label">Workflows</span>
         <PresetPillRow
