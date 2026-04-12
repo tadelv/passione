@@ -6,8 +6,9 @@
  * loading the page opens a fresh WebSocket connection that receives the
  * new levels.
  *
- * Formula ported from Decenza's WaterLevelItem.qml:
- *   margin = currentLevel - 5 (sensor offset) - refillLevel
+ * Formula: `currentLevel` and `refillLevel` are both raw sensor mm in our
+ * data path (see waterMmToMl in App.vue which ADDS the sensor offset).
+ *   margin = currentLevel - refillLevel
  *   > 7 ok, > 5 low, > 3 warning, else critical
  */
 import { test, expect } from '@playwright/test'
@@ -38,20 +39,24 @@ async function openScreensaver(page) {
 
 test.describe('Screensaver water warning', () => {
   test.beforeEach(async ({ request }) => {
-    // Restore defaults in case an earlier test file left state that would
-    // interact: flipClock screensaver type and a full tank.
+    // Aggressive reset — earlier test files (notably user-workflow.spec.js)
+    // can leave the machine in a `sleeping` state, which causes App.vue to
+    // auto-navigate subsequent route loads to /screensaver even when we
+    // intended a different screensaver config. Force the machine back to
+    // idle first so our direct /#/screensaver navigation lands cleanly.
+    await request.put(`${BASE_URL}/api/v1/machine/state/idle`)
     await setScreensaverType(request, 'flipClock')
     await setWaterLevels(request, 75, 0)
   })
 
   test('ok state — indicator is not rendered', async ({ page, request }) => {
-    await setWaterLevels(request, 75, 0)  // margin = 75 - 5 - 0 = 70 → ok
+    await setWaterLevels(request, 75, 0)  // margin = 75 → ok
     await openScreensaver(page)
     await expect(page.locator('[data-testid="screensaver-water-warning"]')).toHaveCount(0)
   })
 
   test('low state — shows LOW label', async ({ page, request }) => {
-    await setWaterLevels(request, 16, 5)  // margin = 16 - 5 - 5 = 6 → low
+    await setWaterLevels(request, 11, 5)  // margin = 6 → low
     await openScreensaver(page)
     const warning = page.locator('[data-testid="screensaver-water-warning"]')
     await expect(warning).toBeVisible()
@@ -60,7 +65,7 @@ test.describe('Screensaver water warning', () => {
   })
 
   test('warning state — shows REFILL SOON label', async ({ page, request }) => {
-    await setWaterLevels(request, 14, 5)  // margin = 14 - 5 - 5 = 4 → warning
+    await setWaterLevels(request, 9, 5)  // margin = 4 → warning
     await openScreensaver(page)
     const warning = page.locator('[data-testid="screensaver-water-warning"]')
     await expect(warning).toBeVisible()
@@ -69,7 +74,7 @@ test.describe('Screensaver water warning', () => {
   })
 
   test('critical state — shows REFILL NOW label', async ({ page, request }) => {
-    await setWaterLevels(request, 8, 5)  // margin = 8 - 5 - 5 = -2 → critical
+    await setWaterLevels(request, 7, 5)  // margin = 2 → critical
     await openScreensaver(page)
     const warning = page.locator('[data-testid="screensaver-water-warning"]')
     await expect(warning).toBeVisible()
@@ -79,7 +84,7 @@ test.describe('Screensaver water warning', () => {
 
   test('disabled screensaver mode — indicator not rendered even when critical', async ({ page, request }) => {
     await setScreensaverType(request, 'disabled')
-    await setWaterLevels(request, 8, 5)  // critical water state
+    await setWaterLevels(request, 7, 5)  // critical water state
     await openScreensaver(page)
     await expect(page.locator('[data-testid="screensaver-water-warning"]')).toHaveCount(0)
   })

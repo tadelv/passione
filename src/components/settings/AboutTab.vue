@@ -12,6 +12,8 @@ const buildInfo = ref(null)
 // Update-check state machine: 'idle' | 'checking' | 'updated' | 'current' | 'error'
 const updateState = ref('idle')
 let resetTimer = null
+let reloadTimer = null
+let mounted = true
 
 async function handleCheckForUpdates() {
   if (updateState.value === 'checking') return
@@ -20,22 +22,32 @@ async function handleCheckForUpdates() {
 
   try {
     await checkForSkinUpdates()
+    if (!mounted) return
     const skin = await getSkin(SKIN_ID)
+    if (!mounted) return
     const newVersion = skin?.version
     if (newVersion && newVersion !== appVersion) {
       updateState.value = 'updated'
-      // Brief pause so the user sees the message, then reload with cache-busting
-      setTimeout(() => {
+      // Brief pause so the user sees the message, then reload with cache-busting.
+      // Track the timer so onBeforeUnmount can cancel it if the user navigates
+      // away before the reload fires — otherwise the setTimeout would force a
+      // full page reload out from under whatever route they moved to.
+      reloadTimer = setTimeout(() => {
         const url = window.location.pathname + '?v=' + Date.now() + window.location.hash
         window.location.href = url
       }, 800)
     } else {
       updateState.value = 'current'
-      resetTimer = setTimeout(() => { updateState.value = 'idle' }, 3000)
+      resetTimer = setTimeout(() => {
+        if (mounted) updateState.value = 'idle'
+      }, 3000)
     }
   } catch (_err) {
+    if (!mounted) return
     updateState.value = 'error'
-    resetTimer = setTimeout(() => { updateState.value = 'idle' }, 5000)
+    resetTimer = setTimeout(() => {
+      if (mounted) updateState.value = 'idle'
+    }, 5000)
   }
 }
 
@@ -48,7 +60,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  mounted = false
   clearTimeout(resetTimer)
+  clearTimeout(reloadTimer)
 })
 </script>
 

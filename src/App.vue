@@ -98,24 +98,39 @@ const waterLevelPercent = computed(() => {
   return Math.min(100, Math.round((ml / WATER_FULL_ML) * 100))
 })
 
-// Water warning state — ported from Decenza's WaterLevelItem.qml (19-27):
-//   margin = waterLevelMm - sensorOffset - refillLevel
-//   > 7 ok, > 5 low, > 3 warning, else critical
-// Sensor offset is 5mm (the raw sensor reading sits above the intake in
-// Decenza's hardware). Whether ReaPrime's /ws/v1/machine/waterLevels includes
-// this offset in `currentLevel` is tested against physical hardware on the
-// first real-gateway run; the formula can be tweaked in one place if needed.
-const SENSOR_OFFSET_MM = 5
-const waterWarningState = computed(() => {
-  if (!waterLevels.isConnected.value) return 'ok'
-  const current = waterLevels.currentLevel.value
-  const refill = waterLevels.refillLevel.value
-  const margin = current - SENSOR_OFFSET_MM - refill
-  if (margin > 7) return 'ok'
-  if (margin > 5) return 'low'
-  if (margin > 3) return 'warning'
-  return 'critical'
-})
+// Water warning state — ported from Decenza's WaterLevelItem.qml (19-27).
+//
+// In Decenza the formula is `margin = waterLevelMm - sensorOffset - refillPoint`,
+// where `waterLevelMm` already includes the 5 mm sensor offset and
+// `refillPoint` is raw sensor mm — simplifying to `rawSensor - rawRefill`.
+// Our `waterLevels.currentLevel` is the RAW sensor reading (see how
+// `waterMmToMl()` above ADDS `WATER_SENSOR_OFFSET_MM` to it), and
+// `waterLevels.refillLevel` is raw sensor mm from the same WS message —
+// so the subtraction is direct.
+//
+// Implemented as a ref updated by a watch (rather than a computed) so a
+// transient WS disconnect or a pre-data startup doesn't flicker the
+// warning indicator to "ok" or "critical" — we hold the last known value
+// until we see real, connected data.
+const waterWarningState = ref('ok')
+
+watch(
+  [waterLevels.currentLevel, waterLevels.refillLevel, waterLevels.isConnected],
+  () => {
+    // Don't flip during transient disconnects or before the first WS
+    // snapshot delivers real values — keep the last known state.
+    if (!waterLevels.isConnected.value) return
+    const current = waterLevels.currentLevel.value
+    if (current <= 0) return
+    const refill = waterLevels.refillLevel.value
+    const margin = current - refill
+    if (margin > 7) waterWarningState.value = 'ok'
+    else if (margin > 5) waterWarningState.value = 'low'
+    else if (margin > 3) waterWarningState.value = 'warning'
+    else waterWarningState.value = 'critical'
+  },
+  { immediate: true }
+)
 
 provide('waterLevelDisplay', waterLevelDisplay)
 provide('waterLevelPercent', waterLevelPercent)
