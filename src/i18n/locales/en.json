@@ -15,6 +15,21 @@
     "group": "Group",
     "notAvailable": "Feature not yet available"
   },
+  "workflowEditor": {
+    "title": "Workflow Editor",
+    "combos": "Workflows",
+    "save": "Save",
+    "saveAsNew": "Save as New",
+    "unsavedTitle": "You have unsaved changes",
+    "unsavedBody": "Choose what to do with your edits.",
+    "unsavedSave": "Save",
+    "unsavedSaveAsNew": "Save as New",
+    "unsavedDiscard": "Discard",
+    "unsavedDiscardHint": "Revert live workflow to the state before you opened this page.",
+    "unsavedKeepChanges": "Keep changes",
+    "unsavedKeepChangesHint": "Leave the combo untouched; keep the new values on the live workflow.",
+    "toastSaved": "Combo saved"
+  },
   "idle": {
     "espresso": "Espresso",
     "steam": "Steam",
