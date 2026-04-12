@@ -48,7 +48,21 @@ const showBatchList = ref(false)
 // ---- Profile state ----
 const profileTitle = ref('')
 const profileId = ref(null)
-const awaitingProfileFromPicker = ref(false)
+
+// ---- "Awaiting profile from picker" flag ----
+// Must survive the /workflow/edit → /profiles → /workflow/edit round-trip.
+// Pages unmount between route changes, so this can't live in a ref — we
+// use sessionStorage as a minimal cross-mount signal.
+const AWAITING_PROFILE_KEY = 'wfe:awaitingProfileFromPicker'
+function isAwaitingProfileFromPicker() {
+  try { return sessionStorage.getItem(AWAITING_PROFILE_KEY) === '1' } catch { return false }
+}
+function setAwaitingProfileFromPicker(v) {
+  try {
+    if (v) sessionStorage.setItem(AWAITING_PROFILE_KEY, '1')
+    else sessionStorage.removeItem(AWAITING_PROFILE_KEY)
+  } catch { /* no-op */ }
+}
 
 // ---- Unsaved-changes dialog state ----
 const unsavedDialogVisible = ref(false)
@@ -63,6 +77,15 @@ onMounted(() => {
       hotWaterData: workflow.hotWaterData ? JSON.parse(JSON.stringify(workflow.hotWaterData)) : null,
       rinseData: workflow.rinseData ? JSON.parse(JSON.stringify(workflow.rinseData)) : null,
     }
+  }
+  // Honor a pending profile pick from ProfileSelectorPage — pages unmount
+  // between navigations, so loadFromPreset() ran first and overwrote the
+  // form's profileTitle with the combo's saved value. Re-sync from workflow
+  // if the user came back from the picker.
+  if (isAwaitingProfileFromPicker() && workflow?.profile) {
+    profileTitle.value = workflow.profile.title ?? ''
+    profileId.value = workflow.profile.id ?? null
+    setAwaitingProfileFromPicker(false)
   }
 })
 
@@ -447,7 +470,7 @@ watch(ratioValue, (val) => {
 
 // ---- Profile change navigation ----
 function onChangeProfile() {
-  awaitingProfileFromPicker.value = true
+  setAwaitingProfileFromPicker(true)
   router.push('/profiles?from=workflow')
 }
 
@@ -507,15 +530,15 @@ function onDialogClose() {
 // Sync profile title when returning from ProfileSelectorPage.
 // Accepts workflow.profile updates in two cases:
 //   1. No combo selected — ambient safety default
-//   2. User explicitly picked a profile via the Change button (awaitingProfileFromPicker)
+//   2. User explicitly picked a profile via the Change button (sessionStorage flag)
 watch(() => workflow?.profile, (newProfile) => {
   if (!newProfile || _updating) return
-  const explicitlyPicked = awaitingProfileFromPicker.value
+  const explicitlyPicked = isAwaitingProfileFromPicker()
   const noComboSelected = selectedIndex.value < 0
   if (explicitlyPicked || noComboSelected) {
     profileTitle.value = newProfile.title ?? ''
     profileId.value = newProfile.id ?? null
-    awaitingProfileFromPicker.value = false
+    setAwaitingProfileFromPicker(false)
   }
 }, { deep: true })
 </script>

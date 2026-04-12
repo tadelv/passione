@@ -99,6 +99,24 @@ const mockProfiles = [
     visibility: 'visible',
     isDefault: true,
   },
+  {
+    id: 'profile-alt0987654321fedcba',
+    profile: {
+      version: '2',
+      title: 'Alternative Profile',
+      author: 'Test Author',
+      notes: 'Second profile for round-trip tests',
+      beverage_type: 'espresso',
+      target_weight: 36,
+      target_volume: 0,
+      steps: [
+        { name: 'Preinfuse', pump: 'pressure', pressure: 4.0, flow: 0, temperature: 92.0, seconds: 10, transition: 'fast' },
+        { name: 'Pour', pump: 'pressure', pressure: 9.0, flow: 0, temperature: 92.0, seconds: 30, transition: 'smooth' },
+      ],
+    },
+    visibility: 'visible',
+    isDefault: false,
+  },
 ]
 
 const mockShotIds = ['shot-2026-02-13-100000', 'shot-2026-02-13-090000']
