@@ -206,8 +206,8 @@ const lastShotInfo = computed(() => {
           :presets="workflowCombos"
           :selected-index="selectedWorkflowCombo"
           :edit-enabled="true"
+          :confirm-activate="false"
           @select="idx => emit('workflow-combo-select', idx)"
-          @activate="() => emit('start-espresso')"
           @edit="idx => emit('workflow-combo-edit', idx)"
         />
       </div>
