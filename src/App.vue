@@ -97,8 +97,29 @@ const waterLevelPercent = computed(() => {
   const ml = waterMmToMl(waterLevels.currentLevel.value)
   return Math.min(100, Math.round((ml / WATER_FULL_ML) * 100))
 })
+
+// Water warning state — ported from Decenza's WaterLevelItem.qml (19-27):
+//   margin = waterLevelMm - sensorOffset - refillLevel
+//   > 7 ok, > 5 low, > 3 warning, else critical
+// Sensor offset is 5mm (the raw sensor reading sits above the intake in
+// Decenza's hardware). Whether ReaPrime's /ws/v1/machine/waterLevels includes
+// this offset in `currentLevel` is tested against physical hardware on the
+// first real-gateway run; the formula can be tweaked in one place if needed.
+const SENSOR_OFFSET_MM = 5
+const waterWarningState = computed(() => {
+  if (!waterLevels.isConnected.value) return 'ok'
+  const current = waterLevels.currentLevel.value
+  const refill = waterLevels.refillLevel.value
+  const margin = current - SENSOR_OFFSET_MM - refill
+  if (margin > 7) return 'ok'
+  if (margin > 5) return 'low'
+  if (margin > 3) return 'warning'
+  return 'critical'
+})
+
 provide('waterLevelDisplay', waterLevelDisplay)
 provide('waterLevelPercent', waterLevelPercent)
+provide('waterWarningState', waterWarningState)
 provide('profileName', computed(() => workflow.profile?.title ?? ''))
 provide('steamTemperature', machine.steamTemperature)
 provide('targetSteamTemp', computed(() => shotSettings.targetSteamTemp.value ?? 160))
