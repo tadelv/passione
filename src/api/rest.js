@@ -347,6 +347,18 @@ export function getBuildInfo() {
 }
 
 // ---------------------------------------------------------------------------
+// Skin update / metadata
+// ---------------------------------------------------------------------------
+
+export function checkForSkinUpdates() {
+  return sendCommand('/api/v1/webui/skins/update', 'POST')
+}
+
+export function getSkin(id) {
+  return sendCommand(`/api/v1/webui/skins/${encodeURIComponent(id)}`)
+}
+
+// ---------------------------------------------------------------------------
 // Sensors
 // ---------------------------------------------------------------------------
 
