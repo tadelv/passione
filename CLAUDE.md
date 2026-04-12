@@ -100,6 +100,9 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 
 **Deferred:** AI shot analysis and dialing assistant, shot history sort controls (API limitation — only `orderBy: timestamp`), steam calibration wizard (blocked on ReaPrime orchestration API), weather widget (low priority).
 
+**Parked design decisions** — see `docs/deferred/` for any feature waiting on a design call or a blocked dependency. Each file captures the goal, current coupling, subagent findings, proposed model, and open questions so work can resume without re-gathering context. Current entries:
+- `docs/deferred/screensaver-machine-decoupling.md` — decouple screensaver visibility from machine power state so the app stays usable with the machine asleep. Affects `App.vue:247`, `App.vue:277-279`, `ScreensaverPage.vue:57`, `LayoutWidget.vue:227`.
+
 ## Design Principles
 
 - **Never use timers as guards/workarounds.** Use event-based flags and conditions instead. Only use timers for genuinely periodic tasks (polling, animation, heartbeats).
