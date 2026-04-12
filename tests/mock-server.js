@@ -433,16 +433,17 @@ function routeApi(path, method, body, res, url) {
     return json({ error: 'not found' }, 404)
   }
 
-  // Test-only mutators for skin state
-  if (path === '/test/set-skin-version' && method === 'POST') {
+  // Test-only mutators for skin state (kept under /api/v1/test/* so the
+  // existing /api/ prefix dispatch in startServers reaches them).
+  if (path === '/api/v1/test/set-skin-version' && method === 'POST') {
     if (body?.version) mockSkin.version = body.version
     return json(mockSkin)
   }
-  if (path === '/test/set-skin-update-error' && method === 'POST') {
+  if (path === '/api/v1/test/set-skin-update-error' && method === 'POST') {
     mockSkinUpdateError = true
     return json({ ok: true })
   }
-  if (path === '/test/reset-skin' && method === 'POST') {
+  if (path === '/api/v1/test/reset-skin' && method === 'POST') {
     mockSkin.version = '0.0.0-test'
     mockSkinUpdateError = false
     return json({ ok: true })

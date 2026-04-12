@@ -10,7 +10,10 @@ app.use(router)
 app.use(i18n)
 app.mount('#app')
 
-// Expose router for E2E test navigation
+// Expose router and build-time version for E2E test navigation
 if (typeof window !== 'undefined') {
   window.__vueRouter = router
+  if (typeof __APP_VERSION__ !== 'undefined') {
+    window.__APP_VERSION__ = __APP_VERSION__
+  }
 }
