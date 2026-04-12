@@ -191,14 +191,19 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/.*#\/history/)
   })
 
-  test('can navigate to /bean-info', async ({ page }) => {
+  test('can navigate to /workflow/edit (and legacy /bean-info redirects)', async ({ page }) => {
     await loadApp(page)
     await page.waitForTimeout(500)
 
+    // Direct navigation to the new route
+    await page.evaluate(() => window.__vueRouter.push('/workflow/edit'))
+    await page.waitForTimeout(500)
+    await expect(page).toHaveURL(/.*#\/workflow\/edit/)
+
+    // Legacy /bean-info should redirect to /workflow/edit
     await page.evaluate(() => window.__vueRouter.push('/bean-info'))
     await page.waitForTimeout(500)
-
-    await expect(page).toHaveURL(/.*#\/bean-info/)
+    await expect(page).toHaveURL(/.*#\/workflow\/edit/)
   })
 })
 

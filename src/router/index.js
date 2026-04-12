@@ -17,7 +17,7 @@ const ScreensaverPage = () => import('../pages/ScreensaverPage.vue')
 const DescalingPage = () => import('../pages/DescalingPage.vue')
 const VisualizerBrowserPage = () => import('../pages/VisualizerBrowserPage.vue')
 const VisualizerMultiImportPage = () => import('../pages/VisualizerMultiImportPage.vue')
-const BeanInfoPage = () => import('../pages/BeanInfoPage.vue')
+const WorkflowEditorPage = () => import('../pages/WorkflowEditorPage.vue')
 const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 const AdvancedProfileEditorPage = () => import('../pages/AdvancedProfileEditorPage.vue')
 const SimpleProfileEditorPage = () => import('../pages/SimpleProfileEditorPage.vue')
@@ -42,7 +42,8 @@ const routes = [
   { path: '/descaling', name: 'descaling', component: DescalingPage },
   { path: '/visualizer-import', name: 'visualizer-import', component: VisualizerBrowserPage },
   { path: '/visualizer-multi-import', name: 'visualizer-multi-import', component: VisualizerMultiImportPage },
-  { path: '/bean-info', name: 'bean-info', component: BeanInfoPage },
+  { path: '/workflow/edit', name: 'workflow-editor', component: WorkflowEditorPage },
+  { path: '/bean-info', redirect: '/workflow/edit' },
   { path: '/simple-editor/:id?', name: 'simple-editor', component: SimpleProfileEditorPage },
   { path: '/auto-favorites', name: 'auto-favorites', component: AutoFavoritesPage },
 ]

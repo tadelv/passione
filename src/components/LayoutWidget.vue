@@ -169,7 +169,7 @@ const lastShotInfo = computed(() => {
 
     <!-- Shot plan -->
     <template v-else-if="type === 'shotPlan'">
-      <div class="layout-widget__shot-plan" role="button" tabindex="0" @click="router.push('/bean-info')" @keydown.enter="router.push('/bean-info')" @keydown.space.prevent="router.push('/bean-info')">
+      <div class="layout-widget__shot-plan" role="button" tabindex="0" @click="router.push('/workflow/edit')" @keydown.enter="router.push('/workflow/edit')" @keydown.space.prevent="router.push('/workflow/edit')">
         <div v-if="profileName" class="layout-widget__profile" @click.stop="router.push('/profiles')">
           {{ profileName }}
         </div>
@@ -212,7 +212,7 @@ const lastShotInfo = computed(() => {
         />
       </div>
       <div v-else class="layout-widget__preset-section">
-        <button class="layout-widget__new-combo-btn" @click="router.push('/bean-info')">
+        <button class="layout-widget__new-combo-btn" @click="router.push('/workflow/edit')">
           + New Combo
         </button>
       </div>
@@ -221,7 +221,7 @@ const lastShotInfo = computed(() => {
     <!-- Nav Buttons -->
     <template v-else-if="type === 'navButtons'">
       <div class="layout-widget__nav">
-        <button class="layout-widget__nav-btn" @click="router.push('/bean-info')">{{ t('idle.beans') }}</button>
+        <button class="layout-widget__nav-btn" @click="router.push('/workflow/edit')">{{ t('idle.beans') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/history')">{{ t('idle.history') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/settings')">{{ t('idle.settings') }}</button>
         <button class="layout-widget__nav-btn layout-widget__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">{{ t('idle.sleep') }}</button>
