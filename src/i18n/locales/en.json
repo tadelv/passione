@@ -1,4 +1,13 @@
 {
+  "about": {
+    "update": {
+      "check": "Check for updates",
+      "checking": "Checking…",
+      "updated": "Updated — reloading…",
+      "current": "You're on the latest version",
+      "error": "Update check failed"
+    }
+  },
   "common": {
     "cancel": "Cancel",
     "save": "Save",
