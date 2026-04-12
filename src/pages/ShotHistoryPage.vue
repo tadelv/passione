@@ -221,6 +221,7 @@ onUnmounted(() => {
 
 <template>
   <div class="shot-history" :class="{ 'shot-history--wide': isWideLayout }">
+    <div class="shot-history__split">
     <div class="shot-history__main">
     <!-- Search bar + compare -->
     <div class="shot-history__filter">
@@ -380,6 +381,7 @@ onUnmounted(() => {
       </template>
       <div v-else class="shot-history__detail-empty">Select a shot to preview</div>
     </div>
+    </div>
 
     <BottomBar title="Shot History" @back="router.back()">
       <button class="shot-history__bottom-btn" @click="router.push('/auto-favorites')">
@@ -395,6 +397,21 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   background: var(--color-background);
+}
+
+.shot-history__split {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.shot-history__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
 }
 
 .shot-history__filter {
@@ -641,15 +658,13 @@ onUnmounted(() => {
 }
 
 /* Wide split layout */
-.shot-history--wide {
+.shot-history--wide .shot-history__split {
   flex-direction: row;
 }
 
 .shot-history--wide .shot-history__main {
   flex: 0 0 40%;
   max-width: 40%;
-  display: flex;
-  flex-direction: column;
   border-right: 1px solid var(--color-border);
 }
 

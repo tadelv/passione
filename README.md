@@ -137,7 +137,7 @@ Passione is a skin for [Streamline-Bridge](https://github.com/tadelv/reaprime). 
 3. Install from URL using the latest release ZIP:
 
 ```
-https://github.com/tadelv/passione/releases/latest/download/passione-v0.4.0.zip
+https://github.com/tadelv/passione/releases/latest/download/passione-v0.5.1.zip
 ```
 
 Or via the REST API:
@@ -145,7 +145,7 @@ Or via the REST API:
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-release \
   -H "Content-Type: application/json" \
-  -d '{"repo": "tadelv/passione", "asset": "passione-v0.4.0.zip"}'
+  -d '{"repo": "tadelv/passione", "asset": "passione-v0.5.1.zip"}'
 ```
 
 ### From GitHub Branch (latest development)
