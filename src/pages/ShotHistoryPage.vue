@@ -548,9 +548,9 @@ onMounted(() => {
 .shot-history__bottom-btn {
   padding: 4px 12px;
   border-radius: 6px;
-  border: 1px solid var(--color-primary);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   background: transparent;
-  color: var(--color-primary);
+  color: white;
   font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
