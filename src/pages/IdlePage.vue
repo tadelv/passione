@@ -7,6 +7,7 @@ import LayoutWidget from '../components/LayoutWidget.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import LayoutEditOverlay from '../components/LayoutEditOverlay.vue'
 import { useLayout } from '../composables/useLayout.js'
+import { isComboModifiedVsWorkflow } from '../composables/useComboDirty.js'
 import { setMachineState, getProfiles } from '../api/rest.js'
 
 const { t } = useI18n()
@@ -73,6 +74,17 @@ const shotPlanLines = computed(() => {
 // ---- Workflow combos ----
 const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
 const selectedWorkflowCombo = computed(() => settings?.settings?.selectedWorkflowCombo ?? -1)
+
+// "Modified" dot on the selected combo pill: true when the live workflow
+// has diverged from the saved combo on any field the combo pinned. See
+// useComboDirty.js for the lenient-compare rationale (fields the combo
+// left null are skipped so combo switches don't falsely trip the dot).
+const selectedComboModified = computed(() => {
+  const idx = selectedWorkflowCombo.value
+  if (idx < 0) return false
+  const saved = workflowCombos.value[idx]
+  return isComboModifiedVsWorkflow(saved, workflow)
+})
 
 const editPopupVisible = ref(false)
 const editPopupPreset = ref(null)
@@ -273,6 +285,7 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
+          :selected-workflow-combo-modified="selectedComboModified"
           v-on="widgetEvents"
         />
       </div>
@@ -285,6 +298,7 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
+          :selected-workflow-combo-modified="selectedComboModified"
           v-on="widgetEvents"
         />
       </div>
@@ -300,6 +314,7 @@ onMounted(() => {
         :shot-plan-lines="shotPlanLines"
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
+        :selected-workflow-combo-modified="selectedComboModified"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -320,6 +335,7 @@ onMounted(() => {
         :shot-plan-lines="shotPlanLines"
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
+        :selected-workflow-combo-modified="selectedComboModified"
         :steam-presets="steamPresets"
         :selected-steam-preset="selectedSteamPreset"
         :hot-water-presets="hotWaterPresets"
@@ -341,6 +357,7 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
+          :selected-workflow-combo-modified="selectedComboModified"
           v-on="widgetEvents"
         />
       </div>
@@ -353,6 +370,7 @@ onMounted(() => {
           :shot-plan-lines="shotPlanLines"
           :workflow-combos="workflowCombos"
           :selected-workflow-combo="selectedWorkflowCombo"
+          :selected-workflow-combo-modified="selectedComboModified"
           v-on="widgetEvents"
         />
       </div>

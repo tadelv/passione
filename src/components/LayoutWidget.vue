@@ -27,6 +27,13 @@ const props = defineProps({
   workflowCombos: { type: Array, default: () => [] },
   /** Selected workflow combo index */
   selectedWorkflowCombo: { type: Number, default: -1 },
+  /**
+   * Whether the selected workflow combo has been "modified" — i.e. the
+   * live workflow has diverged from the saved combo on some field.
+   * Computed by IdlePage via useComboDirty and forwarded here; this
+   * widget is a pass-through to PresetPillRow.
+   */
+  selectedWorkflowComboModified: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -207,6 +214,7 @@ const lastShotInfo = computed(() => {
           :selected-index="selectedWorkflowCombo"
           :edit-enabled="true"
           :confirm-activate="false"
+          :modified="selectedWorkflowComboModified"
           @select="idx => emit('workflow-combo-select', idx)"
           @edit="idx => emit('workflow-combo-edit', idx)"
         />

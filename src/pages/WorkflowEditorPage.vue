@@ -9,6 +9,7 @@ import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog.vue'
+import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
 
 const settings = inject('settings', null)
 const workflow = inject('workflow', null)
@@ -371,23 +372,9 @@ function comboValues() {
 }
 
 // ---- Dirty tracking ----
-// Compare op sub-settings semantically: when the op is off, only `duration`
-// (or `volume` for hot water) matters. A saved combo that persisted extra
-// sub-fields alongside `duration: 0` must NOT make the form look dirty
-// just because the current form re-builds the "off" shape differently.
-function effectiveSteam(s) {
-  if (!s || (s.duration ?? 0) === 0) return { duration: 0 }
-  return { duration: s.duration ?? 0, flow: s.flow ?? null, temperature: s.temperature ?? null }
-}
-function effectiveFlush(s) {
-  if (!s || (s.duration ?? 0) === 0) return { duration: 0 }
-  return { duration: s.duration ?? 0, flow: s.flow ?? null }
-}
-function effectiveHotWater(s) {
-  if (!s || (s.volume ?? 0) === 0) return { volume: 0 }
-  return { volume: s.volume ?? 0, temperature: s.temperature ?? null }
-}
-
+// Form-state comparison is strict (every pinned field and every include
+// flag must match the saved combo). The IdlePage pill-dot uses a lenient
+// variant — see useComboDirty.js for the split.
 const dirty = computed(() => {
   if (selectedIndex.value < 0) {
     // No combo selected — dirty if any identifiable field has a non-initial value
@@ -399,21 +386,7 @@ const dirty = computed(() => {
     )
   }
   const saved = workflowCombos.value[selectedIndex.value]
-  if (!saved) return false
-  const current = comboValues()
-  const keys = [
-    'profileId', 'profileTitle', 'coffeeName', 'roaster',
-    'doseIn', 'doseOut', 'grinder', 'grinderSetting',
-    'selectedBeanId', 'selectedBatchId', 'selectedGrinderId',
-    'includeSteam', 'includeFlush', 'includeHotWater',
-  ]
-  for (const k of keys) {
-    if ((current[k] ?? null) !== (saved[k] ?? null)) return true
-  }
-  if (JSON.stringify(effectiveSteam(current.steamSettings)) !== JSON.stringify(effectiveSteam(saved.steamSettings))) return true
-  if (JSON.stringify(effectiveFlush(current.flushSettings)) !== JSON.stringify(effectiveFlush(saved.flushSettings))) return true
-  if (JSON.stringify(effectiveHotWater(current.hotWaterSettings)) !== JSON.stringify(effectiveHotWater(saved.hotWaterSettings))) return true
-  return false
+  return isComboModifiedVsForm(saved, comboValues())
 })
 
 // ---- Build workflow update payload from current form state ----
@@ -621,11 +594,12 @@ watch(() => workflow?.profile, (newProfile) => {
 <template>
   <div class="bean-info">
     <!-- Workflow combos -->
-    <div class="bean-info__presets" :class="{ 'bean-info__presets--dirty': dirty && selectedIndex >= 0 }">
+    <div class="bean-info__presets">
       <PresetPillRow
         :presets="workflowCombos"
         :selected-index="selectedIndex"
         :edit-enabled="true"
+        :modified="dirty && selectedIndex >= 0"
         @select="onPresetSelect"
         @edit="onComboEdit"
       />
@@ -1225,8 +1199,4 @@ watch(() => workflow?.profile, (newProfile) => {
   }
 }
 
-/* Dirty indicator — orange outline on the selected combo pill */
-.bean-info__presets--dirty :deep(.preset-pill-row__pill--selected) {
-  box-shadow: 0 0 0 2px #c89b3c;
-}
 </style>

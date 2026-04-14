@@ -12,6 +12,15 @@ const props = defineProps({
   confirmActivate: { type: Boolean, default: true },
   /** P6-4: Accessible label for the preset list */
   ariaLabel: { type: String, default: 'Presets' },
+  /**
+   * When true AND a pill is selected, the selected pill is marked as
+   * "modified" (visual dot + extended aria-label). Other pills are
+   * unaffected. Callers compute this boolean themselves (see
+   * useComboDirty) and pass it in — this component stays generic.
+   */
+  modified: { type: Boolean, default: false },
+  /** Text appended to the selected pill's aria-label when modified. */
+  modifiedLabel: { type: String, default: 'unsaved changes' },
 })
 
 const emit = defineEmits([
@@ -93,9 +102,13 @@ function onClick(index, event) {
         :class="{
           'preset-pill-row__pill--selected': preset.index === selectedIndex,
           'preset-pill-row__pill--confirm': preset.index === confirmIndex,
+          'preset-pill-row__pill--modified': modified && preset.index === selectedIndex,
         }"
         role="option"
         :aria-selected="preset.index === selectedIndex"
+        :aria-label="modified && preset.index === selectedIndex
+          ? `${preset.display}, ${modifiedLabel}`
+          : undefined"
         @click="onClick(preset.index, $event)"
       >
         {{ preset.index === confirmIndex ? 'Tap to start' : preset.display }}
@@ -145,5 +158,29 @@ function onClick(index, event) {
 .preset-pill-row__pill--confirm {
   box-shadow: 0 0 0 3px white, 0 0 12px rgba(255, 255, 255, 0.5);
   filter: brightness(1.15);
+}
+
+/*
+ * Modified indicator — small dot in the top-right of the selected pill
+ * when the caller's dirty state is true. Positioned via ::after so it
+ * does not shift pill width (keeps PresetPillRow's internal layout-recalc
+ * machinery unchanged). Warm amber to match the "unsaved" semantics in
+ * the rest of the app.
+ */
+.preset-pill-row__pill {
+  position: relative;
+}
+
+.preset-pill-row__pill--modified::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c89b3c;
+  box-shadow: 0 0 0 2px var(--color-primary);
+  pointer-events: none;
 }
 </style>
