@@ -54,7 +54,7 @@ const WIDGET_LABELS = {
   actionButtons: 'Action Buttons',
   shotPlan: 'Shot Plan',
   lastShot: 'Last Shot',
-  workflowCombos: 'Workflows',
+  workflowCombos: 'Recipes',
   navButtons: 'Navigation Buttons',
   scaleInfo: 'Scale Info',
   fullscreen: 'Fullscreen Toggle',
