@@ -76,6 +76,17 @@ const extractionYield = computed(() => {
   return '--'
 })
 
+// Hints shown under the Dose Out field so the user can sanity-check the
+// editable value against both the planned target and what the scale logged.
+const targetYieldHint = computed(() => {
+  const v = shot.value?.targetYield
+  return v != null && v > 0 ? Number(v).toFixed(1) + ' g' : null
+})
+const scaleWeightHint = computed(() => {
+  const v = shot.value?.finalWeight
+  return v != null && v > 0 ? Number(v).toFixed(1) + ' g' : null
+})
+
 // Suggestions from history
 const historySuggestions = ref({
   roaster: [],
@@ -148,7 +159,10 @@ function populateFromShot(shot) {
   beverageType.value = extras.beverageType ?? meta.beverageType ?? ''
   barista.value = extras.barista ?? meta.barista ?? ''
   doseIn.value = s.doseIn ?? 0
-  doseOut.value = s.doseOut ?? 0
+  // Prefer the actual final weight measured from the scale stream over the
+  // dose-out fallback (which can be the planned target). The user can still
+  // edit the value, but the default reflects what landed in the cup.
+  doseOut.value = s.finalWeight ?? s.doseOut ?? 0
   tds.value = s.tds ?? meta.tds ?? 0
   rating.value = s.rating ?? settings?.settings?.defaultShotRating ?? 0
   notes.value = s.notes ?? ''
@@ -180,10 +194,13 @@ async function loadShot(id) {
   loading.value = true
   try {
     const result = await getShot(id)
-    shot.value = result
+    // Store the normalized shot so the template/computeds can read derived
+    // fields (targetYield, finalWeight, etc.) — normalizeShot spreads the
+    // raw record so workflow/measurements are still available.
+    const normalized = normalizeShot(result)
+    shot.value = normalized
     populateFromShot(result)
     populateFromSticky()
-    const normalized = normalizeShot(result)
     enrichShot(normalized)
   } catch {
     shot.value = null
@@ -460,6 +477,11 @@ function goBack() {
                 suffix=" g"
                 @update:model-value="doseOut = $event; markDirty()"
               />
+              <div v-if="scaleWeightHint || targetYieldHint" class="review-page__hint">
+                <span v-if="scaleWeightHint">scale: {{ scaleWeightHint }}</span>
+                <span v-if="scaleWeightHint && targetYieldHint" class="review-page__hint-sep">·</span>
+                <span v-if="targetYieldHint">target: {{ targetYieldHint }}</span>
+              </div>
             </div>
 
             <div class="review-page__field">
@@ -507,14 +529,14 @@ function goBack() {
         <!-- Save / Upload buttons -->
         <div class="review-page__save-row">
           <button
-            class="review-page__save-btn"
+            class="review-page__action-btn review-page__save-btn"
             :disabled="saving || !dirty"
             @click="save"
           >
             {{ saving ? 'Saving...' : dirty ? 'Save' : 'Saved' }}
           </button>
           <button
-            class="review-page__upload-btn"
+            class="review-page__action-btn review-page__upload-btn"
             :disabled="uploading"
             @click="uploadToVisualizer"
           >
@@ -631,6 +653,19 @@ function goBack() {
   color: var(--color-text-secondary);
 }
 
+.review-page__hint {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 2px;
+}
+
+.review-page__hint-sep {
+  opacity: 0.5;
+}
+
 .review-page__input,
 .review-page__select {
   height: 44px;
@@ -719,47 +754,47 @@ function goBack() {
 }
 
 .review-page__save-row {
-  padding: 8px 16px;
+  padding: 12px 16px;
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
 }
 
-.review-page__save-btn {
-  min-width: 160px;
-  height: 48px;
-  border-radius: 12px;
-  border: none;
-  background: var(--color-primary);
-  color: var(--color-text);
-  font-size: var(--font-body);
+.review-page__action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: transparent;
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.review-page__action-btn:active:not(:disabled) {
+  opacity: 0.7;
+}
+
+.review-page__save-btn {
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
 }
 
 .review-page__save-btn:disabled {
   background-color: var(--button-disabled);
   color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
 }
 
-.review-page__save-btn:active:not(:disabled) {
-  filter: brightness(0.85);
-}
-
 .review-page__upload-btn {
-  min-width: 160px;
-  height: 48px;
-  border-radius: 12px;
   border: 1px solid var(--color-success);
-  background: transparent;
   color: var(--color-success);
-  font-size: var(--font-body);
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .review-page__upload-btn:disabled {
@@ -767,10 +802,6 @@ function goBack() {
   color: var(--button-disabled-text);
   border-color: transparent;
   cursor: default;
-}
-
-.review-page__upload-btn:active:not(:disabled) {
-  filter: brightness(0.85);
 }
 
 /* Confirm dialog */

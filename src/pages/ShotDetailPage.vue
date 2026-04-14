@@ -118,13 +118,20 @@ const dose = computed(() => {
 })
 
 const output = computed(() => {
-  const v = shot.value?.doseOut
+  const v = shot.value?.targetYield ?? shot.value?.doseOut
   return v != null ? Number(v).toFixed(1) + 'g' : '--'
+})
+
+const finalWeight = computed(() => {
+  const v = shot.value?.finalWeight
+  return v != null && v > 0 ? Number(v).toFixed(1) + 'g' : null
 })
 
 const ratio = computed(() => {
   const d = shot.value?.doseIn
-  const o = shot.value?.doseOut
+  // Prefer the actual final weight when computing the brewed ratio so it
+  // reflects what landed in the cup, not the planned target.
+  const o = shot.value?.finalWeight ?? shot.value?.targetYield ?? shot.value?.doseOut
   if (d && o && d > 0) return `1:${(o / d).toFixed(1)}`
   return '--'
 })
@@ -229,7 +236,11 @@ async function uploadToVisualizer() {
         </div>
         <div class="shot-detail__metric">
           <span class="shot-detail__metric-value" style="color: var(--color-dye-output)">{{ output }}</span>
-          <span class="shot-detail__metric-label">Output</span>
+          <span class="shot-detail__metric-label">Target</span>
+        </div>
+        <div v-if="finalWeight" class="shot-detail__metric">
+          <span class="shot-detail__metric-value" style="color: var(--color-dye-output)">{{ finalWeight }}</span>
+          <span class="shot-detail__metric-label">Actual</span>
         </div>
         <div class="shot-detail__metric">
           <span class="shot-detail__metric-value">{{ ratio }}</span>
@@ -293,9 +304,9 @@ async function uploadToVisualizer() {
       </div>
 
       <!-- Action buttons -->
-      <div class="shot-detail__actions">
+      <div v-if="!confirmingDelete" class="shot-detail__actions">
         <button
-          class="shot-detail__upload-btn"
+          class="shot-detail__action-btn shot-detail__upload-btn"
           :disabled="uploading"
           @click="uploadToVisualizer"
         >
@@ -303,26 +314,26 @@ async function uploadToVisualizer() {
         </button>
 
         <button
-          class="shot-detail__edit-btn"
+          class="shot-detail__action-btn shot-detail__edit-btn"
           @click="router.push(`/shot-review/${encodeURIComponent(shotId)}`)"
         >
           Edit Metadata
         </button>
 
         <button
-          v-if="!confirmingDelete"
-          class="shot-detail__delete-btn"
+          class="shot-detail__action-btn shot-detail__delete-btn"
           @click="onDelete"
         >
           Delete Shot
         </button>
-        <template v-else>
-          <span class="shot-detail__confirm-text">Delete this shot? This cannot be undone.</span>
-          <div class="shot-detail__confirm-btns">
-            <button class="shot-detail__cancel-btn" @click="cancelDelete">Cancel</button>
-            <button class="shot-detail__confirm-delete-btn" @click="onDelete">Delete</button>
-          </div>
-        </template>
+      </div>
+
+      <div v-else class="shot-detail__confirm">
+        <span class="shot-detail__confirm-text">Delete this shot? This cannot be undone.</span>
+        <div class="shot-detail__confirm-btns">
+          <button class="shot-detail__cancel-btn" @click="cancelDelete">Cancel</button>
+          <button class="shot-detail__confirm-delete-btn" @click="onDelete">Delete</button>
+        </div>
       </div>
     </template>
 
@@ -446,21 +457,33 @@ async function uploadToVisualizer() {
 .shot-detail__actions {
   padding: 12px 16px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: stretch;
   gap: 8px;
 }
 
-.shot-detail__upload-btn {
-  padding: 10px 24px;
+.shot-detail__action-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid var(--color-success);
   background: transparent;
-  color: var(--color-success);
   font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.shot-detail__action-btn:active {
+  opacity: 0.7;
+}
+
+.shot-detail__upload-btn {
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
 }
 
 .shot-detail__upload-btn:disabled {
@@ -470,40 +493,22 @@ async function uploadToVisualizer() {
   cursor: default;
 }
 
-.shot-detail__upload-btn:active {
-  opacity: 0.7;
-}
-
 .shot-detail__edit-btn {
-  padding: 10px 24px;
-  border-radius: 8px;
   border: 1px solid var(--color-primary);
-  background: transparent;
   color: var(--color-primary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.shot-detail__edit-btn:active {
-  opacity: 0.7;
 }
 
 .shot-detail__delete-btn {
-  padding: 10px 24px;
-  border-radius: 8px;
   border: 1px solid var(--color-error);
-  background: transparent;
   color: var(--color-error);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.shot-detail__delete-btn:active {
-  opacity: 0.7;
+.shot-detail__confirm {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .shot-detail__confirm-text {

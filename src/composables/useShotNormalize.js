@@ -17,6 +17,31 @@ export function normalizeShot(shot) {
   if (result.doseIn == null) result.doseIn = ann.actualDoseWeight ?? ctx.targetDoseWeight ?? dd.doseIn ?? dd.dose ?? null
   if (result.doseOut == null) result.doseOut = ann.actualYield ?? ctx.targetYield ?? dd.doseOut ?? dd.targetWeight ?? null
 
+  // Target yield — strictly the planned weight, never the actual reading
+  if (result.targetYield == null) result.targetYield = ctx.targetYield ?? dd.doseOut ?? dd.targetWeight ?? null
+
+  // Actual final weight from measurements — read the last non-zero scale
+  // sample so the UI can show what landed in the cup separately from the
+  // target. Falls back to the pre-flattened weight[] array if present.
+  if (result.finalWeight == null) {
+    let fw = null
+    if (Array.isArray(shot.weight) && shot.weight.length > 0) {
+      for (let i = shot.weight.length - 1; i >= 0; i--) {
+        const v = Number(shot.weight[i])
+        if (Number.isFinite(v) && v > 0) { fw = v; break }
+      }
+    } else if (Array.isArray(shot.measurements) && shot.measurements.length > 0) {
+      for (let i = shot.measurements.length - 1; i >= 0; i--) {
+        const m = shot.measurements[i]
+        const v = Number(m?.scale?.weight ?? m?.weight)
+        if (Number.isFinite(v) && v > 0) { fw = v; break }
+      }
+    }
+    // Fall back to annotations.actualYield if the measurements don't carry
+    // scale data (some shot records only persist machine telemetry).
+    result.finalWeight = fw ?? ann.actualYield ?? null
+  }
+
   // Coffee — context first, then legacy coffeeData, then metadata
   if (result.coffeeName == null) result.coffeeName = ctx.coffeeName ?? coffee.name ?? meta.beanType ?? null
   if (result.coffeeRoaster == null) result.coffeeRoaster = ctx.coffeeRoaster ?? coffee.roaster ?? meta.roaster ?? null

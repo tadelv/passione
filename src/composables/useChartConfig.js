@@ -11,6 +11,13 @@
  *   textSecondary:   #a0a8b8
  */
 
+import uPlot from 'uplot'
+
+// Catmull-Rom spline path generator — smooths the polyline through each
+// data point so live shot curves don't look kinked at every 10 Hz sample.
+// Shared across all series so uPlot can reuse the cached builder.
+const SPLINE_PATH = uPlot.paths.spline ? uPlot.paths.spline() : undefined
+
 export const COLORS = {
   pressure:        '#18c37e',
   pressureGoal:    '#69fdb3',
@@ -122,6 +129,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: LINE_WIDTH,
         scale: 'pressure',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) + ' bar' : '--',
       },
       // 2: targetPressure (goal)
@@ -132,6 +140,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         dash: GOAL_DASH,
         scale: 'pressure',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) : '--',
       },
       // 3: flow (actual)
@@ -141,6 +150,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: LINE_WIDTH,
         scale: 'pressure',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) + ' mL/s' : '--',
       },
       // 4: targetFlow (goal)
@@ -151,6 +161,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         dash: GOAL_DASH,
         scale: 'pressure',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) : '--',
       },
       // 5: temperature (actual)
@@ -160,6 +171,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: LINE_WIDTH,
         scale: 'temp',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) + '\u00b0C' : '--',
       },
       // 6: targetTemperature (goal)
@@ -170,6 +182,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         dash: GOAL_DASH,
         scale: 'temp',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) : '--',
       },
       // 7: weight
@@ -179,6 +192,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: LINE_WIDTH,
         scale: 'weight',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) + ' g' : '--',
       },
       // 8: weightFlow (g/s from scale)
@@ -188,6 +202,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: LINE_WIDTH - 0.5,
         scale: 'pressure',
         points: NO_POINTS,
+        paths: SPLINE_PATH,
         value: (u, v) => v != null ? v.toFixed(1) + ' g/s' : '--',
       },
     ],

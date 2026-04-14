@@ -27,14 +27,32 @@ let resizeTimer = null
 let pendingData = null
 let rafId = null
 
+// Initial visible time window (seconds). When the live shot exceeds this,
+// the x-axis extends in fixed chunks rather than tracking each new sample.
+// Tracking each sample makes the entire chart shift left at the WebSocket
+// rate (~10 Hz), which reads as choppy scroll. Chunked extension means the
+// scroll is invisible until the chart has run out of room, then it grows
+// in one big step.
+const X_INITIAL_MAX = 12
+const X_CHUNK = 10
+let xCurrentMax = X_INITIAL_MAX
+
 function scheduleRedraw() {
   if (rafId !== null) return
   rafId = requestAnimationFrame(() => {
     rafId = null
-    if (chart && pendingData) {
-      chart.setData(pendingData)
-      pendingData = null
+    if (!chart || !pendingData) return
+
+    // Extend the visible x-range in chunks if the data has outgrown it.
+    const times = pendingData[0]
+    const last = times.length > 0 ? times[times.length - 1] : 0
+    if (last > xCurrentMax - 1) {
+      while (last > xCurrentMax - 1) xCurrentMax += X_CHUNK
+      chart.setScale('x', { min: 0, max: xCurrentMax })
     }
+
+    chart.setData(pendingData)
+    pendingData = null
   })
 }
 
@@ -53,6 +71,13 @@ function initChart() {
   opts.hooks = {
     draw: [drawPhaseOverlays],
   }
+
+  // Lock the initial x-range so the chart doesn't scroll left on every new
+  // sample — scheduleRedraw extends it in chunks when the data grows past
+  // the right edge.
+  xCurrentMax = X_INITIAL_MAX
+  opts.scales = opts.scales || {}
+  opts.scales.x = { time: false, min: 0, max: xCurrentMax, auto: false }
 
   // Start with empty data if none provided yet
   const initial = props.data && props.data[0]?.length
