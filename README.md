@@ -16,15 +16,15 @@ The home screen shows real-time machine data and quick-access operation buttons.
 - **Workflow combos** for one-tap switching between saved brewing configurations (profile + coffee + grinder + steam/hot water settings)
 - **Last shot** widget with mini graph and metrics
 
-### Workflow Editor
+### Recipe Editor
 
-Create and manage complete brewing workflows — profile, beans, grinder, dose, and operation settings in one place.
+Create and manage complete brewing recipes — profile, beans, grinder, dose, and operation settings in one place.
 
-![Workflow Editor](docs/screenshots/bean-info.png)
+![Recipe Editor](docs/screenshots/recipe-editor.png)
 
 - Set profile, coffee, grinder, dose in/out, and ratio
-- Configure steam, flush, and hot water settings per workflow combo
-- Save as named combos for quick access from the home screen
+- Configure steam, flush, and hot water settings per recipe
+- Save as named recipes for quick access from the home screen
 - Tap a combo to load all settings; double-tap to start espresso
 
 ### Profile Management

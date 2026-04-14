@@ -8,7 +8,6 @@ import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
-import UnsavedChangesDialog from '../components/UnsavedChangesDialog.vue'
 import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
 
 const settings = inject('settings', null)
@@ -51,7 +50,7 @@ const profileTitle = ref('')
 const profileId = ref(null)
 
 // ---- "Awaiting profile from picker" flag ----
-// Must survive the /workflow/edit → /profiles → /workflow/edit round-trip.
+// Must survive the /recipe/edit → /profiles → /recipe/edit round-trip.
 // Pages unmount between route changes, so this can't live in a ref — we
 // use sessionStorage as a minimal cross-mount signal.
 //
@@ -85,20 +84,7 @@ function setAwaitingProfileFromPicker(v, baselineId = null) {
   } catch { /* no-op */ }
 }
 
-// ---- Unsaved-changes dialog state ----
-const unsavedDialogVisible = ref(false)
-const workflowSnapshot = ref(null)
-
 onMounted(() => {
-  if (workflow) {
-    workflowSnapshot.value = {
-      profile: workflow.profile ? JSON.parse(JSON.stringify(workflow.profile)) : null,
-      context: workflow.context ? JSON.parse(JSON.stringify(workflow.context)) : null,
-      steamSettings: workflow.steamSettings ? JSON.parse(JSON.stringify(workflow.steamSettings)) : null,
-      hotWaterData: workflow.hotWaterData ? JSON.parse(JSON.stringify(workflow.hotWaterData)) : null,
-      rinseData: workflow.rinseData ? JSON.parse(JSON.stringify(workflow.rinseData)) : null,
-    }
-  }
   // Honor a pending profile pick from ProfileSelectorPage — pages unmount
   // between navigations, so loadFromPreset() ran first and overwrote the
   // form's profileTitle with the combo's saved value. Re-sync from workflow
@@ -425,28 +411,35 @@ async function applyToLiveWorkflow() {
 }
 
 // ---- Persist current form state to the selected combo ----
+// Toast is fired by the caller so it can include the recipe name in the
+// user-visible message without this function re-reading the combo list.
 function saveToSelectedCombo() {
   if (!settings || selectedIndex.value < 0) return
   const combos = [...workflowCombos.value]
   const existing = combos[selectedIndex.value]
   combos[selectedIndex.value] = { ...existing, ...comboValues() }
   settings.settings.workflowCombos = combos
-  toast?.success(t('workflowEditor.toastSaved'))
 }
 
-// ---- Save as new combo ----
+// ---- Save as new recipe ----
+// Creates a combo from the current form state, selects it, and returns
+// the new index so the caller can open the rename popup on it. Fires a
+// "Created …" toast with the auto-generated name. Returns -1 on failure.
 function saveAsNew() {
-  if (!settings) return
+  if (!settings) return -1
+  const autoName = coffeeName.value || profileTitle.value || t('recipe.newRecipeName')
   const vals = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name: coffeeName.value || profileTitle.value || 'Unnamed',
+    name: autoName,
     emoji: '',
     ...comboValues(),
   }
   const combos = [...workflowCombos.value, vals]
   settings.settings.workflowCombos = combos
-  settings.settings.selectedWorkflowCombo = combos.length - 1
-  toast?.success(t('workflowEditor.toastSaved'))
+  const newIndex = combos.length - 1
+  settings.settings.selectedWorkflowCombo = newIndex
+  toast?.success(t('recipe.toastCreated', { name: autoName }))
+  return newIndex
 }
 
 // ---- Live-apply: push every field change to the workflow (300ms debounce) ----
@@ -517,62 +510,31 @@ function onChangeProfile() {
   router.push('/profiles?from=workflow')
 }
 
-// ---- Back button + dialog handlers ----
+// ---- Save action handlers ----
+//
+// Under the new model there is no unsaved-state guard: the live workflow
+// is auto-applied on every edit, and the saved combo is only mutated when
+// the user explicitly taps Save or Save as New Recipe. Exit (Home) is
+// always free — nothing is ever "lost" because live state is always live
+// and combo state is always deliberate.
+
 function onSaveClick() {
+  if (selectedIndex.value < 0) return
+  const combo = workflowCombos.value[selectedIndex.value]
   saveToSelectedCombo()
+  toast?.success(t('recipe.toastSaved', { name: combo?.name || t('recipe.title') }))
 }
 
-function onBackClick() {
-  if (dirty.value) {
-    unsavedDialogVisible.value = true
-  } else {
-    router.back()
-  }
-}
-
-function onDialogSave() {
-  saveToSelectedCombo()
-  unsavedDialogVisible.value = false
-  router.back()
-}
-
-function onDialogSaveAsNew() {
-  saveAsNew()
-  unsavedDialogVisible.value = false
-  router.back()
-}
-
-async function onDialogDiscard() {
-  // Cancel any pending live-apply timer first — otherwise it would fire
-  // 0-300ms later with stale form state and overwrite the snapshot we're
-  // about to restore.
-  clearTimeout(liveApplyTimer)
-  liveApplyTimer = null
-  if (workflowSnapshot.value) {
-    try {
-      await updateWorkflow({
-        context: workflowSnapshot.value.context ?? undefined,
-        steamSettings: workflowSnapshot.value.steamSettings ?? undefined,
-        hotWaterData: workflowSnapshot.value.hotWaterData ?? undefined,
-        rinseData: workflowSnapshot.value.rinseData ?? undefined,
-      })
-    } catch {
-      // Silent — best effort revert
-    }
-  }
-  unsavedDialogVisible.value = false
-  router.back()
-}
-
-function onDialogKeepChanges() {
-  // Live workflow already reflects form state via the live-apply watcher.
-  // Combo is not touched. Just navigate back.
-  unsavedDialogVisible.value = false
-  router.back()
-}
-
-function onDialogClose() {
-  unsavedDialogVisible.value = false
+// Save as New Recipe: create a new combo from the current form state,
+// select it, then immediately open the rename popup so the user can
+// customize the auto-generated name without it being a two-step flow.
+function onSaveAsNewClick() {
+  const index = saveAsNew()
+  if (index < 0) return
+  // Open the rename popup pointed at the freshly-created combo
+  editPopupIndex.value = index
+  editPopupPreset.value = workflowCombos.value[index]
+  editPopupVisible.value = true
 }
 
 // Sync profile title when returning from ProfileSelectorPage.
@@ -592,43 +554,67 @@ watch(() => workflow?.profile, (newProfile) => {
 </script>
 
 <template>
-  <div class="bean-info">
-    <!-- Workflow combos -->
-    <div class="bean-info__presets">
-      <PresetPillRow
-        :presets="workflowCombos"
-        :selected-index="selectedIndex"
-        :edit-enabled="true"
-        :modified="dirty && selectedIndex >= 0"
-        @select="onPresetSelect"
-        @edit="onComboEdit"
-      />
-      <button class="bean-info__add-btn" @click="saveAsNew">
-        + New Combo
-      </button>
+  <div class="recipe-editor">
+    <!-- Header: recipe pill row + Save / Save as New buttons.
+         Save buttons are visible only when the form has diverged from the
+         selected saved recipe (or, when no recipe is selected, when any
+         identifiable field has a value). Tapping Save writes the form
+         state back to the currently-selected recipe; Save as New creates
+         a brand-new recipe from the current state and prompts for a
+         name. Exit (Home) is always free — see onSaveClick comment. -->
+    <div class="recipe-editor__header">
+      <div class="recipe-editor__presets">
+        <PresetPillRow
+          :presets="workflowCombos"
+          :selected-index="selectedIndex"
+          :edit-enabled="true"
+          :modified="dirty && selectedIndex >= 0"
+          :aria-label="t('recipe.recipes')"
+          @select="onPresetSelect"
+          @edit="onComboEdit"
+        />
+      </div>
+      <div class="recipe-editor__actions">
+        <button
+          v-if="selectedIndex >= 0 && dirty"
+          class="recipe-editor__save-btn"
+          data-testid="wfe-save"
+          @click="onSaveClick"
+        >
+          {{ t('recipe.save') }}
+        </button>
+        <button
+          v-if="dirty"
+          class="recipe-editor__save-btn recipe-editor__save-btn--secondary"
+          data-testid="wfe-save-as-new"
+          @click="onSaveAsNewClick"
+        >
+          {{ t('recipe.saveAsNew') }}
+        </button>
+      </div>
     </div>
 
     <!-- Scrollable content area -->
-    <div class="bean-info__scroll">
+    <div class="recipe-editor__scroll">
 
     <!-- Profile section -->
-    <div class="bean-info__profile-section">
-      <h4 class="bean-info__section-title">Profile</h4>
-      <div class="bean-info__profile-row">
-        <span class="bean-info__profile-name">{{ profileTitle || 'No profile selected' }}</span>
-        <button class="bean-info__change-btn" @click="onChangeProfile">Change</button>
+    <div class="recipe-editor__profile-section">
+      <h4 class="recipe-editor__section-title">Profile</h4>
+      <div class="recipe-editor__profile-row">
+        <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
+        <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
       </div>
     </div>
 
     <!-- Field grid -->
-    <div class="bean-info__grid">
+    <div class="recipe-editor__grid">
       <!-- Column 1: Coffee -->
-      <div class="bean-info__column">
-        <h4 class="bean-info__section-title">Coffee</h4>
+      <div class="recipe-editor__column">
+        <h4 class="recipe-editor__section-title">Coffee</h4>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Bean</label>
-          <select class="bean-info__input" :value="selectedBeanId" @change="onBeanSelect($event.target.value)">
+        <div class="recipe-editor__field">
+          <label class="recipe-editor__label">Bean</label>
+          <select class="recipe-editor__input" :value="selectedBeanId" @change="onBeanSelect($event.target.value)">
             <option value="">Manual entry...</option>
             <option v-for="b in beans" :key="b.id" :value="b.id">{{ b.roaster }} — {{ b.name }}</option>
           </select>
@@ -636,8 +622,8 @@ watch(() => workflow?.profile, (newProfile) => {
 
         <!-- Manual mode: free-text fields -->
         <template v-if="!selectedBeanId">
-          <div class="bean-info__field">
-            <label class="bean-info__label">Name</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Name</label>
             <SuggestionField
               v-model="coffeeName"
               placeholder="Coffee name"
@@ -645,8 +631,8 @@ watch(() => workflow?.profile, (newProfile) => {
             />
           </div>
 
-          <div class="bean-info__field">
-            <label class="bean-info__label">Roaster</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Roaster</label>
             <SuggestionField
               v-model="roaster"
               placeholder="Roaster name"
@@ -657,38 +643,38 @@ watch(() => workflow?.profile, (newProfile) => {
 
         <!-- Entity mode: read-only bean display + batch info -->
         <template v-else>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Name</label>
-            <span class="bean-info__readonly">{{ coffeeName }}</span>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Name</label>
+            <span class="recipe-editor__readonly">{{ coffeeName }}</span>
           </div>
 
-          <div class="bean-info__field">
-            <label class="bean-info__label">Roaster</label>
-            <span class="bean-info__readonly">{{ roaster }}</span>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Roaster</label>
+            <span class="recipe-editor__readonly">{{ roaster }}</span>
           </div>
 
-          <div v-if="selectedBatch" class="bean-info__batch-info">
-            <span v-if="selectedBatch.roastDate" class="bean-info__batch-detail">
+          <div v-if="selectedBatch" class="recipe-editor__batch-info">
+            <span v-if="selectedBatch.roastDate" class="recipe-editor__batch-detail">
               Roasted: {{ selectedBatch.roastDate }}
               <template v-if="daysSinceRoast(selectedBatch) !== null">
                 ({{ daysSinceRoast(selectedBatch) }}d ago)
               </template>
             </span>
-            <span v-if="selectedBatch.weightRemaining != null" class="bean-info__batch-detail">
+            <span v-if="selectedBatch.weightRemaining != null" class="recipe-editor__batch-detail">
               Remaining: {{ selectedBatch.weightRemaining }}g
             </span>
           </div>
 
-          <div v-if="batchesForBean.length > 1" class="bean-info__field">
-            <button class="bean-info__link-btn" @click="showBatchList = !showBatchList">
+          <div v-if="batchesForBean.length > 1" class="recipe-editor__field">
+            <button class="recipe-editor__link-btn" @click="showBatchList = !showBatchList">
               {{ showBatchList ? 'Hide batches' : 'Switch batch' }} ({{ batchesForBean.length }})
             </button>
-            <div v-if="showBatchList" class="bean-info__batch-list">
+            <div v-if="showBatchList" class="recipe-editor__batch-list">
               <button
                 v-for="b in batchesForBean"
                 :key="b.id"
-                class="bean-info__batch-option"
-                :class="{ 'bean-info__batch-option--active': b.id === selectedBatchId }"
+                class="recipe-editor__batch-option"
+                :class="{ 'recipe-editor__batch-option--active': b.id === selectedBatchId }"
                 @click="onBatchSelect(b.id)"
               >
                 {{ b.roastDate || 'No date' }}
@@ -698,16 +684,16 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
         </template>
 
-        <button class="bean-info__link-btn" @click="router.push('/settings/beans')">Manage...</button>
+        <button class="recipe-editor__link-btn" @click="router.push('/settings/beans')">Manage...</button>
       </div>
 
       <!-- Column 2: Grinder -->
-      <div class="bean-info__column">
-        <h4 class="bean-info__section-title">Grinder</h4>
+      <div class="recipe-editor__column">
+        <h4 class="recipe-editor__section-title">Grinder</h4>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Grinder</label>
-          <select class="bean-info__input" :value="selectedGrinderId" @change="onGrinderSelect($event.target.value)">
+        <div class="recipe-editor__field">
+          <label class="recipe-editor__label">Grinder</label>
+          <select class="recipe-editor__input" :value="selectedGrinderId" @change="onGrinderSelect($event.target.value)">
             <option value="">Manual entry...</option>
             <option v-for="g in grinders" :key="g.id" :value="g.id">{{ g.model }}</option>
           </select>
@@ -715,8 +701,8 @@ watch(() => workflow?.profile, (newProfile) => {
 
         <!-- Manual mode: free-text grinder -->
         <template v-if="!selectedGrinderId">
-          <div class="bean-info__field">
-            <label class="bean-info__label">Model</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Model</label>
             <SuggestionField
               v-model="grinder"
               placeholder="Grinder model"
@@ -724,10 +710,10 @@ watch(() => workflow?.profile, (newProfile) => {
             />
           </div>
 
-          <div class="bean-info__field">
-            <label class="bean-info__label">Setting</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Setting</label>
             <input
-              class="bean-info__input"
+              class="recipe-editor__input"
               type="text"
               v-model="grinderSetting"
               placeholder="Grind setting"
@@ -737,21 +723,21 @@ watch(() => workflow?.profile, (newProfile) => {
 
         <!-- Entity mode: GrinderSettingInput -->
         <template v-else>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Setting</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Setting</label>
             <GrinderSettingInput v-model="grinderSetting" :grinder="selectedGrinder" />
           </div>
         </template>
 
-        <button class="bean-info__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
+        <button class="recipe-editor__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
       </div>
 
       <!-- Column 3: Dose -->
-      <div class="bean-info__column">
-        <h4 class="bean-info__section-title">Dose</h4>
+      <div class="recipe-editor__column">
+        <h4 class="recipe-editor__section-title">Dose</h4>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Dose In</label>
+        <div class="recipe-editor__field">
+          <label class="recipe-editor__label">Dose In</label>
           <ValueInput
             v-model="doseIn"
             :min="0"
@@ -762,8 +748,8 @@ watch(() => workflow?.profile, (newProfile) => {
           />
         </div>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Dose Out</label>
+        <div class="recipe-editor__field">
+          <label class="recipe-editor__label">Dose Out</label>
           <ValueInput
             v-model="doseOut"
             :min="0"
@@ -774,8 +760,8 @@ watch(() => workflow?.profile, (newProfile) => {
           />
         </div>
 
-        <div class="bean-info__field">
-          <label class="bean-info__label">Ratio (1:X)</label>
+        <div class="recipe-editor__field">
+          <label class="recipe-editor__label">Ratio (1:X)</label>
           <ValueInput
             v-model="ratioValue"
             :min="0.5"
@@ -788,60 +774,60 @@ watch(() => workflow?.profile, (newProfile) => {
     </div>
 
     <!-- Optional operation settings -->
-    <div class="bean-info__operations">
+    <div class="recipe-editor__operations">
       <!-- Steam -->
-      <div class="bean-info__op-section">
-        <button class="bean-info__op-toggle" @click="includeSteam = !includeSteam">
+      <div class="recipe-editor__op-section">
+        <button class="recipe-editor__op-toggle" @click="includeSteam = !includeSteam">
           <span>{{ includeSteam ? '\u25BE' : '\u25B8' }} Steam Settings</span>
-          <span class="bean-info__op-badge" v-if="includeSteam">included</span>
+          <span class="recipe-editor__op-badge" v-if="includeSteam">included</span>
         </button>
-        <div v-if="includeSteam" class="bean-info__op-fields">
-          <div class="bean-info__field">
-            <label class="bean-info__label">Duration</label>
+        <div v-if="includeSteam" class="recipe-editor__op-fields">
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Duration</label>
             <ValueInput v-model="steamDuration" :min="1" :max="120" :step="1" :decimals="0" suffix=" s" />
           </div>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Flow</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Flow</label>
             <ValueInput v-model="steamFlow" :min="0.4" :max="2.5" :step="0.05" :decimals="2" suffix=" mL/s" />
           </div>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Temperature</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Temperature</label>
             <ValueInput v-model="steamTemperature" :min="100" :max="170" :step="1" :decimals="0" suffix=" &deg;C" />
           </div>
         </div>
       </div>
 
       <!-- Flush -->
-      <div class="bean-info__op-section">
-        <button class="bean-info__op-toggle" @click="includeFlush = !includeFlush">
+      <div class="recipe-editor__op-section">
+        <button class="recipe-editor__op-toggle" @click="includeFlush = !includeFlush">
           <span>{{ includeFlush ? '\u25BE' : '\u25B8' }} Flush Settings</span>
-          <span class="bean-info__op-badge" v-if="includeFlush">included</span>
+          <span class="recipe-editor__op-badge" v-if="includeFlush">included</span>
         </button>
-        <div v-if="includeFlush" class="bean-info__op-fields">
-          <div class="bean-info__field">
-            <label class="bean-info__label">Duration</label>
+        <div v-if="includeFlush" class="recipe-editor__op-fields">
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Duration</label>
             <ValueInput v-model="flushDuration" :min="1" :max="30" :step="0.5" :decimals="1" suffix=" s" />
           </div>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Flow Rate</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Flow Rate</label>
             <ValueInput v-model="flushFlowRate" :min="2" :max="10" :step="0.5" :decimals="1" suffix=" mL/s" />
           </div>
         </div>
       </div>
 
       <!-- Hot Water -->
-      <div class="bean-info__op-section">
-        <button class="bean-info__op-toggle" @click="includeHotWater = !includeHotWater">
+      <div class="recipe-editor__op-section">
+        <button class="recipe-editor__op-toggle" @click="includeHotWater = !includeHotWater">
           <span>{{ includeHotWater ? '\u25BE' : '\u25B8' }} Hot Water Settings</span>
-          <span class="bean-info__op-badge" v-if="includeHotWater">included</span>
+          <span class="recipe-editor__op-badge" v-if="includeHotWater">included</span>
         </button>
-        <div v-if="includeHotWater" class="bean-info__op-fields">
-          <div class="bean-info__field">
-            <label class="bean-info__label">Volume</label>
+        <div v-if="includeHotWater" class="recipe-editor__op-fields">
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Volume</label>
             <ValueInput v-model="hotWaterVolume" :min="50" :max="500" :step="10" :decimals="0" suffix=" g" />
           </div>
-          <div class="bean-info__field">
-            <label class="bean-info__label">Temperature</label>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Temperature</label>
             <ValueInput v-model="hotWaterTemperature" :min="40" :max="100" :step="1" :decimals="0" suffix=" &deg;C" />
           </div>
         </div>
@@ -852,24 +838,10 @@ watch(() => workflow?.profile, (newProfile) => {
 
     <BottomBar
       :title="selectedIndex >= 0
-        ? (workflowCombos[selectedIndex]?.name || t('workflowEditor.title')) + (dirty ? ' \u25CF' : '')
-        : t('workflowEditor.title')"
-      @back="onBackClick"
-    >
-      <template v-if="selectedIndex >= 0 && dirty">
-        <button class="bean-info__save-btn" data-testid="wfe-save" @click="onSaveClick">
-          {{ t('workflowEditor.save') }}
-        </button>
-        <button class="bean-info__save-btn bean-info__save-btn--secondary" data-testid="wfe-save-as-new" @click="saveAsNew">
-          {{ t('workflowEditor.saveAsNew') }}
-        </button>
-      </template>
-      <template v-else-if="selectedIndex < 0 && dirty">
-        <button class="bean-info__save-btn" data-testid="wfe-save-as-new" @click="saveAsNew">
-          {{ t('workflowEditor.saveAsNew') }}
-        </button>
-      </template>
-    </BottomBar>
+        ? workflowCombos[selectedIndex]?.name || t('recipe.title')
+        : t('recipe.title')"
+      :show-back-button="false"
+    />
 
     <PresetEditPopup
       :visible="editPopupVisible"
@@ -880,65 +852,56 @@ watch(() => workflow?.profile, (newProfile) => {
       @delete="onComboEditDelete"
       @cancel="onComboEditCancel"
     />
-
-    <UnsavedChangesDialog
-      :visible="unsavedDialogVisible"
-      :combo-selected="selectedIndex >= 0"
-      @save="onDialogSave"
-      @save-as-new="onDialogSaveAsNew"
-      @discard="onDialogDiscard"
-      @keep-changes="onDialogKeepChanges"
-      @close="onDialogClose"
-    />
   </div>
 </template>
 
 <style scoped>
-.bean-info {
+.recipe-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
   background: var(--color-background);
 }
 
-.bean-info__presets {
+/*
+ * Header row: recipe pill row on the left, Save / Save as New action
+ * buttons on the right. The row collapses to wrap on narrow viewports.
+ * The pill row owns the dirty-dot indicator (via the :modified prop);
+ * the Save buttons only render when the form has diverged from the
+ * saved recipe.
+ */
+.recipe-editor__header {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
-.bean-info__add-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px dashed var(--color-border);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
+.recipe-editor__presets {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.recipe-editor__actions {
+  display: flex;
+  gap: 8px;
   flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__add-btn:active {
-  opacity: 0.7;
-}
-
-.bean-info__scroll {
+.recipe-editor__scroll {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
 }
 
-.bean-info__profile-section {
+.recipe-editor__profile-section {
   padding: 0 16px;
 }
 
-.bean-info__profile-row {
+.recipe-editor__profile-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -949,12 +912,12 @@ watch(() => workflow?.profile, (newProfile) => {
   border: 1px solid var(--color-border);
 }
 
-.bean-info__profile-name {
+.recipe-editor__profile-name {
   font-size: var(--font-body);
   color: var(--color-text);
 }
 
-.bean-info__change-btn {
+.recipe-editor__change-btn {
   padding: 6px 16px;
   border-radius: 6px;
   border: 1px solid var(--color-primary);
@@ -966,11 +929,11 @@ watch(() => workflow?.profile, (newProfile) => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__change-btn:active {
+.recipe-editor__change-btn:active {
   opacity: 0.7;
 }
 
-.bean-info__grid {
+.recipe-editor__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 24px;
@@ -978,13 +941,13 @@ watch(() => workflow?.profile, (newProfile) => {
   align-content: start;
 }
 
-.bean-info__column {
+.recipe-editor__column {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.bean-info__section-title {
+.recipe-editor__section-title {
   font-size: var(--font-body);
   font-weight: 600;
   color: var(--color-text);
@@ -992,24 +955,24 @@ watch(() => workflow?.profile, (newProfile) => {
   border-bottom: 1px solid var(--color-border);
 }
 
-.bean-info__field {
+.recipe-editor__field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.bean-info__label {
+.recipe-editor__label {
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
-.bean-info__hint {
+.recipe-editor__hint {
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
   opacity: 0.7;
 }
 
-.bean-info__input {
+.recipe-editor__input {
   height: 40px;
   padding: 0 12px;
   border-radius: 8px;
@@ -1020,15 +983,15 @@ watch(() => workflow?.profile, (newProfile) => {
   outline: none;
 }
 
-.bean-info__input::placeholder {
+.recipe-editor__input::placeholder {
   color: var(--color-text-secondary);
 }
 
-.bean-info__input:focus {
+.recipe-editor__input:focus {
   border-color: var(--color-primary);
 }
 
-.bean-info__select {
+.recipe-editor__select {
   height: 40px;
   padding: 0 12px;
   border-radius: 8px;
@@ -1041,20 +1004,20 @@ watch(() => workflow?.profile, (newProfile) => {
   appearance: none;
 }
 
-.bean-info__operations {
+.recipe-editor__operations {
   padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.bean-info__op-section {
+.recipe-editor__op-section {
   border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
 }
 
-.bean-info__op-toggle {
+.recipe-editor__op-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1069,14 +1032,14 @@ watch(() => workflow?.profile, (newProfile) => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__op-badge {
+.recipe-editor__op-badge {
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--color-success);
   text-transform: uppercase;
 }
 
-.bean-info__op-fields {
+.recipe-editor__op-fields {
   padding: 8px 12px 12px;
   display: flex;
   flex-direction: column;
@@ -1084,13 +1047,13 @@ watch(() => workflow?.profile, (newProfile) => {
   border-top: 1px solid var(--color-border);
 }
 
-.bean-info__op-divider {
+.recipe-editor__op-divider {
   height: 1px;
   background: var(--color-border);
   margin: 4px 0;
 }
 
-.bean-info__toggle {
+.recipe-editor__toggle {
   width: 80px;
   height: 36px;
   border-radius: 18px;
@@ -1104,13 +1067,13 @@ watch(() => workflow?.profile, (newProfile) => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__toggle--on {
+.recipe-editor__toggle--on {
   background: var(--color-success);
   color: var(--color-text);
   border-color: var(--color-success);
 }
 
-.bean-info__save-btn {
+.recipe-editor__save-btn {
   padding: 8px 20px;
   border-radius: 8px;
   border: none;
@@ -1122,35 +1085,35 @@ watch(() => workflow?.profile, (newProfile) => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__save-btn:active {
+.recipe-editor__save-btn:active {
   opacity: 0.8;
 }
 
-.bean-info__save-btn--secondary {
+.recipe-editor__save-btn--secondary {
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
 
-.bean-info__readonly {
+.recipe-editor__readonly {
   font-size: var(--font-body);
   color: var(--color-text);
   padding: 8px 0 2px;
 }
 
-.bean-info__batch-info {
+.recipe-editor__batch-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 4px 0;
 }
 
-.bean-info__batch-detail {
+.recipe-editor__batch-detail {
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
 }
 
-.bean-info__link-btn {
+.recipe-editor__link-btn {
   background: none;
   border: none;
   color: var(--color-primary);
@@ -1162,17 +1125,17 @@ watch(() => workflow?.profile, (newProfile) => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__link-btn:active {
+.recipe-editor__link-btn:active {
   opacity: 0.7;
 }
 
-.bean-info__batch-list {
+.recipe-editor__batch-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.bean-info__batch-option {
+.recipe-editor__batch-option {
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--color-border);
@@ -1184,17 +1147,17 @@ watch(() => workflow?.profile, (newProfile) => {
   -webkit-tap-highlight-color: transparent;
 }
 
-.bean-info__batch-option--active {
+.recipe-editor__batch-option--active {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
 }
 
-.bean-info__batch-option:active {
+.recipe-editor__batch-option:active {
   opacity: 0.7;
 }
 
 @media (max-width: 600px) {
-  .bean-info__grid {
+  .recipe-editor__grid {
     grid-template-columns: 1fr;
   }
 }

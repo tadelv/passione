@@ -1,19 +1,30 @@
 /**
- * E2E tests for the workflow combo editor redesign.
+ * E2E tests for the recipe editor (formerly "workflow combo editor").
+ *
+ * Model summary:
+ *  - The saved "recipe" (workflowCombos[i] in storage) is immutable until
+ *    the user explicitly taps Save or Save as New Recipe.
+ *  - Field edits live-apply to the gateway workflow (300ms debounce).
+ *  - There is no unsaved-changes dialog and no Back button on this page —
+ *    exit is always free via Home.
+ *  - The selected recipe pill shows a "modified" dot whenever the live
+ *    workflow diverges from the saved recipe.
  *
  * Covers:
- *  - Tapping a workflow combo pill on IdlePage does NOT start espresso.
- *  - Keep-changes path: live workflow takes new values, combo preset untouched.
- *  - Discard path: live workflow reverts, combo preset untouched.
- *  - Profile-change round-trip: Change → pick → Use Profile → verify row updates.
+ *  - Tapping a recipe pill on IdlePage does NOT start espresso.
+ *  - Edit + exit (Home) without Save → live workflow carries the tweak,
+ *    saved recipe is untouched (the default, zero-friction path).
+ *  - Edit + Save → saved recipe persists the tweak, toast fires.
+ *  - Edit + Save as New Recipe → a new recipe is created and selected.
+ *  - Profile-change round-trip still updates the profile row.
  */
 import { test, expect } from '@playwright/test'
 
 const BASE_URL = 'http://localhost:8080'
 
-// A fully-populated combo that exercises profile + context + operation sub-sections
-const SAMPLE_COMBO = {
-  id: 'combo-test-1',
+// A fully-populated recipe that exercises profile + context fields
+const SAMPLE_RECIPE = {
+  id: 'recipe-test-1',
   name: 'Morning',
   emoji: '',
   profileId: 'profile-test1234567890abcdef',
@@ -35,11 +46,13 @@ const SAMPLE_COMBO = {
   hotWaterSettings: { volume: 0 },
 }
 
-async function seedCombosKV(request, combo = SAMPLE_COMBO, selectedIndex = 0) {
-  // The skin stores combos under namespace 'decenza-js' key 'combos'
+async function seedRecipesKV(request, recipe = SAMPLE_RECIPE, selectedIndex = 0) {
+  // The persisted key name is still `workflowCombos` — internal data key
+  // was kept to avoid a storage migration. User-visible vocabulary is
+  // "recipes" / "Save as New Recipe".
   await request.post(`${BASE_URL}/api/v1/store/decenza-js/combos`, {
     data: {
-      workflowCombos: [combo],
+      workflowCombos: [recipe],
       selectedWorkflowCombo: selectedIndex,
     },
     headers: { 'Content-Type': 'application/json' },
@@ -47,8 +60,6 @@ async function seedCombosKV(request, combo = SAMPLE_COMBO, selectedIndex = 0) {
 }
 
 async function resetLayoutToDefault(request) {
-  // Reset the layout KV entry so IdlePage renders the workflow combo row.
-  // Earlier tests may have mutated the layout via the Layout Editor.
   await request.post(`${BASE_URL}/api/v1/store/decenza-js/layout`, {
     data: {
       version: 2,
@@ -66,8 +77,6 @@ async function resetLayoutToDefault(request) {
 }
 
 async function resetWorkflowToDefault(request) {
-  // Reset the mock workflow to a known baseline so the profile row and
-  // live-apply assertions start from predictable values.
   await request.put(`${BASE_URL}/api/v1/workflow`, {
     data: {
       profile: {
@@ -88,7 +97,7 @@ async function resetWorkflowToDefault(request) {
   })
 }
 
-async function readCombosKV(request) {
+async function readRecipesKV(request) {
   const res = await request.get(`${BASE_URL}/api/v1/store/decenza-js/combos`)
   if (!res.ok()) return null
   return await res.json()
@@ -109,22 +118,18 @@ async function loadAppAt(page, hashRoute = '/') {
   await page.waitForTimeout(200)
 }
 
-test.describe('Workflow combo editor redesign', () => {
+test.describe('Recipe editor', () => {
   test.beforeEach(async ({ request }) => {
     // Reset server state to a clean baseline — earlier test files may have
-    // mutated the layout, workflow, machine state, and combos in ways that
-    // would break the assumptions of these tests. In particular:
-    // user-workflow.spec.js ends with the machine in 'sleeping' state, which
-    // causes App.vue to auto-navigate any subsequent route change to
-    // /screensaver. We explicitly force the machine back to 'idle' here.
+    // mutated the layout, workflow, machine state, and recipes in ways that
+    // would break the assumptions of these tests.
     await request.put(`${BASE_URL}/api/v1/machine/state/idle`)
     await resetLayoutToDefault(request)
     await resetWorkflowToDefault(request)
-    await seedCombosKV(request)
+    await seedRecipesKV(request)
   })
 
-  test('tapping a workflow combo pill does NOT start espresso', async ({ page }) => {
-    // Track any state transitions to espresso
+  test('tapping a recipe pill on IdlePage does NOT start espresso', async ({ page }) => {
     let startedEspresso = false
     page.on('request', (req) => {
       if (req.url().includes('/api/v1/machine/state/espresso') && req.method() === 'PUT') {
@@ -133,7 +138,6 @@ test.describe('Workflow combo editor redesign', () => {
     })
 
     await loadAppAt(page, '/')
-    // Wait for the workflow combos row to render
     await page.waitForTimeout(500)
     const pill = page.locator('.preset-pill-row__pill').first()
     await expect(pill).toBeVisible({ timeout: 5000 })
@@ -149,12 +153,12 @@ test.describe('Workflow combo editor redesign', () => {
     expect(startedEspresso).toBe(false)
   })
 
-  test('keep-changes path: live workflow takes new values, combo preset untouched', async ({ page, request }) => {
-    await loadAppAt(page, '/workflow/edit')
-    await page.waitForSelector('.bean-info', { timeout: 5000 })
+  test('edit then Home: live workflow takes new values, saved recipe untouched', async ({ page, request }) => {
+    await loadAppAt(page, '/recipe/edit')
+    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
     await page.waitForTimeout(500)
 
-    // Select the combo pill (first — and only — combo)
+    // Select the recipe pill (first — and only — recipe)
     await page.locator('.preset-pill-row__pill').first().click()
     await page.waitForTimeout(300)
 
@@ -166,19 +170,16 @@ test.describe('Workflow combo editor redesign', () => {
     // The Save button should now be visible (dirty state)
     await expect(page.locator('[data-testid="wfe-save"]')).toBeVisible({ timeout: 2000 })
 
-    // Click the Back chevron on the BottomBar
-    await page.locator('.bottom-bar__back').click()
-    await page.waitForTimeout(300)
+    // The modified dot should appear on the selected pill
+    await expect(page.locator('.preset-pill-row__pill--modified')).toBeVisible({ timeout: 2000 })
 
-    // The UnsavedChangesDialog should be visible
-    await expect(page.locator('[data-testid="ucd-keep-changes"]')).toBeVisible({ timeout: 2000 })
-
-    // Click "Keep changes"
-    await page.locator('[data-testid="ucd-keep-changes"]').click()
+    // Leave via the Home button — no dialog, no guard, no prompt
+    await page.locator('.bottom-bar__home').click()
     await page.waitForTimeout(500)
+    await expect(page).toHaveURL(/.*#\/$/)
 
-    // Combo preset should be UNTOUCHED (still 18)
-    const kv = await readCombosKV(request)
+    // Saved recipe should be UNTOUCHED (still 18)
+    const kv = await readRecipesKV(request)
     expect(kv?.workflowCombos?.[0]?.doseIn).toBe(18)
 
     // Live workflow should reflect the incremented dose (18 + 0.1 = 18.1)
@@ -186,57 +187,80 @@ test.describe('Workflow combo editor redesign', () => {
     expect(wf?.context?.targetDoseWeight).toBeGreaterThan(18)
   })
 
-  test('discard path: live workflow reverts, combo preset untouched', async ({ page, request }) => {
-    await loadAppAt(page, '/workflow/edit')
-    await page.waitForSelector('.bean-info', { timeout: 5000 })
+  test('edit then explicit Save: saved recipe persists the tweak', async ({ page, request }) => {
+    await loadAppAt(page, '/recipe/edit')
+    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
     await page.waitForTimeout(500)
 
-    // Capture the pre-edit workflow state
-    const preEdit = await readWorkflow(request)
-    const originalDose = preEdit?.context?.targetDoseWeight ?? null
-
-    // Select the combo and make it dirty
+    // Select + tweak doseIn via the stepper
     await page.locator('.preset-pill-row__pill').first().click()
     await page.waitForTimeout(300)
     await page.locator('.value-input__btn[aria-label="Increase value"]').first().click()
     await page.waitForTimeout(600)
 
-    // Open the dialog via Back
-    await page.locator('.bottom-bar__back').click()
-    await page.waitForTimeout(300)
+    // Tap Save (explicit commit). useSettings has an 800ms debounced write
+    // to the KV store — wait longer than that before reading storage.
+    await page.locator('[data-testid="wfe-save"]').click()
+    await page.waitForTimeout(1200)
 
-    // Click Discard
-    await expect(page.locator('[data-testid="ucd-discard"]')).toBeVisible({ timeout: 2000 })
-    await page.locator('[data-testid="ucd-discard"]').click()
-    await page.waitForTimeout(700)
+    // Saved recipe should now reflect the tweak (18 → 18.1)
+    const kv = await readRecipesKV(request)
+    expect(kv?.workflowCombos?.[0]?.doseIn).toBeGreaterThan(18)
 
-    // Combo preset stays at 18
-    const kv = await readCombosKV(request)
-    expect(kv?.workflowCombos?.[0]?.doseIn).toBe(18)
-
-    // Live workflow reverted to the pre-edit snapshot (or at least not increased)
+    // Live workflow should also reflect it
     const wf = await readWorkflow(request)
-    if (originalDose != null) {
-      expect(wf?.context?.targetDoseWeight).toBe(originalDose)
-    }
+    expect(wf?.context?.targetDoseWeight).toBeGreaterThan(18)
+
+    // The modified dot should clear (save succeeded → live equals saved)
+    await expect(page.locator('.preset-pill-row__pill--modified')).toHaveCount(0)
   })
 
-  test('profile change round-trip updates the profile row (bug fix)', async ({ page }) => {
-    await loadAppAt(page, '/workflow/edit')
-    await page.waitForSelector('.bean-info', { timeout: 5000 })
+  test('Save as New Recipe: creates a new recipe and selects it', async ({ page, request }) => {
+    await loadAppAt(page, '/recipe/edit')
+    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
     await page.waitForTimeout(500)
 
-    // Select the combo — profile row should show Classic Blooming
+    // Select + tweak to enable Save as New Recipe
     await page.locator('.preset-pill-row__pill').first().click()
     await page.waitForTimeout(300)
-    await expect(page.locator('.bean-info__profile-name')).toContainText('Classic Blooming')
+    await page.locator('.value-input__btn[aria-label="Increase value"]').first().click()
+    await page.waitForTimeout(600)
+
+    // Tap Save as New Recipe
+    await page.locator('[data-testid="wfe-save-as-new"]').click()
+    await page.waitForTimeout(300)
+
+    // The rename popup opens on the freshly-created recipe
+    await expect(page.locator('.preset-edit-popup')).toBeVisible({ timeout: 2000 })
+    // Dismiss the popup with the auto-generated name intact
+    await page.locator('.preset-edit-popup__btn--save').click()
+    // useSettings has an 800ms debounced write to KV — wait it out
+    await page.waitForTimeout(1200)
+
+    // Storage now has 2 recipes, the new one selected
+    const kv = await readRecipesKV(request)
+    expect(kv?.workflowCombos?.length).toBe(2)
+    expect(kv?.selectedWorkflowCombo).toBe(1)
+    expect(kv?.workflowCombos?.[1]?.doseIn).toBeGreaterThan(18)
+    // Original recipe is untouched
+    expect(kv?.workflowCombos?.[0]?.doseIn).toBe(18)
+  })
+
+  test('profile change round-trip updates the profile row', async ({ page }) => {
+    await loadAppAt(page, '/recipe/edit')
+    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
+    await page.waitForTimeout(500)
+
+    // Select the recipe — profile row should show Classic Blooming
+    await page.locator('.preset-pill-row__pill').first().click()
+    await page.waitForTimeout(300)
+    await expect(page.locator('.recipe-editor__profile-name')).toContainText('Classic Blooming')
 
     // Click the Change button → navigates to /profiles?from=workflow
-    await page.locator('.bean-info__change-btn').click()
+    await page.locator('.recipe-editor__change-btn').click()
     await page.waitForTimeout(500)
 
     // ProfileSelectorPage should show two profiles. Pick "Alternative Profile".
-    // The page renders profile cards — find by visible text.
     const altProfile = page.getByText('Alternative Profile', { exact: false }).first()
     await expect(altProfile).toBeVisible({ timeout: 5000 })
     await altProfile.click()
@@ -248,9 +272,7 @@ test.describe('Workflow combo editor redesign', () => {
     await useBtn.click()
     await page.waitForTimeout(800)
 
-    // We should be back on the workflow editor, and the profile row should now
-    // show the alternative profile — the watcher-with-awaitingProfileFromPicker
-    // fix ensures this update is honored even though a combo is selected.
-    await expect(page.locator('.bean-info__profile-name')).toContainText('Alternative Profile', { timeout: 5000 })
+    // Back on the recipe editor, profile row should show the alternative profile
+    await expect(page.locator('.recipe-editor__profile-name')).toContainText('Alternative Profile', { timeout: 5000 })
   })
 })

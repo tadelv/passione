@@ -49,11 +49,11 @@ test.describe('Screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/shot-history.png` })
   })
 
-  test('bean info page', async ({ page }) => {
+  test('recipe editor page', async ({ page }) => {
     await loadApp(page)
-    await page.evaluate(() => window.__vueRouter.push('/bean-info'))
+    await page.evaluate(() => window.__vueRouter.push('/recipe/edit'))
     await page.waitForTimeout(1500)
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/bean-info.png` })
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/recipe-editor.png` })
   })
 
   test('profile info page', async ({ page }) => {

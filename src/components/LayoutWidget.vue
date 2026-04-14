@@ -176,7 +176,7 @@ const lastShotInfo = computed(() => {
 
     <!-- Shot plan -->
     <template v-else-if="type === 'shotPlan'">
-      <div class="layout-widget__shot-plan" role="button" tabindex="0" @click="router.push('/workflow/edit')" @keydown.enter="router.push('/workflow/edit')" @keydown.space.prevent="router.push('/workflow/edit')">
+      <div class="layout-widget__shot-plan" role="button" tabindex="0" @click="router.push('/recipe/edit')" @keydown.enter="router.push('/recipe/edit')" @keydown.space.prevent="router.push('/recipe/edit')">
         <div v-if="profileName" class="layout-widget__profile" @click.stop="router.push('/profiles')">
           {{ profileName }}
         </div>
@@ -205,10 +205,14 @@ const lastShotInfo = computed(() => {
       </div>
     </template>
 
-    <!-- Workflow Combos -->
+    <!-- Recipes (workflow combos — internal data key kept for layout compat) -->
     <template v-else-if="type === 'workflowCombos'">
+      <!-- Empty-state has no dedicated CTA here: first-time users reach the
+           recipe editor via the nav-buttons widget ("Recipes" button) and
+           create their first recipe by tweaking fields and tapping
+           "Save as New Recipe". Keeps a single creation path. -->
       <div v-if="workflowCombos.length" class="layout-widget__preset-section">
-        <span class="layout-widget__section-label">Workflows</span>
+        <span class="layout-widget__section-label">{{ t('recipe.recipes') }}</span>
         <PresetPillRow
           :presets="workflowCombos"
           :selected-index="selectedWorkflowCombo"
@@ -219,17 +223,12 @@ const lastShotInfo = computed(() => {
           @edit="idx => emit('workflow-combo-edit', idx)"
         />
       </div>
-      <div v-else class="layout-widget__preset-section">
-        <button class="layout-widget__new-combo-btn" @click="router.push('/workflow/edit')">
-          + New Combo
-        </button>
-      </div>
     </template>
 
     <!-- Nav Buttons -->
     <template v-else-if="type === 'navButtons'">
       <div class="layout-widget__nav">
-        <button class="layout-widget__nav-btn" @click="router.push('/workflow/edit')">{{ t('idle.beans') }}</button>
+        <button class="layout-widget__nav-btn" @click="router.push('/recipe/edit')">{{ t('idle.recipes') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/history')">{{ t('idle.history') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/settings')">{{ t('idle.settings') }}</button>
         <button class="layout-widget__nav-btn layout-widget__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">{{ t('idle.sleep') }}</button>
@@ -377,22 +376,6 @@ const lastShotInfo = computed(() => {
   color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-.layout-widget__new-combo-btn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: 1px dashed var(--color-border);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.layout-widget__new-combo-btn:active {
-  opacity: 0.7;
 }
 
 /* ---- Clock ---- */

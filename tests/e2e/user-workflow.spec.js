@@ -185,14 +185,14 @@ test.describe('Complete user session', () => {
     }
 
     // ------------------------------------------------------------------
-    // Step 6: Navigate to bean-info (Workflows page) to create a combo
+    // Step 6: Navigate to the recipe editor to create a recipe
     // ------------------------------------------------------------------
-    await navigateTo(page, '/bean-info')
+    await navigateTo(page, '/recipe/edit')
     await page.waitForTimeout(2000)
 
     // The page should load (BeanInfoPage)
     // It has a profile section, coffee section, grinder section, dose section
-    await expect(page.locator('.bean-info__grid')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('.recipe-editor__grid')).toBeVisible({ timeout: 5000 })
 
     // In manual mode (no bean entity selected), SuggestionField inputs are visible
     // Coffee Name is the first SuggestionField in the Coffee column
@@ -214,20 +214,20 @@ test.describe('Complete user session', () => {
     }
 
     // Grinder setting (plain text input in manual mode)
-    const grinderSettingInput = page.locator('.bean-info__input[placeholder="Grind setting"]')
+    const grinderSettingInput = page.locator('.recipe-editor__input[placeholder="Grind setting"]')
     if (await grinderSettingInput.isVisible().catch(() => false)) {
       await grinderSettingInput.fill('15')
     }
 
     // Enable steam for the latte combo
-    const steamToggle = page.locator('.bean-info__op-toggle', { hasText: 'Steam' })
+    const steamToggle = page.locator('.recipe-editor__op-toggle', { hasText: 'Steam' })
     if (await steamToggle.isVisible()) {
       await steamToggle.click()
       await page.waitForTimeout(300)
     }
 
     // Save as a new workflow combo
-    const saveAsNewBtn = page.locator('.bean-info__save-btn', { hasText: 'Save as New' })
+    const saveAsNewBtn = page.locator('.recipe-editor__save-btn', { hasText: 'Save as New' })
     if (await saveAsNewBtn.isVisible()) {
       await saveAsNewBtn.click()
       await page.waitForTimeout(1000)

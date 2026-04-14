@@ -191,19 +191,24 @@ test.describe('Navigation', () => {
     await expect(page).toHaveURL(/.*#\/history/)
   })
 
-  test('can navigate to /workflow/edit (and legacy /bean-info redirects)', async ({ page }) => {
+  test('can navigate to /recipe/edit (legacy /workflow/edit and /bean-info redirect)', async ({ page }) => {
     await loadApp(page)
     await page.waitForTimeout(500)
 
-    // Direct navigation to the new route
+    // Direct navigation to the new canonical route
+    await page.evaluate(() => window.__vueRouter.push('/recipe/edit'))
+    await page.waitForTimeout(500)
+    await expect(page).toHaveURL(/.*#\/recipe\/edit/)
+
+    // Legacy /workflow/edit should redirect to /recipe/edit
     await page.evaluate(() => window.__vueRouter.push('/workflow/edit'))
     await page.waitForTimeout(500)
-    await expect(page).toHaveURL(/.*#\/workflow\/edit/)
+    await expect(page).toHaveURL(/.*#\/recipe\/edit/)
 
-    // Legacy /bean-info should redirect to /workflow/edit
+    // Legacy /bean-info should also redirect to /recipe/edit
     await page.evaluate(() => window.__vueRouter.push('/bean-info'))
     await page.waitForTimeout(500)
-    await expect(page).toHaveURL(/.*#\/workflow\/edit/)
+    await expect(page).toHaveURL(/.*#\/recipe\/edit/)
   })
 })
 
@@ -462,7 +467,7 @@ test.describe('Pages load without errors', () => {
     { path: '/#/', name: 'IdlePage' },
     { path: '/#/settings', name: 'SettingsPage' },
     { path: '/#/history', name: 'ShotHistoryPage' },
-    { path: '/#/bean-info', name: 'BeanInfoPage' },
+    { path: '/#/recipe/edit', name: 'RecipeEditorPage' },
   ]
 
   for (const route of routes) {

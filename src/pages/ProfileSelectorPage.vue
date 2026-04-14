@@ -110,7 +110,7 @@ async function useSelectedProfile() {
   if (!selectedRecord.value) return
   await applyProfile(selectedRecord.value)
   if (selectOnly.value) {
-    router.push('/workflow/edit')
+    router.push('/recipe/edit')
   }
 }
 
@@ -136,7 +136,7 @@ async function fetchProfiles() {
 }
 
 function goBack() {
-  router.push(selectOnly.value ? '/workflow/edit' : '/')
+  router.push(selectOnly.value ? '/recipe/edit' : '/')
 }
 
 onMounted(fetchProfiles)
