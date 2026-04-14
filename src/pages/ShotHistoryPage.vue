@@ -301,7 +301,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <BottomBar title="Shot History" @back="router.back()">
+    <BottomBar title="Shot History" :show-back-button="false">
       <button class="shot-history__bottom-btn" @click="router.push('/auto-favorites')">
         Favorites
       </button>
