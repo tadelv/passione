@@ -13,7 +13,7 @@ The home screen shows real-time machine data and quick-access operation buttons.
 - **Status bar** with connection status, clock, mix/group/steam temperatures, and water level
 - **Operation buttons** (Espresso, Steam, Hot Water, Flush) with two-step confirmation to prevent accidental starts
 - **Shot plan** showing the active profile, dose, yield, ratio, and grinder setting
-- **Workflow combos** for one-tap switching between saved brewing configurations (profile + coffee + grinder + steam/hot water settings)
+- **Recipes** for one-tap switching between saved brewing configurations (profile + coffee + grinder + steam/hot water settings)
 - **Last shot** widget with mini graph and metrics
 
 ### Recipe Editor
@@ -25,7 +25,9 @@ Create and manage complete brewing recipes — profile, beans, grinder, dose, an
 - Set profile, coffee, grinder, dose in/out, and ratio
 - Configure steam, flush, and hot water settings per recipe
 - Save as named recipes for quick access from the home screen
-- Tap a combo to load all settings; double-tap to start espresso
+- Field edits apply live to the running workflow (300 ms debounce); saved recipes only change when you explicitly tap **Save** or **Save as New Recipe**
+- A small dot on the selected recipe pill marks any divergence between the live workflow and the saved recipe
+- From the home screen: tap a recipe to load it, double-tap to open the editor — the Espresso button is the only way to start a shot
 
 ### Profile Management
 
@@ -74,7 +76,7 @@ Rearrange the home screen to show what matters to you.
 - Six configurable zones (top, center, bottom -- left and right)
 - Drag to reorder, add, or remove widgets from each zone
 - Changes apply in real time -- edit directly on the live home screen
-- Available widgets: action buttons, shot plan, workflow combos, last shot, navigation, scale info, fullscreen toggle
+- Available widgets: action buttons, shot plan, recipes, last shot, navigation, scale info, fullscreen toggle
 
 ### Settings
 
