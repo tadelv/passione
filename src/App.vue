@@ -46,10 +46,10 @@ const grindersComposable = useGrinders()
 const settings = useSettings()
 const theme = useTheme()
 const volumeMode = useVolumeMode(machine, scale, workflow)
-const operationSettings = useOperationSettings(settings, workflow)
+const toast = useToast()
+const operationSettings = useOperationSettings(settings, workflow, updateWorkflow, toast)
 const display = useDisplay()
 const autoSleep = useAutoSleep(machine, settings, display)
-const toast = useToast()
 
 // Provide reactive data for child components that use inject
 provide('machineState', machine.state)

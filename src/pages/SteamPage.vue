@@ -1,11 +1,19 @@
 <script setup>
-import { computed, inject } from 'vue'
+import { computed, inject, onMounted } from 'vue'
 import ValueInput from '../components/ValueInput.vue'
 import { setMachineState } from '../api/rest.js'
 
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
+const operationSettings = inject('operationSettings', null)
+
+// Refresh local steam settings from the live workflow whenever the user
+// lands on this page — picks up changes made by the workflow editor or by
+// another client without waiting for the next interaction.
+onMounted(() => {
+  operationSettings?.syncFromWorkflow?.()
+})
 
 const isSteaming = computed(() => machineState.value === 'steam')
 

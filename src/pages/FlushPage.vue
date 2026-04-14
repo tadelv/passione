@@ -1,10 +1,17 @@
 <script setup>
-import { computed, inject } from 'vue'
+import { computed, inject, onMounted } from 'vue'
 import { setMachineState } from '../api/rest.js'
 
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
+const operationSettings = inject('operationSettings', null)
+
+// Refresh local flush settings from the live workflow on mount so values
+// reflect any updates made elsewhere (workflow editor, other client).
+onMounted(() => {
+  operationSettings?.syncFromWorkflow?.()
+})
 
 const isFlushing = computed(() => machineState.value === 'flush')
 

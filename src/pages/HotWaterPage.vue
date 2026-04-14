@@ -6,6 +6,7 @@ const machineState = inject('machineState')
 const weight = inject('weight')
 const settings = inject('settings')
 const scale = inject('scale')
+const operationSettings = inject('operationSettings', null)
 
 const isDispensing = computed(() => machineState.value === 'hotWater')
 
@@ -26,6 +27,9 @@ const weightProgress = computed(() =>
 )
 
 onMounted(() => {
+  // Pull fresh hot-water settings from the live workflow on mount so values
+  // reflect any updates made elsewhere (workflow editor, other client).
+  operationSettings?.syncFromWorkflow?.()
   if (!isVolumeMode.value && scale) {
     scale.tare().catch(() => {})
   }

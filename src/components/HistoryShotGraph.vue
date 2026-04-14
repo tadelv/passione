@@ -38,12 +38,28 @@ function shotToData(shot) {
   const w = normalized.weight ?? normalized.elapsed.map(() => 0)
   const e = normalized.elapsed
 
-  // Compute weight flow (g/s) from weight deltas
-  const weightFlow = e.map((t, i) => {
+  // Compute weight flow (g/s) from weight deltas. The raw derivative of a
+  // noisy scale signal is jagged, so we run a 5-sample centered moving
+  // average over the result. This matches the live EMA smoothing applied
+  // in useShotData (during recording) so post-shot graphs read smoothly.
+  const rawFlow = e.map((t, i) => {
     if (i === 0) return 0
     const dt = t - e[i - 1]
     const dw = w[i] - w[i - 1]
-    return dt > 0.05 ? Math.max(0, dw / dt) : (i > 1 ? 0 : 0)
+    return dt > 0.05 ? Math.max(0, dw / dt) : 0
+  })
+  const window = 5
+  const half = Math.floor(window / 2)
+  const weightFlow = rawFlow.map((_, i) => {
+    let sum = 0
+    let n = 0
+    for (let k = i - half; k <= i + half; k++) {
+      if (k >= 0 && k < rawFlow.length) {
+        sum += rawFlow[k]
+        n++
+      }
+    }
+    return n > 0 ? sum / n : 0
   })
 
   return [

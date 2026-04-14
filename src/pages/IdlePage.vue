@@ -80,9 +80,12 @@ const editPopupIndex = ref(-1)
 
 async function onComboSelect(index) {
   if (!settings) return
-  settings.settings.selectedWorkflowCombo = index
   const combo = workflowCombos.value[index]
   if (!combo) return
+
+  const previousIndex = settings.settings.selectedWorkflowCombo
+  // Optimistic selection — reverted below if the workflow update fails.
+  settings.settings.selectedWorkflowCombo = index
 
   const update = {}
 
@@ -121,19 +124,12 @@ async function onComboSelect(index) {
     }
   }
 
-  // Include operation settings in the single workflow update (avoids multiple rapid PUTs).
-  // Suppress useOperationSettings watchers so settings mutations don't trigger extra API calls.
-  operationSettings?.suppress()
-
   if (combo.includeSteam && combo.steamSettings) {
     update.steamSettings = {
       targetTemperature: combo.steamSettings.temperature ?? settings.settings.steamTemperature ?? 160,
       duration: combo.steamSettings.duration ?? settings.settings.steamDuration ?? 30,
       flow: combo.steamSettings.flow ?? settings.settings.steamFlow ?? 1.5,
     }
-    if (combo.steamSettings.duration != null) settings.settings.steamDuration = combo.steamSettings.duration
-    if (combo.steamSettings.flow != null) settings.settings.steamFlow = combo.steamSettings.flow
-    if (combo.steamSettings.temperature != null) settings.settings.steamTemperature = combo.steamSettings.temperature
   }
 
   if (combo.includeFlush && combo.flushSettings) {
@@ -142,8 +138,6 @@ async function onComboSelect(index) {
       duration: combo.flushSettings.duration ?? settings.settings.flushDuration ?? 5,
       flow: combo.flushSettings.flow ?? settings.settings.flushFlowRate ?? 6.0,
     }
-    if (combo.flushSettings.duration != null) settings.settings.flushDuration = combo.flushSettings.duration
-    if (combo.flushSettings.flow != null) settings.settings.flushFlowRate = combo.flushSettings.flow
   }
 
   if (combo.includeHotWater && combo.hotWaterSettings) {
@@ -153,18 +147,26 @@ async function onComboSelect(index) {
       duration: settings.settings.hotWaterDuration ?? 60,
       flow: settings.settings.hotWaterFlow ?? 6.0,
     }
-    if (combo.hotWaterSettings.volume != null) settings.settings.hotWaterVolume = combo.hotWaterSettings.volume
-    if (combo.hotWaterSettings.temperature != null) settings.settings.hotWaterTemperature = combo.hotWaterSettings.temperature
   }
 
-  // Re-enable watchers after settings are updated (nextTick ensures Vue has flushed)
-  Promise.resolve().then(() => operationSettings?.unsuppress())
-
-  if (Object.keys(update).length > 0) {
-    updateWorkflow(update).catch(() => {})
+  if (Object.keys(update).length === 0) {
+    toast?.success(`Loaded ${combo.name || 'combo'}`)
+    return
   }
 
-  toast?.success(`Loaded ${combo.name || 'combo'}`)
+  try {
+    await updateWorkflow(update)
+    // Mirror the server-confirmed workflow back into the local settings
+    // cache so SteamPage / FlushPage / HotWaterPage read the freshly applied
+    // values (and any clamping the gateway may have applied).
+    operationSettings?.syncFromWorkflow?.()
+    toast?.success(`Loaded ${combo.name || 'combo'}`)
+  } catch {
+    // Revert the optimistic selection so the UI doesn't lie about which
+    // combo is active when the gateway rejected the update.
+    settings.settings.selectedWorkflowCombo = previousIndex
+    toast?.error(`Failed to load ${combo.name || 'combo'}`)
+  }
 }
 
 function onComboEdit(index) {

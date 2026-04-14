@@ -33,6 +33,11 @@ const LINE_WIDTH = 2.5
 const GOAL_LINE_WIDTH = 1.5
 const GOAL_DASH = [6, 4]
 
+// uPlot draws sample points (dots) on every series whose pixel pitch is
+// large enough — for a ~30 s espresso shot at 10 Hz that's almost always
+// the case, which clutters the line. We force points off on every series.
+const NO_POINTS = { show: false }
+
 /**
  * Create uPlot options for live shot charts and history shot charts.
  *
@@ -116,6 +121,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         stroke: COLORS.pressure,
         width: LINE_WIDTH,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + ' bar' : '--',
       },
       // 2: targetPressure (goal)
@@ -125,6 +131,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: GOAL_LINE_WIDTH,
         dash: GOAL_DASH,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) : '--',
       },
       // 3: flow (actual)
@@ -133,6 +140,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         stroke: COLORS.flow,
         width: LINE_WIDTH,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + ' mL/s' : '--',
       },
       // 4: targetFlow (goal)
@@ -142,6 +150,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: GOAL_LINE_WIDTH,
         dash: GOAL_DASH,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) : '--',
       },
       // 5: temperature (actual)
@@ -150,6 +159,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         stroke: COLORS.temperature,
         width: LINE_WIDTH,
         scale: 'temp',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + '\u00b0C' : '--',
       },
       // 6: targetTemperature (goal)
@@ -159,6 +169,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         width: GOAL_LINE_WIDTH,
         dash: GOAL_DASH,
         scale: 'temp',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) : '--',
       },
       // 7: weight
@@ -167,6 +178,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         stroke: COLORS.weight,
         width: LINE_WIDTH,
         scale: 'weight',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + ' g' : '--',
       },
       // 8: weightFlow (g/s from scale)
@@ -175,6 +187,7 @@ export function createShotChartOpts(width, height, opts = {}) {
         stroke: COLORS.weightFlow,
         width: LINE_WIDTH - 0.5,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + ' g/s' : '--',
       },
     ],
@@ -248,6 +261,7 @@ export function createProfileChartOpts(width, height) {
         width: LINE_WIDTH,
         dash: GOAL_DASH,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + ' bar' : '--',
       },
       // 2: flow target curve
@@ -257,6 +271,7 @@ export function createProfileChartOpts(width, height) {
         width: LINE_WIDTH,
         dash: GOAL_DASH,
         scale: 'pressure',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + ' mL/s' : '--',
       },
       // 3: temperature target curve
@@ -266,6 +281,7 @@ export function createProfileChartOpts(width, height) {
         width: LINE_WIDTH - 0.5,
         dash: GOAL_DASH,
         scale: 'temp',
+        points: NO_POINTS,
         value: (u, v) => v != null ? v.toFixed(1) + '\u00b0C' : '--',
       },
     ],

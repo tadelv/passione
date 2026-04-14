@@ -500,12 +500,19 @@ const grinderSuggestions = computed(() =>
   [...new Set(workflowCombos.value.map(p => p.grinder).filter(Boolean))]
 )
 
+// Round to one decimal without going through `+(...).toFixed(1)`, which
+// re-parses the string and can leave residual float noise (e.g. 32.0000001
+// vs a literal 32). Math.round on the *10 scaled value is exact.
+function round1(n) {
+  return Math.round(n * 10) / 10
+}
+
 // ---- Linked ratio: changing any of doseIn/doseOut/ratio updates the others ----
 watch(doseIn, (val) => {
   if (_updating) return
   _updating = true
   if (val > 0 && ratioValue.value > 0) {
-    doseOut.value = +(val * ratioValue.value).toFixed(1)
+    doseOut.value = round1(val * ratioValue.value)
   }
   _updating = false
 })
@@ -514,7 +521,7 @@ watch(doseOut, (val) => {
   if (_updating) return
   _updating = true
   if (doseIn.value > 0 && val > 0) {
-    ratioValue.value = +(val / doseIn.value).toFixed(1)
+    ratioValue.value = round1(val / doseIn.value)
   }
   _updating = false
 })
@@ -523,7 +530,7 @@ watch(ratioValue, (val) => {
   if (_updating) return
   _updating = true
   if (doseIn.value > 0 && val > 0) {
-    doseOut.value = +(doseIn.value * val).toFixed(1)
+    doseOut.value = round1(doseIn.value * val)
   }
   _updating = false
 })

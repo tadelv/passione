@@ -247,6 +247,20 @@ function routeApi(path, method, body, res, url) {
   if (path.startsWith('/api/v1/machine/state/') && method === 'PUT') {
     const newState = path.split('/').pop()
     mockMachineState.state = newState
+    // Mimic the DE1's substate progression so the UI's substate-gated logic
+    // (e.g. shot timer start) exercises the real code path. Flowing
+    // operations transition preparingForShot → pouring almost immediately.
+    const FLOWING = new Set(['espresso', 'steam', 'hotWater', 'flush'])
+    if (FLOWING.has(newState)) {
+      mockMachineState.substate = 'preparingForShot'
+      setTimeout(() => {
+        if (mockMachineState.state === newState) {
+          mockMachineState.substate = 'pouring'
+        }
+      }, 150)
+    } else {
+      mockMachineState.substate = 'idle'
+    }
     return json(mockMachineState)
   }
 

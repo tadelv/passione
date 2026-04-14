@@ -96,6 +96,7 @@ function buildOpts(width, height) {
       stroke: colors.pressure,
       width: 2.5,
       scale: 'pressure',
+      points: { show: false },
       show: props.visibleCurves.pressure,
     })
     seriesDefs.push({
@@ -103,6 +104,7 @@ function buildOpts(width, height) {
       stroke: colors.flow,
       width: 2.5,
       scale: 'flow',
+      points: { show: false },
       show: props.visibleCurves.flow,
     })
     seriesDefs.push({
@@ -110,6 +112,7 @@ function buildOpts(width, height) {
       stroke: colors.weight,
       width: 2.5,
       scale: 'weight',
+      points: { show: false },
       show: props.visibleCurves.weight,
     })
   }

@@ -5,17 +5,23 @@
  * this composable sends PUT /api/v1/workflow with the updated section.
  * It also loads initial values from the workflow on mount.
  *
+ * Updates flow through the provided `updateWorkflow` callback (from
+ * useWorkflow) so the shared reactive workflow state is kept in sync with
+ * the server's response — avoiding stale reads elsewhere in the app.
+ *
  * This implements P0-3: Workflow Integration for Operation Pages.
  */
 
-import { watch } from 'vue'
-import { updateWorkflow as putWorkflow } from '../api/rest'
+import { watch, nextTick } from 'vue'
 
 const DEBOUNCE_MS = 500
 
-export function useOperationSettings(settings, workflow) {
+export function useOperationSettings(settings, workflow, updateWorkflow, toast = null) {
   const _timers = {}
   let _suppressed = false
+  // Coalesce noisy back-to-back failures (network blip while typing) into a
+  // single user-facing toast per ~3 s window.
+  let _lastErrorAt = 0
 
   /**
    * Suppress watcher-driven API calls (e.g. during bulk combo loading).
@@ -42,9 +48,19 @@ export function useOperationSettings(settings, workflow) {
     clearTimeout(_timers[key])
     _timers[key] = setTimeout(async () => {
       try {
-        await putWorkflow(payload)
+        // Route through the workflow composable so the reactive `workflow`
+        // object is updated from the server response. Consumers that read
+        // from `workflow.steamSettings` / `workflow.rinseData` /
+        // `workflow.hotWaterData` (e.g. WorkflowEditorPage) then see a
+        // consistent view.
+        await updateWorkflow(payload)
       } catch (e) {
         console.warn(`[useOperationSettings] Failed to update ${key}:`, e.message)
+        const now = Date.now()
+        if (toast && now - _lastErrorAt > 3000) {
+          _lastErrorAt = now
+          toast.error?.(`Failed to save ${key} settings`)
+        }
       }
     }, DEBOUNCE_MS)
   }
@@ -52,9 +68,13 @@ export function useOperationSettings(settings, workflow) {
   // ---- Load initial values from workflow ------------------------------------
 
   /**
-   * Apply workflow data into settings. Call this after workflow is loaded.
+   * Apply workflow data into settings. Call this after workflow is loaded,
+   * or after navigating back to an operation page to pick up changes made
+   * elsewhere. Suppressed during the write so the watchers don't bounce the
+   * same values back to the server.
    */
   function syncFromWorkflow() {
+    suppress()
     // Steam
     if (workflow.steamSettings) {
       if (workflow.steamSettings.duration != null) {
@@ -96,6 +116,11 @@ export function useOperationSettings(settings, workflow) {
         settings.settings.flushTemperature = workflow.rinseData.targetTemperature
       }
     }
+
+    // Wait for Vue's watcher flush to drain before re-arming, so the
+    // assignments above don't trigger a redundant PUT echoing the values
+    // we just received from the server.
+    nextTick(unsuppress)
   }
 
   // ---- Watch settings and push to workflow ----------------------------------

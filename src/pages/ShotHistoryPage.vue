@@ -1,10 +1,8 @@
 <script setup>
-import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import HistoryShotGraph from '../components/HistoryShotGraph.vue'
-import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
-import { getShotsPaginated, getShot } from '../api/rest.js'
+import { getShotsPaginated } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 
 const router = useRouter()
@@ -22,14 +20,6 @@ const initialLoading = ref(true)
 const searchQuery = ref('')
 const compareMode = ref(false)
 const selectedIds = ref(new Set())
-const selectedShot = ref(null)
-const selectedShotRaw = ref(null)
-const loadingDetail = ref(false)
-const isWideLayout = ref(false)
-
-function checkWidth() {
-  isWideLayout.value = window.innerWidth >= 960
-}
 
 let searchTimer = null
 let loadGeneration = 0
@@ -152,36 +142,11 @@ async function loadShotWorkflow(shot) {
   }
 }
 
-async function selectShot(shot) {
-  if (!isWideLayout.value) {
-    openShot(shot)
-    return
-  }
-  const id = shot.id || shot.shotId
-  if (!id) return
-  loadingDetail.value = true
-  try {
-    const raw = await getShot(id)
-    if (raw) {
-      selectedShotRaw.value = raw
-      selectedShot.value = normalizeShot(raw)
-    }
-  } catch {
-    selectedShot.value = null
-    selectedShotRaw.value = null
-  }
-  loadingDetail.value = false
-}
-
-function onRowClick(shot, event) {
-  if (event.detail >= 2) {
-    openShot(shot)
-    return
-  }
+function onRowClick(shot) {
   if (compareMode.value) {
     toggleSelect(shot)
   } else {
-    selectShot(shot)
+    openShot(shot)
   }
 }
 
@@ -210,19 +175,11 @@ function formatDoseYield(shot) {
 
 onMounted(() => {
   loadInitial()
-  checkWidth()
-  window.addEventListener('resize', checkWidth)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkWidth)
 })
 </script>
 
 <template>
-  <div class="shot-history" :class="{ 'shot-history--wide': isWideLayout }">
-    <div class="shot-history__split">
-    <div class="shot-history__main">
+  <div class="shot-history">
     <!-- Search bar + compare -->
     <div class="shot-history__filter">
       <input
@@ -275,9 +232,8 @@ onUnmounted(() => {
         class="shot-history__row"
         :class="{
           'shot-history__row--selected': compareMode && selectedIds.has(shot.id || shot.shotId),
-          'shot-history__row--active': !compareMode && isWideLayout && selectedShot && (selectedShot.id === (shot.id || shot.shotId) || selectedShot.shotId === (shot.id || shot.shotId))
         }"
-        @click="onRowClick(shot, $event)"
+        @click="onRowClick(shot)"
       >
         <div v-if="compareMode" class="shot-history__checkbox" :class="{ checked: selectedIds.has(shot.id || shot.shotId) }">
           <svg v-if="selectedIds.has(shot.id || shot.shotId)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
@@ -344,44 +300,6 @@ onUnmounted(() => {
         Loading more...
       </div>
     </div>
-    </div>
-
-    <!-- Inline detail panel (wide layout only) -->
-    <div v-if="isWideLayout" class="shot-history__detail">
-      <div v-if="loadingDetail" class="shot-history__detail-loading">Loading...</div>
-      <template v-else-if="selectedShot">
-        <div class="shot-history__detail-graph">
-          <HistoryShotGraph :shot="selectedShotRaw" />
-        </div>
-        <div class="shot-history__detail-scroll">
-          <div class="shot-history__detail-info">
-            <span class="shot-history__detail-profile">
-              {{ selectedShot.profileName || 'Unknown Profile' }}
-            </span>
-            <span v-if="selectedShot.duration" class="shot-history__detail-duration">
-              {{ formatDuration(selectedShot.duration) }}
-            </span>
-          </div>
-          <div class="shot-history__detail-metrics">
-            <span class="shot-history__detail-meta">{{ formatDoseYield(selectedShot) }}</span>
-            <span v-if="selectedShot.rating > 0" class="shot-history__detail-rating">
-              {{ selectedShot.rating }}%
-            </span>
-          </div>
-          <PhaseSummaryPanel :measurements="selectedShotRaw?.measurements ?? []" />
-          <div class="shot-history__detail-actions">
-            <button class="shot-history__detail-btn" @click="openShot(selectedShot)">
-              Full Details
-            </button>
-            <button class="shot-history__detail-btn shot-history__detail-btn--edit" @click="editShot(selectedShot)">
-              Edit
-            </button>
-          </div>
-        </div>
-      </template>
-      <div v-else class="shot-history__detail-empty">Select a shot to preview</div>
-    </div>
-    </div>
 
     <BottomBar title="Shot History" @back="router.back()">
       <button class="shot-history__bottom-btn" @click="router.push('/auto-favorites')">
@@ -397,21 +315,7 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   background: var(--color-background);
-}
-
-.shot-history__split {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
-}
-
-.shot-history__main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
 }
 
 .shot-history__filter {
@@ -657,112 +561,4 @@ onUnmounted(() => {
   opacity: 0.7;
 }
 
-/* Wide split layout */
-.shot-history--wide .shot-history__split {
-  flex-direction: row;
-}
-
-.shot-history--wide .shot-history__main {
-  flex: 0 0 40%;
-  max-width: 40%;
-  border-right: 1px solid var(--color-border);
-}
-
-.shot-history__detail {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.shot-history__detail-graph {
-  height: 300px;
-  min-height: 200px;
-  flex-shrink: 0;
-  padding: 8px 16px;
-}
-
-.shot-history__detail-scroll {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 16px 16px;
-}
-
-.shot-history__detail-info {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.shot-history__detail-profile {
-  font-size: var(--font-body);
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.shot-history__detail-duration {
-  font-size: var(--font-md);
-  color: var(--color-text-secondary);
-}
-
-.shot-history__detail-metrics {
-  display: flex;
-  gap: 12px;
-  padding-bottom: 12px;
-}
-
-.shot-history__detail-meta {
-  font-size: var(--font-md);
-  color: var(--color-text-secondary);
-}
-
-.shot-history__detail-rating {
-  font-size: var(--font-md);
-  font-weight: 600;
-  color: var(--color-warning);
-}
-
-.shot-history__detail-actions {
-  display: flex;
-  gap: 8px;
-  padding: 12px 0;
-}
-
-.shot-history__detail-btn {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: 1px solid var(--color-primary);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.shot-history__detail-btn--edit {
-  border-color: var(--color-success);
-  color: var(--color-success);
-}
-
-.shot-history__detail-btn:active {
-  opacity: 0.7;
-}
-
-.shot-history__detail-loading,
-.shot-history__detail-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  font-size: var(--font-md);
-}
-
-.shot-history__row--active {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-}
 </style>

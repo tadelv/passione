@@ -91,13 +91,22 @@ export function useShotData() {
     buf.temperature[len] = machineSnapshot.mixTemperature ?? 0
     buf.targetTemperature[len] = machineSnapshot.targetMixTemperature ?? 0
     buf.weight[len] = scaleSnapshot?.weight ?? 0
-    // Compute weight flow rate (g/s) from weight delta
+    // Compute weight flow rate (g/s) from weight delta. The raw derivative
+    // of a noisy 10 Hz scale signal is jagged, so we apply a one-pole
+    // exponential smoother (EMA) to the result. Alpha is tuned for a soft
+    // ~0.5 s response — enough to absorb sample jitter without lagging the
+    // visible pour curve.
+    let rawFlow = 0
     if (len > 0) {
       const dt = elapsed - buf.time[len - 1]
       const dw = buf.weight[len] - buf.weight[len - 1]
-      buf.weightFlow[len] = dt > 0.05 ? Math.max(0, dw / dt) : (len > 1 ? buf.weightFlow[len - 1] : 0)
-    } else {
+      rawFlow = dt > 0.05 ? Math.max(0, dw / dt) : (len > 1 ? buf.weightFlow[len - 1] : 0)
+    }
+    if (len === 0) {
       buf.weightFlow[len] = 0
+    } else {
+      const alpha = 0.25
+      buf.weightFlow[len] = alpha * rawFlow + (1 - alpha) * buf.weightFlow[len - 1]
     }
     len++
 
