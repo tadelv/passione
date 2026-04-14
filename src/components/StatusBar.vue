@@ -10,6 +10,13 @@ const props = defineProps({
   groupTemperature: { type: Number, default: 0 },
   steamTemperature: { type: Number, default: 0 },
   waterLevelDisplay: { type: String, default: '' },
+  /**
+   * Time-to-ready plugin stream — see useTimeToReady.js. Together these
+   * two drive a small "ready in mm:ss" chip next to the machine state,
+   * shown only while the plugin reports the boiler is actively heating.
+   */
+  timeToReadyStatus: { type: String, default: null },   // 'heating' | 'reached' | …
+  timeToReadyFormatted: { type: String, default: null }, // "01:30" etc.
 })
 
 // Clock
@@ -39,6 +46,22 @@ const showSubstate = computed(() => {
   if (props.machineSubstate === 'ready' || props.machineSubstate === 'unknown') return false
   return true
 })
+
+// "Ready in mm:ss" chip — only when the plugin reports active heating.
+// We show formattedTime if the plugin provided it, otherwise fall back
+// to a generic "warming up" when the stream says heating but hasn't
+// computed a time yet. Reached / insufficient_data / not_heating / null
+// all hide the chip so the status bar stays quiet in the normal "ready
+// to brew" case.
+const showTimeToReady = computed(() => {
+  return props.timeToReadyStatus === 'heating'
+})
+const timeToReadyLabel = computed(() => {
+  if (!showTimeToReady.value) return ''
+  return props.timeToReadyFormatted
+    ? `ready in ${props.timeToReadyFormatted}`
+    : 'warming up'
+})
 </script>
 
 <template>
@@ -48,6 +71,11 @@ const showSubstate = computed(() => {
       <ConnectionIndicator :connected="machineConnected" :size="10" />
       <span class="status-bar__state">{{ machineState }}</span>
       <span v-if="showSubstate" class="status-bar__substate">{{ machineSubstate }}</span>
+      <span
+        v-if="showTimeToReady"
+        class="status-bar__ttr"
+        :aria-label="`Machine ${timeToReadyLabel}`"
+      >{{ timeToReadyLabel }}</span>
     </div>
 
     <!-- Center: clock -->
@@ -108,6 +136,24 @@ const showSubstate = computed(() => {
   font-size: var(--font-caption);
   color: var(--color-text-secondary);
   opacity: 0.7;
+}
+
+/*
+ * "Ready in mm:ss" chip — shown next to the machine state text while
+ * the time-to-ready plugin reports active heating. Amber so it's
+ * visible at a glance from 2 m away, but subtle enough not to shout
+ * on cold mornings. Hidden whenever the stream is not in 'heating'.
+ */
+.status-bar__ttr {
+  font-size: var(--font-caption);
+  font-weight: 600;
+  color: #c89b3c;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #c89b3c 14%, transparent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
 
 .status-bar__center {

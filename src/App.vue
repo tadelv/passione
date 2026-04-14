@@ -12,6 +12,7 @@ import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
 import { useDevices } from './composables/useDevices.js'
 import { useWaterLevels } from './composables/useWaterLevels.js'
+import { useTimeToReady } from './composables/useTimeToReady.js'
 import { useShotSettings } from './composables/useShotSettings.js'
 import { useWorkflow } from './composables/useWorkflow.js'
 import { useShotData } from './composables/useShotData.js'
@@ -35,6 +36,7 @@ const machine = useMachine()
 const scale = useScale()
 const devices = useDevices()
 const waterLevels = useWaterLevels()
+const timeToReady = useTimeToReady()
 const shotSettings = useShotSettings()
 const { workflow, updateWorkflow, ready: workflowReady } = useWorkflow()
 const shotData = useShotData()
@@ -64,6 +66,11 @@ provide('targetWeight', computed(() => workflow.context?.targetYield ?? 36))
 provide('shotTime', machine.shotTime)
 provide('substate', machine.substate)
 provide('waterLevel', waterLevels.currentLevel)
+// Time-to-ready plugin — injected into StatusBar (and anywhere else that
+// wants to know the DE1 warm-up estimate). See useTimeToReady.js for shape.
+provide('timeToReadyStatus', timeToReady.status)
+provide('timeToReadyFormatted', timeToReady.formattedTime)
+provide('timeToReadyRemainingMs', timeToReady.remainingTimeMs)
 
 // Water level display: mm → ml conversion using DE1 tank CAD-derived lookup table.
 // The tank cross-section is non-uniform — a linear constant is inaccurate.
@@ -495,6 +502,8 @@ onUnmounted(() => {
     :group-temperature="machine.groupTemperature.value"
     :steam-temperature="machine.steamTemperature.value"
     :water-level-display="waterLevelDisplay"
+    :time-to-ready-status="timeToReady.status.value"
+    :time-to-ready-formatted="timeToReady.formattedTime.value"
   />
   <main id="main-content" class="app-main">
     <router-view v-slot="{ Component }">

@@ -7,10 +7,8 @@ const settings = settingsInstance?.settings
 const TYPES = [
   { value: 'disabled', label: 'Disabled', desc: 'Screen goes black' },
   { value: 'flipClock', label: 'Flip Clock', desc: 'Classic flip clock display' },
-  { value: 'lastShot', label: 'Last Shot', desc: 'Stats and graph from your last espresso' },
+  { value: 'lastShot', label: 'Last Shot', desc: 'Your last dial-in at a glance' },
   { value: 'ambientGlow', label: 'Ambient Glow', desc: 'Slow-drifting colors' },
-  { value: 'fluid', label: 'Fluid', desc: 'Flowing colors with fluid dynamics' },
-  { value: 'gameOfLife', label: 'Game of Life', desc: "Conway's cellular automaton" },
 ]
 </script>
 
@@ -51,18 +49,6 @@ const TYPES = [
           >
             {{ settings.flipClock24h ? '24H' : '12H' }}
           </button>
-        </div>
-
-        <div class="ss-tab__field">
-          <label class="ss-tab__label">3D perspective</label>
-          <button
-            class="ss-tab__toggle"
-            :class="{ 'ss-tab__toggle--on': settings.flipClock3d }"
-            @click="settings.flipClock3d = !settings.flipClock3d"
-          >
-            {{ settings.flipClock3d ? 'ON' : 'OFF' }}
-          </button>
-          <span class="ss-tab__hint">Adds depth effect to flip animation</span>
         </div>
       </div>
     </div>

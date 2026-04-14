@@ -2,8 +2,6 @@
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import ShotSilhouette from '../components/ShotSilhouette.vue'
-import FluidCanvas from '../components/FluidCanvas.vue'
-import GameOfLifeCanvas from '../components/GameOfLifeCanvas.vue'
 import ScreensaverWaterWarning from '../components/ScreensaverWaterWarning.vue'
 import { normalizeShot } from '../composables/useShotNormalize'
 
@@ -20,8 +18,15 @@ const flipping = ref('')  // 'hours' | 'minutes' | ''
 let clockTimer = null
 
 const is24h = computed(() => settings?.flipClock24h ?? true)
-const is3d = computed(() => settings?.flipClock3d ?? false)
 const ssType = computed(() => settings?.screensaverType ?? 'flipClock')
+
+// Migration: the 'fluid' and 'gameOfLife' modes were removed. Users with
+// either value stored in settings get rewritten to 'ambientGlow' on first
+// mount after upgrade, so they don't land on a black screen.
+const DEPRECATED_SS_TYPES = new Set(['fluid', 'gameOfLife'])
+if (settings && DEPRECATED_SS_TYPES.has(settings.screensaverType)) {
+  settings.screensaverType = 'ambientGlow'
+}
 
 function updateClock() {
   const now = new Date()
@@ -60,6 +65,9 @@ function wake() {
 
 // Last Shot data
 const lastShotData = ref(null)
+// Tick every minute to refresh the "brewed Nh Nm ago" relative time
+// without redrawing anything else. Hooked up in onMounted.
+const nowTick = ref(Date.now())
 const lastShotInfo = computed(() => {
   const raw = lastShotData.value
   if (!raw) return null
@@ -71,8 +79,30 @@ const lastShotInfo = computed(() => {
   const doseOut = s.doseOut ? Number(s.doseOut).toFixed(1) : null
   const ratio = (s.doseIn && s.doseOut) ? (s.doseOut / s.doseIn).toFixed(1) : null
   const duration = s.duration ? Number(s.duration).toFixed(1) : null
+  const grinderModel = s.grinderModel || null
+  const grinderSetting = s.grinderSetting != null && s.grinderSetting !== '' ? String(s.grinderSetting) : null
 
-  return { profile, coffee, doseIn, doseOut, ratio, duration }
+  // "brewed 14h 22m ago" — anchored to nowTick so it updates on its own.
+  // Accept either a unix ms number or an ISO-ish string; fall through to
+  // null if we can't parse it (then the line is hidden).
+  let relativeAge = null
+  const ts = s.timestamp ?? raw.timestamp ?? null
+  if (ts != null) {
+    const then = typeof ts === 'number' ? ts : Date.parse(ts)
+    if (!Number.isNaN(then)) {
+      const diffMs = Math.max(0, nowTick.value - then)
+      const mins = Math.round(diffMs / 60000)
+      if (mins < 1) relativeAge = 'brewed just now'
+      else if (mins < 60) relativeAge = `brewed ${mins}m ago`
+      else {
+        const h = Math.floor(mins / 60)
+        const m = mins % 60
+        relativeAge = m > 0 ? `brewed ${h}h ${m}m ago` : `brewed ${h}h ago`
+      }
+    }
+  }
+
+  return { profile, coffee, doseIn, doseOut, ratio, duration, grinderModel, grinderSetting, relativeAge }
 })
 
 async function fetchLastShot() {
@@ -86,17 +116,22 @@ async function fetchLastShot() {
   }
 }
 
+let ageTimer = null
 onMounted(() => {
   updateClock()
   clockTimer = setInterval(updateClock, 1000)
   display?.dim()
   if (ssType.value === 'lastShot') {
     fetchLastShot()
+    // Refresh the relative-age line ("brewed 14h ago") once a minute.
+    ageTimer = setInterval(() => { nowTick.value = Date.now() }, 60000)
   }
 })
 
 onUnmounted(() => {
   clearInterval(clockTimer)
+  if (ageTimer) clearInterval(ageTimer)
+  ageTimer = null
   display?.restore()
 })
 </script>
@@ -106,7 +141,7 @@ onUnmounted(() => {
     <ScreensaverWaterWarning v-if="ssType !== 'disabled'" />
 
     <!-- Flip Clock Mode -->
-    <div v-if="ssType === 'flipClock'" class="screensaver__clock" :class="{ 'screensaver__clock--3d': is3d }">
+    <div v-if="ssType === 'flipClock'" class="screensaver__clock">
       <div class="screensaver__flip-group">
         <div class="screensaver__flip-card" :class="{ 'screensaver__flip-card--flipping': flipping === 'hours' }">
           <div class="screensaver__card-face screensaver__card-face--front">
@@ -132,24 +167,43 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Last Shot Recap Mode -->
+    <!-- Last Shot Recap Mode
+         Hero is the dial-in cheat sheet (coffee, grinder setting, dose);
+         the graph and clock drop to faded background layers. This turns
+         the mode from "ghost of yesterday" into something actually useful
+         at 6:45am when you're about to dial in today's shot. -->
     <div v-else-if="ssType === 'lastShot'" class="screensaver__last-shot">
-      <template v-if="lastShotInfo">
-        <div class="screensaver__shot-graph">
-          <ShotSilhouette :shot="lastShotData" />
-        </div>
-        <div class="screensaver__shot-stats">
-          <span v-if="lastShotInfo.duration" class="screensaver__shot-time">{{ lastShotInfo.duration }}s</span>
-          <span v-if="lastShotInfo.doseIn && lastShotInfo.doseOut" class="screensaver__shot-dose">
-            {{ lastShotInfo.doseIn }}g &rarr; {{ lastShotInfo.doseOut }}g
-          </span>
-          <span v-if="lastShotInfo.ratio" class="screensaver__shot-ratio">1:{{ lastShotInfo.ratio }}</span>
-        </div>
-        <div v-if="lastShotInfo.profile" class="screensaver__shot-profile">{{ lastShotInfo.profile }}</div>
-        <div v-if="lastShotInfo.coffee" class="screensaver__shot-coffee">{{ lastShotInfo.coffee }}</div>
-      </template>
-      <div v-else class="screensaver__shot-empty">No shots yet</div>
+      <!-- Faded background layers -->
+      <div class="screensaver__shot-graph" v-if="lastShotInfo">
+        <ShotSilhouette :shot="lastShotData" />
+      </div>
       <span class="screensaver__shot-clock">{{ hours }}:{{ minutes }}</span>
+
+      <!-- Foreground hero card -->
+      <template v-if="lastShotInfo">
+        <div class="screensaver__shot-hero">
+          <div v-if="lastShotInfo.coffee" class="screensaver__shot-coffee">{{ lastShotInfo.coffee }}</div>
+          <div v-if="lastShotInfo.grinderModel || lastShotInfo.grinderSetting" class="screensaver__shot-grinder">
+            <template v-if="lastShotInfo.grinderModel && lastShotInfo.grinderSetting">
+              {{ lastShotInfo.grinderModel }} @ {{ lastShotInfo.grinderSetting }}
+            </template>
+            <template v-else-if="lastShotInfo.grinderSetting">
+              Grind {{ lastShotInfo.grinderSetting }}
+            </template>
+            <template v-else>{{ lastShotInfo.grinderModel }}</template>
+          </div>
+          <div v-if="lastShotInfo.doseIn && lastShotInfo.doseOut" class="screensaver__shot-dose">
+            {{ lastShotInfo.doseIn }}g &rarr; {{ lastShotInfo.doseOut }}g
+            <span v-if="lastShotInfo.ratio" class="screensaver__shot-ratio">&nbsp;· 1:{{ lastShotInfo.ratio }}</span>
+          </div>
+          <div class="screensaver__shot-meta">
+            <span v-if="lastShotInfo.duration">{{ lastShotInfo.duration }}s</span>
+            <span v-if="lastShotInfo.profile" class="screensaver__shot-profile">{{ lastShotInfo.profile }}</span>
+          </div>
+          <div v-if="lastShotInfo.relativeAge" class="screensaver__shot-age">{{ lastShotInfo.relativeAge }}</div>
+        </div>
+      </template>
+      <div v-else class="screensaver__shot-empty">Pull your first shot</div>
     </div>
 
     <!-- Ambient Glow Mode -->
@@ -166,17 +220,6 @@ onUnmounted(() => {
       <div class="screensaver__particle screensaver__particle--5" />
       <div class="screensaver__particle screensaver__particle--6" />
       <span class="screensaver__glow-clock">{{ hours }}:{{ minutes }}</span>
-    </div>
-
-    <!-- Fluid Dynamics Mode -->
-    <div v-else-if="ssType === 'fluid'" class="screensaver__fluid">
-      <FluidCanvas />
-      <span class="screensaver__fluid-clock">{{ hours }}:{{ minutes }}</span>
-    </div>
-
-    <!-- Game of Life Mode -->
-    <div v-else-if="ssType === 'gameOfLife'" class="screensaver__gol">
-      <GameOfLifeCanvas :hours="hours" :minutes="minutes" />
     </div>
 
     <!-- Black Screen Mode (disabled type or fallback) -->
@@ -206,10 +249,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.screensaver__clock--3d {
-  perspective: 800px;
 }
 
 .screensaver__colon {
@@ -284,15 +323,21 @@ onUnmounted(() => {
   }
 }
 
-/* Last Shot Recap */
+/* Last Shot Recap
+ * Hierarchy flipped vs the earlier design: the dial-in cheat sheet
+ * (coffee, grinder setting, dose) is the hero, the graph silhouette
+ * and big clock are faded background layers. Rationale: a cold
+ * machine showing a shot graph is "ghost of yesterday" — giving the
+ * coffee/grinder/dose hero placement turns the mode into something
+ * actionable at 6:45am. */
 .screensaver__last-shot {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0 24px 60px;
+  justify-content: center;
+  padding: 0 24px;
   opacity: 0;
   animation: fadeIn 2s ease forwards;
 }
@@ -301,58 +346,16 @@ onUnmounted(() => {
   to { opacity: 1; }
 }
 
+/* Background layer 1: faded shot-silhouette graph behind everything */
 .screensaver__shot-graph {
   position: absolute;
   inset: 0;
-  opacity: 0.4;
+  opacity: 0.18;
   z-index: var(--z-base);
   pointer-events: none;
 }
 
-.screensaver__shot-stats {
-  display: flex;
-  align-items: baseline;
-  gap: 24px;
-  z-index: var(--z-base);
-}
-
-.screensaver__shot-time {
-  font-size: var(--font-value);
-  font-weight: 300;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.screensaver__shot-dose {
-  font-size: var(--font-title);
-  color: #a2693d;
-  opacity: 0.8;
-}
-
-.screensaver__shot-ratio {
-  font-size: var(--font-title);
-  color: rgba(255, 255, 255, 0.3);
-}
-
-.screensaver__shot-profile {
-  font-size: var(--font-body);
-  color: rgba(255, 255, 255, 0.3);
-  letter-spacing: 1px;
-  z-index: var(--z-base);
-}
-
-.screensaver__shot-coffee {
-  font-size: var(--font-md);
-  color: rgba(255, 255, 255, 0.2);
-  letter-spacing: 0.5px;
-  z-index: var(--z-base);
-}
-
-.screensaver__shot-empty {
-  font-size: var(--font-body);
-  color: rgba(255, 255, 255, 0.2);
-  z-index: var(--z-base);
-}
-
+/* Background layer 2: faded big clock behind the hero card */
 .screensaver__shot-clock {
   position: absolute;
   top: 50%;
@@ -360,9 +363,76 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
   font-size: var(--font-timer);
   font-weight: 200;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.08);
   font-variant-numeric: tabular-nums;
   letter-spacing: 4px;
+  z-index: var(--z-base);
+  pointer-events: none;
+}
+
+/* Foreground layer: the hero dial-in card */
+.screensaver__shot-hero {
+  position: relative;
+  z-index: var(--z-chart);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.screensaver__shot-coffee {
+  font-size: var(--font-title);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.screensaver__shot-grinder {
+  font-size: var(--font-value);
+  font-weight: 500;
+  color: #c89b3c;
+  letter-spacing: 0.3px;
+}
+
+.screensaver__shot-dose {
+  font-size: var(--font-title);
+  font-weight: 500;
+  color: #a2693d;
+  margin-top: 4px;
+}
+
+.screensaver__shot-ratio {
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 400;
+}
+
+.screensaver__shot-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  font-size: var(--font-body);
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 6px;
+}
+
+.screensaver__shot-profile {
+  letter-spacing: 0.5px;
+}
+
+.screensaver__shot-age {
+  font-size: var(--font-md);
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.4px;
+  margin-top: 6px;
+}
+
+.screensaver__shot-empty {
+  font-size: var(--font-title);
+  color: rgba(255, 255, 255, 0.35);
   z-index: var(--z-chart);
 }
 
@@ -513,31 +583,6 @@ onUnmounted(() => {
   font-size: var(--font-md);
   color: rgba(255, 255, 255, 0.25);
   font-variant-numeric: tabular-nums;
-}
-
-/* Fluid Dynamics */
-.screensaver__fluid {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.screensaver__fluid-clock {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: var(--font-md);
-  color: rgba(255, 255, 255, 0.25);
-  font-variant-numeric: tabular-nums;
-  z-index: 1;
-}
-
-/* Game of Life */
-.screensaver__gol {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
 }
 
 /* Black screen mode */

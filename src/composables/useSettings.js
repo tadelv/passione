@@ -70,7 +70,6 @@ const DEFAULT_SETTINGS = {
   // Screensaver
   screensaverType: 'flipClock',    // 'disabled', 'flipClock', 'lastShot', 'ambientGlow'
   flipClock24h: true,
-  flipClock3d: false,
 
   // Options
   waterRefillThreshold: 10,
@@ -184,7 +183,7 @@ export function useSettings() {
       'activeThemeName', 'customThemeColors',
     ],
     screensaver: [
-      'screensaverType', 'flipClock24h', 'flipClock3d',
+      'screensaverType', 'flipClock24h',
     ],
     options: [
       'waterRefillThreshold',
