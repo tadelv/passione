@@ -88,7 +88,7 @@ Rearrange the home screen to show what matters to you.
 - **Visualizer**: Import shots from Decent Visualizer
 - **History**: Shot history management
 - **Gateway**: Configure Streamline-Bridge connection
-- **Screensaver**: Choose between ambient glow, last shot recap, or shot graph modes
+- **Screensaver**: Choose between flip clock, last shot recap, ambient glow, or disabled
 - **Themes**: Color scheme selection
 - **Beans**: Manage your coffee bean library
 - **Grinders**: Manage grinder profiles
@@ -123,7 +123,8 @@ Analyzes your shot history to surface your best-performing bean, profile, and gr
 ### Additional Features
 
 - **Descaling wizard** for guided machine maintenance
-- **Screensaver** with multiple modes (ambient glow, last shot recap, shot graph)
+- **Screensaver** with four modes — Flip Clock, Last Shot recap (dial-in cheat sheet with grinder setting, dose, ratio, and relative age), Ambient Glow, or Disabled. Water-low warning overlays on all non-disabled modes.
+- **Ready-in estimate** — when the machine is warming up, the status bar shows a "ready in mm:ss" chip sourced from the Streamline-Bridge `time-to-ready` plugin
 - **Power & sleep** schedule management with keep-awake timers
 - **Keyboard shortcuts** for power users (E/S/W/F to start operations, Space/Escape to stop)
 - **Accessibility**: WCAG AAA targets, comprehensive ARIA labels, keyboard navigation, 44px+ touch targets
