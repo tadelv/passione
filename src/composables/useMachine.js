@@ -181,15 +181,18 @@ export function useMachine() {
     }
   })
 
-  // Start the shot timer when any flowing operation reaches the `pouring`
-  // substate. This applies to espresso, steam, hotWater and flush uniformly —
-  // the DE1 transitions preparingForShot → pouring → pouringDone for all of
-  // them, and we only want to count the time the machine is actually
-  // dispensing (not the preheat/stabilise period).
-  watch(substate, (newSubstate) => {
+  // Drive the shot timer from the `pouring` substate. The DE1 transitions
+  // preparingForShot → pouring → pouringDone for every flowing operation
+  // (espresso, steam, hotWater, flush) — we only tick while the machine is
+  // actually dispensing, not during preheat/stabilise or the brief
+  // pouringDone handoff. Start on entering pouring, stop on leaving it.
+  watch(substate, (newSubstate, oldSubstate) => {
     if (!FLOWING_STATES.has(state.value)) return
-    if (_shotStartTime.value !== null) return
-    if (newSubstate === 'pouring') _startShotTimer()
+    if (newSubstate === 'pouring' && _shotStartTime.value === null) {
+      _startShotTimer()
+    } else if (oldSubstate === 'pouring' && newSubstate !== 'pouring') {
+      _stopShotTimer()
+    }
   })
 
   // ---- Connection management ------------------------------------------------
