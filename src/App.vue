@@ -6,7 +6,6 @@ import StatusBar from './components/StatusBar.vue'
 import CompletionOverlay from './components/CompletionOverlay.vue'
 import StopReasonOverlay from './components/StopReasonOverlay.vue'
 import ToastNotification from './components/ToastNotification.vue'
-import LogOverlay from './components/LogOverlay.vue'
 import DevicePickerDialog from './components/DevicePickerDialog.vue'
 import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
@@ -543,8 +542,6 @@ onUnmounted(() => {
     @cancel="onDevicePickerCancel"
   />
 
-  <!-- Floating log overlay (all pages) -->
-  <LogOverlay />
 </template>
 
 <style scoped>
