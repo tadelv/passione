@@ -47,7 +47,6 @@ const WIDGET_TYPES = [
   'workflowCombos',
   'navButtons',
   'scaleInfo',
-  'fullscreen',
 ]
 
 const WIDGET_LABELS = {
@@ -57,7 +56,6 @@ const WIDGET_LABELS = {
   workflowCombos: 'Recipes',
   navButtons: 'Navigation Buttons',
   scaleInfo: 'Scale Info',
-  fullscreen: 'Fullscreen Toggle',
 }
 
 // Which zones each widget type is allowed in
@@ -68,7 +66,6 @@ const WIDGET_ZONE_RULES = {
   workflowCombos: 'center',
   navButtons: 'edge',
   scaleInfo: 'edge',
-  fullscreen: 'edge',
 }
 
 // ---- Default layout (v2) ----------------------------------------------------
@@ -77,7 +74,7 @@ const DEFAULT_LAYOUT = {
   version: 2,
   zones: {
     topLeft:     { widgets: ['scaleInfo'] },
-    topRight:    { widgets: ['fullscreen'] },
+    topRight:    { widgets: [] },
     centerLeft:  { widgets: ['actionButtons', 'shotPlan'] },
     centerRight: { widgets: ['workflowCombos', 'lastShot'] },
     bottomLeft:  { widgets: ['navButtons'] },

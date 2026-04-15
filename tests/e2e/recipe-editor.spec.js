@@ -65,7 +65,7 @@ async function resetLayoutToDefault(request) {
       version: 2,
       zones: {
         topLeft:     { widgets: ['scaleInfo'] },
-        topRight:    { widgets: ['fullscreen'] },
+        topRight:    { widgets: [] },
         centerLeft:  { widgets: ['actionButtons', 'shotPlan'] },
         centerRight: { widgets: ['workflowCombos', 'lastShot'] },
         bottomLeft:  { widgets: ['navButtons'] },

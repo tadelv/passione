@@ -66,36 +66,6 @@ onMounted(() => {
   }
 })
 
-// ---- Fullscreen ----
-const isFullscreen = ref(!!document.fullscreenElement || !!document.webkitFullscreenElement)
-
-function toggleFullscreen() {
-  if (document.fullscreenElement || document.webkitFullscreenElement) {
-    const exit = document.exitFullscreen || document.webkitExitFullscreen
-    if (exit) exit.call(document).catch(() => {})
-  } else {
-    const el = document.documentElement
-    const req = el.requestFullscreen || el.webkitRequestFullscreen
-    if (req) req.call(el).catch(() => {})
-  }
-}
-
-function onFullscreenChange() {
-  isFullscreen.value = !!document.fullscreenElement || !!document.webkitFullscreenElement
-}
-
-onMounted(() => {
-  if (props.type === 'fullscreen' || props.type === 'statusInfo') {
-    document.addEventListener('fullscreenchange', onFullscreenChange)
-    document.addEventListener('webkitfullscreenchange', onFullscreenChange)
-  }
-})
-
-onUnmounted(() => {
-  document.removeEventListener('fullscreenchange', onFullscreenChange)
-  document.removeEventListener('webkitfullscreenchange', onFullscreenChange)
-})
-
 // ---- Last Shot ----
 const lastShot = ref(null)
 const machineState = inject('machineState', ref(''))
@@ -252,19 +222,6 @@ const lastShotInfo = computed(() => {
       </div>
     </template>
 
-    <!-- Fullscreen Toggle -->
-    <template v-else-if="type === 'fullscreen'">
-      <button class="layout-widget__fullscreen-btn" @click="toggleFullscreen" :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'">
-        <svg v-if="!isFullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
-          <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-        </svg>
-        <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-          <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
-        </svg>
-      </button>
-    </template>
   </div>
 </template>
 
@@ -514,22 +471,4 @@ const lastShotInfo = computed(() => {
   color: var(--color-text-secondary);
 }
 
-/* ---- Fullscreen toggle ---- */
-.layout-widget__fullscreen-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: transparent;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.layout-widget__fullscreen-btn:active {
-  opacity: 0.7;
-}
 </style>

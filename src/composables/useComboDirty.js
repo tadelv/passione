@@ -49,6 +49,14 @@ const SCALAR_KEYS = [
   'selectedBeanId', 'selectedBatchId', 'selectedGrinderId',
 ]
 
+// Keys the live workflow has no counterpart for — they only live on the
+// saved combo object. workflowToComboShape() hardcodes these to null, so
+// the lenient compare must skip them entirely or it would false-positive
+// the "modified" dot against every combo that pins a bean record.
+// (The strict editor-side compare still evaluates them, because both
+// sides of that comparison come from the same form snapshot.)
+const COMBO_ONLY_KEYS = new Set(['selectedBeanId'])
+
 function norm(v) {
   if (v == null || v === '') return null
   return v
@@ -56,6 +64,9 @@ function norm(v) {
 
 function scalarsDiffer(a, b, { requireSavedNonNull }) {
   for (const k of SCALAR_KEYS) {
+    // Lenient mode: skip combo-only keys outright — the workflow shape
+    // can never carry them, so any saved value would read as "changed".
+    if (requireSavedNonNull && COMBO_ONLY_KEYS.has(k)) continue
     const saved = norm(b[k])
     const curr = norm(a[k])
     // Lenient mode: skip fields the saved combo never pinned. Used by

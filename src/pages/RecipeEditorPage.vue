@@ -260,9 +260,78 @@ async function loadFromPreset(index) {
   _updating = false
 }
 
+// ---- Mount-time hydration: overlay live-workflow divergence on top ----
+//
+// When the user edits a field, the live-apply watcher pushes the change to
+// the workflow but never touches the saved combo. If the user then leaves
+// the editor (Home) and comes back, a naive `loadFromPreset` would reset
+// every form ref to the saved combo's values — the form would read as
+// un-dirty even though the live workflow has diverged, and the Save /
+// Save as New buttons would vanish. It would also silently clobber the
+// user's in-flight edits the next time the live-apply watcher fires,
+// because the watcher would see the form snap back to saved values.
+//
+// Fix: after loading the preset baseline (needed for combo-only metadata
+// like selectedBeanId / operation sub-field defaults when off), overlay
+// the live workflow's scalar context + operation settings. The saved
+// combo stays untouched; only the editor's form refs mirror what the
+// workflow actually has right now.
+function overlayFromWorkflow() {
+  if (!workflow) return
+  _updating = true
+  const ctx = workflow.context ?? {}
+  if (ctx.targetDoseWeight != null) doseIn.value = ctx.targetDoseWeight
+  if (ctx.targetYield != null) doseOut.value = ctx.targetYield
+  if (doseIn.value > 0 && doseOut.value > 0) {
+    ratioValue.value = round1(doseOut.value / doseIn.value)
+  }
+  if (ctx.coffeeName != null) coffeeName.value = ctx.coffeeName
+  if (ctx.coffeeRoaster != null) roaster.value = ctx.coffeeRoaster
+  if (ctx.grinderModel != null) grinder.value = ctx.grinderModel
+  if (ctx.grinderSetting != null) grinderSetting.value = String(ctx.grinderSetting)
+  if (workflow.profile) {
+    profileId.value = workflow.profile.id ?? profileId.value
+    profileTitle.value = workflow.profile.title ?? profileTitle.value
+  }
+  // Operation settings — align include flag and sub-field values with
+  // whatever the live workflow currently has.
+  const ss = workflow.steamSettings
+  if (ss) {
+    const on = (ss.duration ?? 0) > 0
+    includeSteam.value = on
+    if (on) {
+      steamDuration.value = ss.duration
+      if (ss.flow != null) steamFlow.value = ss.flow
+      if (ss.targetTemperature != null) steamTemperature.value = ss.targetTemperature
+    }
+  }
+  const rd = workflow.rinseData
+  if (rd) {
+    const on = (rd.duration ?? 0) > 0
+    includeFlush.value = on
+    if (on) {
+      flushDuration.value = rd.duration
+      if (rd.flow != null) flushFlowRate.value = rd.flow
+    }
+  }
+  const hw = workflow.hotWaterData
+  if (hw) {
+    const on = (hw.volume ?? 0) > 0
+    includeHotWater.value = on
+    if (on) {
+      hotWaterVolume.value = hw.volume
+      if (hw.targetTemperature != null) hotWaterTemperature.value = hw.targetTemperature
+    }
+  }
+  _updating = false
+}
+
 // Load on mount if a preset is selected
 if (selectedIndex.value >= 0) {
-  loadFromPreset(selectedIndex.value)
+  // loadFromPreset is async — chain the overlay so the live workflow
+  // values land AFTER the preset baseline (bean batches may still be
+  // resolving but they only populate entity IDs, not scalar fields).
+  loadFromPreset(selectedIndex.value).then(overlayFromWorkflow)
 } else {
   // Populate from workflow context
   const ctx = workflow?.context
@@ -568,6 +637,7 @@ watch(() => workflow?.profile, (newProfile) => {
           :presets="workflowCombos"
           :selected-index="selectedIndex"
           :edit-enabled="true"
+          :confirm-activate="false"
           :modified="dirty && selectedIndex >= 0"
           :aria-label="t('recipe.recipes')"
           @select="onPresetSelect"

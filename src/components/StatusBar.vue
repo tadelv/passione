@@ -47,14 +47,17 @@ const showSubstate = computed(() => {
   return true
 })
 
-// "Ready in mm:ss" chip — only when the plugin reports active heating.
-// We show formattedTime if the plugin provided it, otherwise fall back
-// to a generic "warming up" when the stream says heating but hasn't
-// computed a time yet. Reached / insufficient_data / not_heating / null
-// all hide the chip so the status bar stays quiet in the normal "ready
-// to brew" case.
+// "Ready in mm:ss" chip — only when the plugin reports active heating
+// AND the machine is in the espresso:preparingForShot window (user just
+// pressed espresso and the group head is catching up before the pour).
+// Outside of that window the chip is noise — no surfacing during sleep
+// wake, steam, or ambient idle. Reached / insufficient_data /
+// not_heating / null all hide the chip so the status bar stays quiet
+// in the normal "ready to brew" case.
 const showTimeToReady = computed(() => {
   return props.timeToReadyStatus === 'heating'
+    && props.machineState === 'espresso'
+    && props.machineSubstate === 'preparingForShot'
 })
 const timeToReadyLabel = computed(() => {
   if (!showTimeToReady.value) return ''
