@@ -5,7 +5,11 @@ import ConnectionIndicator from './ConnectionIndicator.vue'
 const props = defineProps({
   machineState: { type: String, default: 'disconnected' },
   machineSubstate: { type: String, default: '' },
+  /** Whether the WS snapshot stream is connected (drives state display) */
   machineConnected: { type: Boolean, default: false },
+  /** Whether a DE1 device is BLE-paired (drives scan button visibility) */
+  deviceConnected: { type: Boolean, default: false },
+  scanning: { type: Boolean, default: false },
   mixTemperature: { type: Number, default: 0 },
   groupTemperature: { type: Number, default: 0 },
   steamTemperature: { type: Number, default: 0 },
@@ -18,6 +22,8 @@ const props = defineProps({
   timeToReadyStatus: { type: String, default: null },   // 'heating' | 'reached' | …
   timeToReadyFormatted: { type: String, default: null }, // "01:30" etc.
 })
+
+const emit = defineEmits(['scan'])
 
 // Clock
 const clockTime = ref('')
@@ -72,13 +78,22 @@ const timeToReadyLabel = computed(() => {
     <!-- Left: connection + state -->
     <div class="status-bar__left">
       <ConnectionIndicator :connected="machineConnected" :size="10" />
-      <span class="status-bar__state">{{ machineState }}</span>
+      <span class="status-bar__state" :class="{ 'status-bar__state--disconnected': !machineConnected }">{{ machineState }}</span>
       <span v-if="showSubstate" class="status-bar__substate">{{ machineSubstate }}</span>
       <span
         v-if="showTimeToReady"
         class="status-bar__ttr"
         :aria-label="`Machine ${timeToReadyLabel}`"
       >{{ timeToReadyLabel }}</span>
+      <button
+        v-if="!deviceConnected"
+        type="button"
+        class="status-bar__scan-btn"
+        :disabled="scanning"
+        @click="emit('scan')"
+      >
+        {{ scanning ? 'Scanning...' : 'Scan' }}
+      </button>
     </div>
 
     <!-- Center: clock -->
@@ -214,5 +229,31 @@ const timeToReadyLabel = computed(() => {
   font-size: var(--font-label);
   color: var(--color-flow);
   font-weight: 600;
+}
+
+.status-bar__state--disconnected {
+  color: var(--color-error);
+}
+
+.status-bar__scan-btn {
+  padding: 2px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-caption);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.status-bar__scan-btn:active {
+  opacity: 0.7;
+}
+
+.status-bar__scan-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>

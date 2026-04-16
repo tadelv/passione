@@ -561,4 +561,38 @@ onMounted(() => {
   opacity: 0.7;
 }
 
+/* ---- Mobile: compact rows, icon-only action buttons ---- */
+@media (max-width: 480px) {
+  .shot-history__filter {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .shot-history__row {
+    padding: 10px 10px;
+    gap: 8px;
+  }
+
+  .shot-history__row-right {
+    gap: 6px;
+  }
+
+  .shot-history__action-btn {
+    padding: 6px;
+    min-height: 36px;
+    min-width: 36px;
+    justify-content: center;
+    font-size: 0; /* hide text */
+  }
+
+  .shot-history__action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .shot-history__duration {
+    font-size: var(--font-sm);
+  }
+}
+
 </style>

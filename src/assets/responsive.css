@@ -28,16 +28,7 @@
     --radius-card: 10px;
   }
 
-  /* ---- IdlePage: 2-column action button grid ---- */
-  .idle-page__actions {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    width: 100%;
-    padding: 0 4px;
-  }
-
-  /* Smaller action buttons on mobile */
+  /* ---- Action buttons: smaller on mobile ---- */
   .action-button {
     width: 100% !important;
     height: 80px !important;
@@ -50,27 +41,6 @@
 
   .action-button__label {
     font-size: 13px !important;
-  }
-
-  /* IdlePage: tighter top area */
-  .idle-page__top {
-    padding-bottom: 4px;
-  }
-
-  .idle-page__center {
-    gap: 10px;
-  }
-
-  /* IdlePage: smaller nav buttons */
-  .idle-page__nav-btn {
-    padding: 6px 16px;
-    font-size: 12px;
-  }
-
-  /* IdlePage: profile name truncation */
-  .idle-page__profile {
-    font-size: 16px;
-    max-width: 95%;
   }
 
   /* ---- BrewDialog: full-width on mobile ---- */

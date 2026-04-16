@@ -167,7 +167,16 @@ async function saveNewBatch(beanId) {
     }
     const created = await beansApi.createBatch(beanId, payload)
     if (!batchesByBean[beanId]) batchesByBean[beanId] = []
-    batchesByBean[beanId].push(created)
+    // Guard: only push if API returned a valid object (some gateways return 204/null)
+    if (created && created.id) {
+      batchesByBean[beanId].push(created)
+    } else {
+      // Refresh batches from API to get the real list
+      try {
+        const batches = await beansApi.getBatches(beanId)
+        batchesByBean[beanId] = batches
+      } catch { /* ignore refresh failure */ }
+    }
     addingBatchForBean.value = null
     toast?.success('Batch added')
   } catch (e) {
@@ -202,8 +211,8 @@ async function saveEditBatchItem(beanId, batch) {
     const updated = await beansApi.updateBatch(batch.id, payload)
     const list = batchesByBean[beanId]
     if (list) {
-      const idx = list.findIndex(b => b.id === batch.id)
-      if (idx !== -1) list[idx] = updated ?? { ...batch, ...payload }
+      const idx = list.findIndex(b => b && b.id === batch.id)
+      if (idx !== -1) list[idx] = (updated && updated.id) ? updated : { ...batch, ...payload }
     }
     editingBatchId.value = null
     toast?.success('Batch updated')
@@ -237,7 +246,7 @@ async function deleteBatch(beanId, batch) {
           <input type="checkbox" v-model="showArchived" />
           Show archived
         </label>
-        <button class="beans-tab__add-btn" @click="startCreateBean">Add Bean</button>
+        <button type="button" class="beans-tab__add-btn" @click="startCreateBean">Add Bean</button>
       </div>
     </div>
 
@@ -275,8 +284,8 @@ async function deleteBatch(beanId, batch) {
         </div>
       </div>
       <div class="beans-tab__form-actions">
-        <button class="beans-tab__btn beans-tab__btn--save" @click="saveNewBean">Save</button>
-        <button class="beans-tab__btn beans-tab__btn--cancel" @click="cancelCreateBean">Cancel</button>
+        <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveNewBean">Save</button>
+        <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelCreateBean">Cancel</button>
       </div>
     </div>
 
@@ -336,8 +345,8 @@ async function deleteBatch(beanId, batch) {
               </div>
             </div>
             <div class="beans-tab__form-actions">
-              <button class="beans-tab__btn beans-tab__btn--save" @click="saveEditBean(bean)">Save</button>
-              <button class="beans-tab__btn beans-tab__btn--danger" @click="deleteBean(bean)">Delete Bean</button>
+              <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveEditBean(bean)">Save</button>
+              <button type="button" class="beans-tab__btn beans-tab__btn--danger" @click="deleteBean(bean)">Delete Bean</button>
             </div>
           </div>
 
@@ -345,7 +354,7 @@ async function deleteBatch(beanId, batch) {
           <div class="beans-tab__batches">
             <div class="beans-tab__batches-header">
               <h4 class="beans-tab__batches-title">Batches</h4>
-              <button class="beans-tab__btn beans-tab__btn--small" @click.stop="startAddBatch(bean.id)">Add Batch</button>
+              <button type="button" class="beans-tab__btn beans-tab__btn--small" @click.stop="startAddBatch(bean.id)">Add Batch</button>
             </div>
 
             <!-- Add batch form -->
@@ -373,8 +382,8 @@ async function deleteBatch(beanId, batch) {
                 </div>
               </div>
               <div class="beans-tab__form-actions">
-                <button class="beans-tab__btn beans-tab__btn--save" @click="saveNewBatch(bean.id)">Save</button>
-                <button class="beans-tab__btn beans-tab__btn--cancel" @click="cancelAddBatch">Cancel</button>
+                <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveNewBatch(bean.id)">Save</button>
+                <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelAddBatch">Cancel</button>
               </div>
             </div>
 
@@ -382,7 +391,7 @@ async function deleteBatch(beanId, batch) {
             <div v-if="!batchesByBean[bean.id]?.length && addingBatchForBean !== bean.id" class="beans-tab__empty beans-tab__empty--small">
               No batches yet.
             </div>
-            <div v-for="batch in (batchesByBean[bean.id] || [])" :key="batch.id" class="beans-tab__batch">
+            <div v-for="batch in (batchesByBean[bean.id] || []).filter(b => b && b.id)" :key="batch.id" class="beans-tab__batch">
               <template v-if="editingBatchId === batch.id">
                 <!-- Edit batch inline -->
                 <div class="beans-tab__form beans-tab__form--batch-edit">
@@ -409,9 +418,9 @@ async function deleteBatch(beanId, batch) {
                     </div>
                   </div>
                   <div class="beans-tab__form-actions">
-                    <button class="beans-tab__btn beans-tab__btn--save" @click="saveEditBatchItem(bean.id, batch)">Save</button>
-                    <button class="beans-tab__btn beans-tab__btn--cancel" @click="cancelEditBatch">Cancel</button>
-                    <button class="beans-tab__btn beans-tab__btn--danger" @click="deleteBatch(bean.id, batch)">Delete</button>
+                    <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveEditBatchItem(bean.id, batch)">Save</button>
+                    <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelEditBatch">Cancel</button>
+                    <button type="button" class="beans-tab__btn beans-tab__btn--danger" @click="deleteBatch(bean.id, batch)">Delete</button>
                   </div>
                 </div>
               </template>
@@ -423,7 +432,7 @@ async function deleteBatch(beanId, batch) {
                     <span v-if="batch.frozen" class="beans-tab__batch-frozen">Frozen</span>
                   </div>
                   <div class="beans-tab__batch-actions">
-                    <button class="beans-tab__btn beans-tab__btn--icon" @click.stop="deleteBatch(bean.id, batch)">&#x2715;</button>
+                    <button type="button" class="beans-tab__btn beans-tab__btn--icon" @click.stop="deleteBatch(bean.id, batch)">&#x2715;</button>
                   </div>
                 </div>
               </template>

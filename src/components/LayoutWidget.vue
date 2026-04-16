@@ -59,31 +59,43 @@ const profileName = inject('profileName', ref(''))
 const scale = inject('scale', null)
 const scaleWeight = inject('weight', ref(0))
 const devices = inject('devices', null)
+const updateWorkflow = inject('updateWorkflow', null)
+const toast = inject('toast', null)
+
+// ---- Last Shot ----
+const lastShot = ref(null)
+const machineState = inject('machineState', ref(''))
+let lastShotRefreshTimer = null
+let lastShotRetryTimer = null
+let lastShotRetryCount = 0
+const LAST_SHOT_MAX_RETRIES = 3
+const LAST_SHOT_RETRY_DELAY = 2000
+
+async function fetchLastShot() {
+  try {
+    const summary = await getLatestShot()
+    if (summary?.id) {
+      lastShot.value = await getShot(summary.id)
+    } else {
+      lastShot.value = null
+    }
+    lastShotRetryCount = 0
+  } catch {
+    lastShot.value = null
+    // Retry on failure — covers cold-start where REST API isn't ready yet
+    if (lastShotRetryCount < LAST_SHOT_MAX_RETRIES) {
+      lastShotRetryCount++
+      clearTimeout(lastShotRetryTimer)
+      lastShotRetryTimer = setTimeout(fetchLastShot, LAST_SHOT_RETRY_DELAY)
+    }
+  }
+}
 
 onMounted(() => {
   if (props.type === 'lastShot') {
     fetchLastShot()
   }
 })
-
-// ---- Last Shot ----
-const lastShot = ref(null)
-const machineState = inject('machineState', ref(''))
-let lastShotRefreshTimer = null
-
-async function fetchLastShot() {
-  try {
-    const summary = await getLatestShot()
-    if (summary?.id) {
-      // Summary lacks measurements — fetch full shot for chart data
-      lastShot.value = await getShot(summary.id)
-    } else {
-      lastShot.value = null
-    }
-  } catch {
-    lastShot.value = null
-  }
-}
 
 // Re-fetch last shot when espresso ends — delay to allow ReaPrime to save it
 watch(machineState, (newState, oldState) => {
@@ -94,16 +106,18 @@ watch(machineState, (newState, oldState) => {
   }
 })
 
-// Retry last shot fetch when machine connects (covers cold-start race)
+// Retry last shot fetch when machine connects (covers cold-start race).
+// immediate: true handles the case where machineConnected is already true on mount.
 watch(machineConnected, (connected) => {
   if (props.type !== 'lastShot') return
   if (connected && !lastShot.value) {
     fetchLastShot()
   }
-})
+}, { immediate: true })
 
 onUnmounted(() => {
   clearTimeout(lastShotRefreshTimer)
+  clearTimeout(lastShotRetryTimer)
 })
 
 const lastShotInfo = computed(() => {
@@ -130,6 +144,32 @@ const lastShotInfo = computed(() => {
 
   return { profile: s.profileName, coffee: coffeeName, dose, grinder: grinderText, duration }
 })
+
+async function repeatLastShot() {
+  const raw = lastShot.value
+  if (!raw) return
+  const s = normalizeShot(raw)
+  const profile = raw.profile || raw.workflow?.profile
+  if (!profile) {
+    toast?.warning('No profile data available for this shot')
+    return
+  }
+  try {
+    const update = { profile }
+    const context = {}
+    if (s.coffeeName) context.coffeeName = s.coffeeName
+    if (s.coffeeRoaster) context.coffeeRoaster = s.coffeeRoaster
+    if (s.grinderModel) context.grinderModel = s.grinderModel
+    if (s.grinderSetting != null) context.grinderSetting = String(s.grinderSetting)
+    if (s.doseIn) context.targetDoseWeight = s.doseIn
+    if (s.doseOut) context.targetYield = s.doseOut
+    if (Object.keys(context).length > 0) update.context = context
+    await updateWorkflow(update)
+    toast?.success('Workflow loaded from last shot')
+  } catch {
+    toast?.error('Failed to load workflow')
+  }
+}
 </script>
 
 <template>
@@ -170,6 +210,7 @@ const lastShotInfo = computed(() => {
             <span v-if="lastShotInfo.dose" class="layout-widget__last-shot-detail">{{ lastShotInfo.dose }}</span>
             <span v-if="lastShotInfo.grinder" class="layout-widget__last-shot-detail">{{ lastShotInfo.grinder }}</span>
             <span v-if="lastShotInfo.duration" class="layout-widget__last-shot-detail">{{ lastShotInfo.duration }}</span>
+            <button class="layout-widget__repeat-btn" @click.stop="repeatLastShot" aria-label="Repeat last shot">Repeat</button>
           </div>
         </div>
       </div>
@@ -317,6 +358,24 @@ const lastShotInfo = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.layout-widget__repeat-btn {
+  margin-top: 4px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  align-self: flex-start;
+}
+
+.layout-widget__repeat-btn:active {
+  opacity: 0.7;
 }
 
 /* ---- Preset sections ---- */
@@ -469,6 +528,58 @@ const lastShotInfo = computed(() => {
 .layout-widget__nav-btn--sleep {
   border-color: var(--color-text-secondary);
   color: var(--color-text-secondary);
+}
+
+/* ---- Mobile: stack last shot card, wrap nav buttons ---- */
+@media (max-width: 480px) {
+  .layout-widget__last-shot-card {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .layout-widget__last-shot-chart {
+    height: 140px;
+  }
+
+  .layout-widget__last-shot-info {
+    min-width: 0;
+    max-width: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .layout-widget__last-shot-profile {
+    width: 100%;
+  }
+
+  .layout-widget__nav {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .layout-widget__nav-btn {
+    padding: 8px 16px;
+    font-size: var(--font-sm);
+  }
+
+  .layout-widget__actions {
+    gap: 8px;
+  }
+}
+
+/* ---- Tablet ---- */
+@media (min-width: 481px) and (max-width: 960px) {
+  .layout-widget__last-shot-info {
+    min-width: 120px;
+    max-width: 180px;
+  }
+
+  .layout-widget__nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
 
 </style>

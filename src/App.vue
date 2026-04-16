@@ -426,6 +426,13 @@ function onKeyDown(e) {
   // Ignore during layout editing
   if (editingLayout.value) return
 
+  // Screensaver: any key wakes (like Decenza)
+  if (machine.state.value === 'sleeping' && route.path === '/screensaver') {
+    e.preventDefault()
+    setMachineState('idle').catch(() => {})
+    return
+  }
+
   // Ignore when typing in input fields
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) {
     return
@@ -433,36 +440,69 @@ function onKeyDown(e) {
 
   const key = e.key.toLowerCase()
 
+  // ---- Operation shortcuts (idle state) ----
   if (isReady.value) {
     switch (key) {
       case 'e':
+      case '1':
         e.preventDefault()
         setMachineState('espresso').catch(() => {})
         return
       case 's':
+      case '2':
         e.preventDefault()
         setMachineState('steam').catch(() => {})
         return
       case 'w':
+      case '3':
         e.preventDefault()
         setMachineState('hotWater').catch(() => {})
         return
       case 'f':
+      case '4':
         e.preventDefault()
         setMachineState('flush').catch(() => {})
         return
     }
   }
 
+  // ---- Stop shortcuts (during operation) ----
   if (isOperating.value) {
-    if (key === ' ' || key === 'escape') {
+    if (key === ' ' || key === 'escape' || key === 'backspace') {
       e.preventDefault()
       markUserStop()
       setMachineState('idle').catch(() => {})
+      return
     }
   }
 
-  // Settings shortcut (comma key, like Cmd+, in most apps)
+  // ---- Navigation shortcuts (global, non-operating) ----
+  if (!isOperating.value) {
+    switch (key) {
+      case 'h':
+        e.preventDefault()
+        router.push('/')
+        return
+      case 'p':
+        e.preventDefault()
+        router.push('/profiles')
+        return
+      case 'r':
+        e.preventDefault()
+        router.push('/recipe/edit')
+        return
+      case 't':
+        e.preventDefault()
+        router.push('/history')
+        return
+      case ',':
+        e.preventDefault()
+        router.push('/settings')
+        return
+    }
+  }
+
+  // Settings shortcut also available during operation
   if (key === ',') {
     e.preventDefault()
     router.push('/settings')
@@ -497,12 +537,15 @@ onUnmounted(() => {
     :machine-state="machine.state.value"
     :machine-substate="machine.substate.value"
     :machine-connected="machine.isConnected.value"
+    :device-connected="devices.machineConnected.value"
+    :scanning="devices.scanning.value"
     :mix-temperature="machine.mixTemperature.value"
     :group-temperature="machine.groupTemperature.value"
     :steam-temperature="machine.steamTemperature.value"
     :water-level-display="waterLevelDisplay"
     :time-to-ready-status="timeToReady.status.value"
     :time-to-ready-formatted="timeToReady.formattedTime.value"
+    @scan="devices.scan({ connect: true })"
   />
   <main id="main-content" class="app-main">
     <router-view v-slot="{ Component }">

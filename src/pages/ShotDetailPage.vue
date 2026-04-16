@@ -542,4 +542,35 @@ async function uploadToVisualizer() {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ---- Mobile: wrap metrics, single-col info cards ---- */
+@media (max-width: 480px) {
+  .shot-detail__metrics {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .shot-detail__metric {
+    flex: 1 1 calc(33% - 6px);
+    min-width: 80px;
+  }
+
+  .shot-detail__metric-value {
+    font-size: var(--font-md);
+  }
+
+  .shot-detail__info {
+    grid-template-columns: 1fr;
+  }
+
+  .shot-detail__graph {
+    height: 30vh;
+    min-height: 180px;
+    padding: 8px 10px;
+  }
+
+  .shot-detail__actions {
+    flex-direction: column;
+  }
+}
 </style>

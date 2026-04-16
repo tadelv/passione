@@ -10,11 +10,11 @@ A modern web interface for the [DE1 espresso machine](https://decentespresso.com
 
 The home screen shows real-time machine data and quick-access operation buttons.
 
-- **Status bar** with connection status, clock, mix/group/steam temperatures, and water level
+- **Status bar** with connection status, clock, mix/group/steam temperatures, water level, and **Scan** button when no device is connected
 - **Operation buttons** (Espresso, Steam, Hot Water, Flush) with two-step confirmation to prevent accidental starts
 - **Shot plan** showing the active profile, dose, yield, ratio, and grinder setting
 - **Recipes** for one-tap switching between saved brewing configurations (profile + coffee + grinder + steam/hot water settings)
-- **Last shot** widget with mini graph and metrics
+- **Last shot** widget with mini graph, metrics, and **Repeat** button to reload the shot's workflow
 
 ### Recipe Editor
 
@@ -126,7 +126,8 @@ Analyzes your shot history to surface your best-performing bean, profile, and gr
 - **Screensaver** with four modes — Flip Clock, Last Shot recap (dial-in cheat sheet with grinder setting, dose, ratio, and relative age), Ambient Glow, or Disabled. Water-low warning overlays on all non-disabled modes.
 - **Ready-in estimate** — when the machine is warming up, the status bar shows a "ready in mm:ss" chip sourced from the Streamline-Bridge `time-to-ready` plugin
 - **Power & sleep** schedule management with keep-awake timers
-- **Keyboard shortcuts** for power users (E/S/W/F to start operations, Space/Escape to stop)
+- **Keyboard shortcuts** for power users (E/S/W/F or 1-4 to start operations, Space/Escape/Backspace to stop, H/P/R/T for navigation, any key to wake from screensaver)
+- **Responsive design** — mobile-ready layouts across all pages (single-column on phones, split panels on tablets+)
 - **Accessibility**: WCAG AAA targets, comprehensive ARIA labels, keyboard navigation, 44px+ touch targets
 
 ## Installation
@@ -140,7 +141,7 @@ Passione is a skin for [Streamline-Bridge](https://github.com/tadelv/reaprime). 
 3. Install from URL using the latest release ZIP:
 
 ```
-https://github.com/tadelv/passione/releases/latest/download/passione-v0.5.2.zip
+https://github.com/tadelv/passione/releases/latest/download/passione-v0.5.5.zip
 ```
 
 Or via the REST API:
@@ -148,7 +149,7 @@ Or via the REST API:
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-release \
   -H "Content-Type: application/json" \
-  -d '{"repo": "tadelv/passione", "asset": "passione-v0.5.2.zip"}'
+  -d '{"repo": "tadelv/passione", "asset": "passione-v0.5.5.zip"}'
 ```
 
 ### From GitHub Branch (latest development)

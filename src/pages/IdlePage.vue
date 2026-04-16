@@ -481,4 +481,53 @@ onMounted(() => {
 .idle-page--editing {
   position: relative;
 }
+
+/* ---- Mobile: collapse to single column ---- */
+@media (max-width: 480px) {
+  .idle-page {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto auto auto;
+    grid-template-areas:
+      "top-left"
+      "top-right"
+      "center-left"
+      "center-right"
+      "bottom-left"
+      "bottom-right";
+    gap: var(--spacing-medium);
+  }
+
+  .idle-page--center-left-only {
+    grid-template-areas:
+      "top-left"
+      "top-right"
+      "center-left"
+      "bottom-left"
+      "bottom-right";
+  }
+
+  .idle-page--center-right-only {
+    grid-template-areas:
+      "top-left"
+      "top-right"
+      "center-right"
+      "bottom-left"
+      "bottom-right";
+  }
+
+  .idle-page__top-right {
+    justify-content: flex-start;
+  }
+
+  .idle-page__bottom-right {
+    justify-content: flex-start;
+  }
+}
+
+/* ---- Tablet portrait: keep 2-col but tighter ---- */
+@media (min-width: 481px) and (max-width: 960px) {
+  .idle-page {
+    gap: var(--spacing-medium);
+  }
+}
 </style>

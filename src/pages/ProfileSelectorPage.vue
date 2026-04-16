@@ -473,4 +473,31 @@ onMounted(fetchProfiles)
   color: var(--color-text-secondary);
   font-size: var(--font-body);
 }
+
+/* ---- Mobile: stack list above preview ---- */
+@media (max-width: 600px) {
+  .profile-selector__panels {
+    flex-direction: column;
+  }
+
+  .profile-selector__left {
+    max-height: 50vh;
+  }
+
+  .profile-selector__right {
+    min-height: 200px;
+  }
+
+  .profile-selector__toolbar {
+    flex-direction: column;
+  }
+
+  .profile-selector__filter {
+    min-width: 0;
+  }
+
+  .profile-selector__preview-actions {
+    flex-wrap: wrap;
+  }
+}
 </style>
