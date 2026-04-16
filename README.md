@@ -126,7 +126,7 @@ Analyzes your shot history to surface your best-performing bean, profile, and gr
 - **Screensaver** with four modes — Flip Clock, Last Shot recap (dial-in cheat sheet with grinder setting, dose, ratio, and relative age), Ambient Glow, or Disabled. Water-low warning overlays on all non-disabled modes.
 - **Ready-in estimate** — when the machine is warming up, the status bar shows a "ready in mm:ss" chip sourced from the Streamline-Bridge `time-to-ready` plugin
 - **Power & sleep** schedule management with keep-awake timers
-- **Keyboard shortcuts** for power users (E/S/W/F or 1-4 to start operations, Space/Escape/Backspace to stop, H/P/R/T for navigation, any key to wake from screensaver)
+- **Keyboard shortcuts** matching de1app — E/S/W/F for operations, GHC number keys (0=sleep, 1=flush, 2=espresso, 3=steam, 4=hot water), P for sleep, I/Space/Escape to stop, H/R/T for navigation, any key wakes screensaver
 - **Responsive design** — mobile-ready layouts across all pages (single-column on phones, split panels on tablets+)
 - **Accessibility**: WCAG AAA targets, comprehensive ARIA labels, keyboard navigation, 44px+ touch targets
 

@@ -125,7 +125,7 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 - **PhaseSummaryPanel:** Collapsible table on ShotDetailPage and PostShotReviewPage. Computed client-side from measurements array.
 - **SimpleProfileEditorPage:** 4-step editor for settings_2a (pressure) and settings_2b (flow). Live graph preview. Dirty detection with navigation guard. Routes via ProfileInfoPage edit button.
 - **AutoFavoritesPage:** Client-side aggregation of all shots via paginated API. Groups by bean/profile/grinder. Load and Show Shots actions per group.
-- **Global keyboard shortcuts:** E/S/W/F (or 1/2/3/4) to start operations when idle; Space/Escape/Backspace to stop current operation; H (home), P (profiles), R (recipes), T (shot history), comma (settings) for navigation; any key wakes from screensaver
+- **Global keyboard shortcuts:** E/S/W/F to start operations when idle; number keys match GHC positions (0=sleep, 1=flush, 2=espresso, 3=steam, 4=hot water); P for sleep; I/Space/Escape/Backspace to stop; H (home), R (recipes), T (history), comma (settings) for navigation; any key wakes from screensaver
 - **Features not backed by ReaPrime API** should show a toast notification ("not yet available") rather than silently failing
 
 ## Build & Development

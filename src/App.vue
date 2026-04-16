@@ -441,34 +441,41 @@ function onKeyDown(e) {
   const key = e.key.toLowerCase()
 
   // ---- Operation shortcuts (idle state) ----
+  // Number keys match GHC (Group Head Controller) button positions from de1app:
+  // 1=Flush, 2=Espresso, 3=Steam, 4=Hot Water, 0=Sleep
   if (isReady.value) {
     switch (key) {
       case 'e':
-      case '1':
+      case '2':
         e.preventDefault()
         setMachineState('espresso').catch(() => {})
         return
       case 's':
-      case '2':
+      case '3':
         e.preventDefault()
         setMachineState('steam').catch(() => {})
         return
       case 'w':
-      case '3':
+      case '4':
         e.preventDefault()
         setMachineState('hotWater').catch(() => {})
         return
       case 'f':
-      case '4':
+      case '1':
         e.preventDefault()
         setMachineState('flush').catch(() => {})
+        return
+      case 'p':
+      case '0':
+        e.preventDefault()
+        setMachineState('sleeping').catch(() => {})
         return
     }
   }
 
   // ---- Stop shortcuts (during operation) ----
   if (isOperating.value) {
-    if (key === ' ' || key === 'escape' || key === 'backspace') {
+    if (key === ' ' || key === 'escape' || key === 'backspace' || key === 'i') {
       e.preventDefault()
       markUserStop()
       setMachineState('idle').catch(() => {})
@@ -479,13 +486,13 @@ function onKeyDown(e) {
   // ---- Navigation shortcuts (global, non-operating) ----
   if (!isOperating.value) {
     switch (key) {
+      case 'i':
+        e.preventDefault()
+        setMachineState('idle').catch(() => {})
+        return
       case 'h':
         e.preventDefault()
         router.push('/')
-        return
-      case 'p':
-        e.preventDefault()
-        router.push('/profiles')
         return
       case 'r':
         e.preventDefault()
