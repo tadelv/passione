@@ -245,6 +245,14 @@ watch(
             suffix="%"
           />
         </div>
+
+        <div class="vis-tab__field">
+          <span class="vis-tab__hint">
+            With a Visualizer username set, Passione opens the post-shot review page
+            once the shot has ended and been saved. Without credentials, the app
+            returns to the home page after a shot finishes.
+          </span>
+        </div>
       </div>
     </div>
   </div>

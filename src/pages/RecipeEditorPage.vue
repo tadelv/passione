@@ -48,6 +48,12 @@ const showBatchList = ref(false)
 // ---- Profile state ----
 const profileTitle = ref('')
 const profileId = ref(null)
+// Recipe-level brew temperature override. Expressed in °C absolute; when
+// present, the live-apply path clones workflow.profile and overwrites every
+// step's `temperature` so the machine targets this value regardless of the
+// profile's own per-step variation. Stored on the combo (not on the saved
+// profile) so the shared gateway profile library is never mutated.
+const brewTemperature = ref(93)
 
 // ---- "Awaiting profile from picker" flag ----
 // Must survive the /recipe/edit → /profiles → /recipe/edit round-trip.
@@ -105,6 +111,11 @@ onMounted(() => {
       _updating = true
       profileTitle.value = workflow.profile.title ?? ''
       profileId.value = workflow.profile.id ?? null
+      // Newly-picked profile: reset the temperature override to the new
+      // profile's baseline so the user isn't carrying over a 94 °C knob
+      // onto a 90 °C profile they just chose.
+      const t = pickBrewTempFromProfile(workflow.profile)
+      if (t != null) brewTemperature.value = t
       nextTick(() => { _updating = false })
     }
     setAwaitingProfileFromPicker(false)
@@ -208,6 +219,11 @@ async function loadFromPreset(index) {
   ratioValue.value = doseIn.value > 0 ? +(doseOut.value / doseIn.value).toFixed(1) : 2.0
   profileId.value = preset.profileId ?? null
   profileTitle.value = preset.profileTitle ?? ''
+  if (preset.brewTemperature != null) {
+    brewTemperature.value = preset.brewTemperature
+  } else {
+    brewTemperature.value = pickBrewTempFromProfile(workflow?.profile) ?? 93
+  }
   // Operation settings — always restore sub-field values so they survive
   // a toggle-off/toggle-on cycle (user disables steam, re-enables later)
   includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
@@ -292,6 +308,8 @@ function overlayFromWorkflow() {
   if (workflow.profile) {
     profileId.value = workflow.profile.id ?? profileId.value
     profileTitle.value = workflow.profile.title ?? profileTitle.value
+    const t = pickBrewTempFromProfile(workflow.profile)
+    if (t != null) brewTemperature.value = t
   }
   // Operation settings — align include flag and sub-field values with
   // whatever the live workflow currently has.
@@ -416,6 +434,7 @@ function comboValues() {
     selectedBeanId: selectedBeanId.value || null,
     selectedBatchId: selectedBatchId.value || null,
     selectedGrinderId: selectedGrinderId.value || null,
+    brewTemperature: brewTemperature.value,
     includeSteam: includeSteam.value,
     steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : { duration: 0 },
     includeFlush: includeFlush.value,
@@ -424,6 +443,35 @@ function comboValues() {
     hotWaterSettings: includeHotWater.value ? { volume: hotWaterVolume.value, temperature: hotWaterTemperature.value } : { volume: 0 },
   }
   return vals
+}
+
+// Pick the best-guess "brew temperature" to display as the initial value
+// for a loaded profile. Profiles store per-step temperatures (not a single
+// global value) — we take the first step's temperature, falling back to
+// tank_temperature or a 93 °C default.
+function pickBrewTempFromProfile(p) {
+  if (!p) return null
+  const steps = p.steps ?? p.frames ?? []
+  if (steps.length > 0 && typeof steps[0].temperature === 'number') {
+    return round1(steps[0].temperature)
+  }
+  if (typeof p.tank_temperature === 'number') return round1(p.tank_temperature)
+  return null
+}
+
+// Build a modified profile payload with every step's temperature set to
+// the recipe's brewTemperature. Returns null when no profile is available
+// or brewTemperature is unset (no override to apply).
+function buildTemperatureOverrideProfile() {
+  const base = workflow?.profile
+  if (!base || brewTemperature.value == null) return null
+  const steps = base.steps ?? base.frames ?? []
+  if (!steps.length) return null
+  const clone = JSON.parse(JSON.stringify(base))
+  const t = brewTemperature.value
+  const cloneSteps = clone.steps ?? clone.frames
+  for (const s of cloneSteps) s.temperature = t
+  return clone
 }
 
 // ---- Dirty tracking ----
@@ -473,7 +521,18 @@ function buildWorkflowUpdate() {
 // ---- Apply current form state to the live workflow (no combo mutation) ----
 async function applyToLiveWorkflow() {
   try {
-    await updateWorkflow(buildWorkflowUpdate())
+    const payload = buildWorkflowUpdate()
+    // Only send a profile override if the recipe's temperature diverges
+    // from the profile currently loaded in the workflow. Avoids pushing
+    // a cloned profile (and potentially churning its content-hash id) on
+    // every unrelated field change.
+    const current = pickBrewTempFromProfile(workflow?.profile)
+    if (brewTemperature.value != null && current != null &&
+        Math.abs(brewTemperature.value - current) > 0.05) {
+      const override = buildTemperatureOverrideProfile()
+      if (override) payload.profile = override
+    }
+    await updateWorkflow(payload)
   } catch {
     // Silent — live-apply fires often; errors shouldn't toast-spam
   }
@@ -515,7 +574,7 @@ function saveAsNew() {
 let liveApplyTimer = null
 watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
        selectedBeanId, selectedBatchId, selectedGrinderId,
-       profileId, profileTitle,
+       profileId, profileTitle, brewTemperature,
        includeSteam, steamDuration, steamFlow, steamTemperature,
        includeFlush, flushDuration, flushFlowRate,
        includeHotWater, hotWaterVolume, hotWaterTemperature], () => {
@@ -617,6 +676,10 @@ watch(() => workflow?.profile, (newProfile) => {
   if (explicitlyPicked || noComboSelected) {
     profileTitle.value = newProfile.title ?? ''
     profileId.value = newProfile.id ?? null
+    if (explicitlyPicked) {
+      const t = pickBrewTempFromProfile(newProfile)
+      if (t != null) brewTemperature.value = t
+    }
     setAwaitingProfileFromPicker(false)
   }
 }, { deep: true })
@@ -673,6 +736,18 @@ watch(() => workflow?.profile, (newProfile) => {
       <div class="recipe-editor__profile-row">
         <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
         <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
+      </div>
+      <div class="recipe-editor__profile-temp-row">
+        <label class="recipe-editor__label">Temperature</label>
+        <ValueInput
+          v-model="brewTemperature"
+          :min="50"
+          :max="100"
+          :step="0.5"
+          :decimals="1"
+          suffix="°C"
+          data-testid="recipe-brew-temperature"
+        />
       </div>
     </div>
 
@@ -815,6 +890,7 @@ watch(() => workflow?.profile, (newProfile) => {
             :step="0.1"
             :decimals="1"
             suffix="g"
+            data-testid="recipe-doseIn"
           />
         </div>
 
@@ -985,6 +1061,18 @@ watch(() => workflow?.profile, (newProfile) => {
 .recipe-editor__profile-name {
   font-size: var(--font-body);
   color: var(--color-text);
+}
+
+.recipe-editor__profile-temp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .recipe-editor__change-btn {

@@ -259,6 +259,10 @@ const stopReasonVisible = ref(false)
 const stopReasonText = ref('')
 let userRequestedStop = false
 let lastTargetWeight = 0
+// Epoch-ms start time of the shot that just ended, captured BEFORE
+// shotData.stop() clears it. Used to tell whether /shots/latest has
+// already been updated with the current shot (freshness check).
+let lastShotStartMs = 0
 
 // Track whether user explicitly stopped the shot
 function markUserStop() {
@@ -346,6 +350,7 @@ watch(machine.state, (newState, oldState) => {
   } else if (!targetRoute && oldState && OPERATION_STATES.has(oldState)) {
     // Operation ended -- determine overlay/reason
     if (oldState === 'espresso') {
+      lastShotStartMs = shotData.shotStartTime.value ?? 0
       shotData.stop()
       // P0-6: Determine stop reason
       const currentWeight = scale.weight.value ?? 0
@@ -396,20 +401,57 @@ watch(() => route.path, () => {
   completionVisible.value = false
 })
 
+// How long we keep polling /shots/latest for a record that belongs to the
+// current session before giving up and going home. The gateway persists
+// shots asynchronously, so a naive single query right after pouringDone
+// can return a stale record from a previous session — which would land
+// the user on the wrong /shot-review page (and Back wouldn't save them,
+// only Home would). Polling avoids that without abandoning the flow.
+const LATEST_SHOT_POLL_INTERVAL_MS = 500
+const LATEST_SHOT_POLL_TIMEOUT_MS = 4000
+
 function onStopReasonDismiss() {
   if (!stopReasonVisible.value) return // already dismissed by route change
   stopReasonVisible.value = false
-  // If visualizer credentials are configured, navigate to shot review; otherwise go home
-  if (settings.settings.visualizerUsername) {
-    getLatestShot().then(shot => {
-      if (shot?.id) router.push(`/shot-review/${encodeURIComponent(shot.id)}`)
-      else if (route.path !== '/') router.push('/')
-    }).catch(() => {
-      if (route.path !== '/') router.push('/')
-    })
-  } else {
-    if (route.path !== '/') router.push('/')
+  const goHome = () => { if (route.path !== '/') router.push('/') }
+  // Only the visualizer-enabled flow routes to the post-shot review page;
+  // otherwise dismiss goes straight home.
+  if (!settings.settings.visualizerUsername) {
+    goHome()
+    return
   }
+
+  const sessionStart = lastShotStartMs
+  const deadline = Date.now() + LATEST_SHOT_POLL_TIMEOUT_MS
+  const isFreshShot = (shot) => {
+    if (!shot?.id) return false
+    const ts = shot.timestamp ?? shot.date
+    const shotMs = ts ? Date.parse(ts) : NaN
+    // 5s tolerance — gateway shot timestamps are recorded at shot start
+    // and may drift slightly from this client's clock.
+    return Number.isFinite(shotMs) && sessionStart > 0 && shotMs >= sessionStart - 5000
+  }
+
+  const poll = () => {
+    // Bail if the user has navigated away (Home / Settings / etc.) — we
+    // shouldn't hijack their navigation with a late review push.
+    if (route.path !== '/espresso') return
+    getLatestShot().then(shot => {
+      if (isFreshShot(shot)) {
+        router.push(`/shot-review/${encodeURIComponent(shot.id)}`)
+        return
+      }
+      if (Date.now() >= deadline) {
+        goHome()
+        return
+      }
+      setTimeout(poll, LATEST_SHOT_POLL_INTERVAL_MS)
+    }).catch(() => {
+      if (Date.now() >= deadline) goHome()
+      else setTimeout(poll, LATEST_SHOT_POLL_INTERVAL_MS)
+    })
+  }
+  poll()
 }
 
 // ---- P0-7: Keyboard Shortcuts ----

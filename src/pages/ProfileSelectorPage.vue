@@ -225,6 +225,9 @@ onMounted(fetchProfiles)
     <BottomBar title="Profiles" @back="goBack">
       <span>{{ allProfiles.length }} profiles</span>
       <span style="opacity: 0.3">|</span>
+      <button class="profile-selector__import-btn" @click="router.push('/simple-editor')">
+        + New
+      </button>
       <button class="profile-selector__import-btn" @click="router.push('/visualizer-import')">
         Import
       </button>

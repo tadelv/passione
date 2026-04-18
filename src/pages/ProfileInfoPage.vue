@@ -184,6 +184,13 @@ onMounted(fetchProfile)
       >
         Edit
       </button>
+      <button
+        v-if="record?.id"
+        class="profile-info__advanced-btn"
+        @click="router.push(`/advanced-editor/${encodeURIComponent(record.id)}`)"
+      >
+        Advanced
+      </button>
     </BottomBar>
   </div>
 </template>
@@ -362,7 +369,8 @@ onMounted(fetchProfile)
   cursor: pointer;
 }
 
-.profile-info__edit-btn {
+.profile-info__edit-btn,
+.profile-info__advanced-btn {
   padding: 8px 24px;
   border: none;
   border-radius: var(--radius-button);

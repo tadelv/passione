@@ -162,9 +162,10 @@ test.describe('Recipe editor', () => {
     await page.locator('.preset-pill-row__pill').first().click()
     await page.waitForTimeout(300)
 
-    // Click the first "Increase value" button (first ValueInput is doseIn, step 0.1)
-    // This makes the form dirty and triggers live-apply
-    await page.locator('.value-input__btn[aria-label="Increase value"]').first().click()
+    // Bump doseIn by one step (0.1g) — makes the form dirty and triggers
+    // live-apply. Targeted via data-testid so adding ValueInputs elsewhere
+    // in the editor can't shift the selector.
+    await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
     await page.waitForTimeout(600)  // wait for the 300ms live-apply debounce plus margin
 
     // The Save button should now be visible (dirty state)
@@ -195,7 +196,7 @@ test.describe('Recipe editor', () => {
     // Select + tweak doseIn via the stepper
     await page.locator('.preset-pill-row__pill').first().click()
     await page.waitForTimeout(300)
-    await page.locator('.value-input__btn[aria-label="Increase value"]').first().click()
+    await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
     await page.waitForTimeout(600)
 
     // Tap Save (explicit commit). useSettings has an 800ms debounced write
@@ -223,7 +224,7 @@ test.describe('Recipe editor', () => {
     // Select + tweak to enable Save as New Recipe
     await page.locator('.preset-pill-row__pill').first().click()
     await page.waitForTimeout(300)
-    await page.locator('.value-input__btn[aria-label="Increase value"]').first().click()
+    await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
     await page.waitForTimeout(600)
 
     // Tap Save as New Recipe

@@ -47,6 +47,7 @@ const SCALAR_KEYS = [
   'profileId', 'profileTitle', 'coffeeName', 'roaster',
   'doseIn', 'doseOut', 'grinder', 'grinderSetting',
   'selectedBeanId', 'selectedBatchId', 'selectedGrinderId',
+  'brewTemperature',
 ]
 
 // Keys the live workflow has no counterpart for — they only live on the
@@ -55,7 +56,10 @@ const SCALAR_KEYS = [
 // the "modified" dot against every combo that pins a bean record.
 // (The strict editor-side compare still evaluates them, because both
 // sides of that comparison come from the same form snapshot.)
-const COMBO_ONLY_KEYS = new Set(['selectedBeanId'])
+// brewTemperature lives on the combo but maps back to a profile-shape
+// override we can't reliably diff from the live workflow, so it stays
+// combo-only for lenient compare.
+const COMBO_ONLY_KEYS = new Set(['selectedBeanId', 'brewTemperature'])
 
 function norm(v) {
   if (v == null || v === '') return null
