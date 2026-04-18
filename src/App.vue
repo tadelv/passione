@@ -260,9 +260,15 @@ const stopReasonText = ref('')
 let userRequestedStop = false
 let lastTargetWeight = 0
 // Epoch-ms start time of the shot that just ended, captured BEFORE
-// shotData.stop() clears it. Used to tell whether /shots/latest has
-// already been updated with the current shot (freshness check).
+// shotData.stop() clears it. Used as a secondary freshness check when
+// the gateway hasn't yet updated the new shot's id via /shots/latest.
 let lastShotStartMs = 0
+// Id of /shots/latest at the moment the user started the current shot.
+// When polling after pouringDone, a *different* id means the gateway
+// has now committed the new shot and it's safe to route to its review.
+// This is the primary freshness signal — `timestamp` fields can be
+// naive-local strings and don't always round-trip through Date.parse.
+let priorLatestShotId = null
 
 // Track whether user explicitly stopped the shot
 function markUserStop() {
@@ -340,6 +346,10 @@ watch(machine.state, (newState, oldState) => {
   if (newState === 'espresso' && oldState !== 'espresso') {
     userRequestedStop = false
     lastTargetWeight = workflow.context?.targetYield ?? 36
+    // Snapshot "current latest shot id" so the post-shot poll can
+    // detect when a NEW record has landed on the gateway (id changed).
+    priorLatestShotId = null
+    getLatestShot().then(s => { priorLatestShotId = s?.id ?? null }).catch(() => {})
   }
 
   if (targetRoute && route.path !== targetRoute) {
@@ -422,14 +432,24 @@ function onStopReasonDismiss() {
   }
 
   const sessionStart = lastShotStartMs
+  const baselineId = priorLatestShotId
   const deadline = Date.now() + LATEST_SHOT_POLL_TIMEOUT_MS
   const isFreshShot = (shot) => {
     if (!shot?.id) return false
+    // Primary signal: the id moved. If we captured a prior id at shot
+    // start, any different id here means the gateway has committed the
+    // new record and this is it.
+    if (baselineId != null) return shot.id !== baselineId
+    // Fallback (no baseline captured — first-ever shot, or the prior
+    // getLatestShot failed): accept if the record's timestamp is at or
+    // after session start, with a 5s tolerance for clock drift.
     const ts = shot.timestamp ?? shot.date
     const shotMs = ts ? Date.parse(ts) : NaN
-    // 5s tolerance — gateway shot timestamps are recorded at shot start
-    // and may drift slightly from this client's clock.
-    return Number.isFinite(shotMs) && sessionStart > 0 && shotMs >= sessionStart - 5000
+    if (Number.isFinite(shotMs) && sessionStart > 0) return shotMs >= sessionStart - 5000
+    // No baseline AND no usable timestamp — treat any returned record
+    // as fresh rather than looping until timeout (better UX than
+    // always going home when signals are unavailable).
+    return true
   }
 
   const poll = () => {
