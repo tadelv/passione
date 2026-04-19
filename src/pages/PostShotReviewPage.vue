@@ -11,6 +11,10 @@ import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '.
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useShotIds } from '../composables/useShotIds'
 
+let _suggestionsCache = null
+let _suggestionsInflight = null
+let _suggestionsGeneration = 0
+
 const route = useRoute()
 const router = useRouter()
 const settings = inject('settings', null)
@@ -100,50 +104,67 @@ const historySuggestions = ref({
 })
 
 async function loadSuggestions() {
-  try {
-    const ids = await getShotIds()
-    const idList = Array.isArray(ids) ? ids : (ids?.ids ?? [])
-    // Load recent shots for suggestion mining (limit to 100)
-    const recentIds = idList.slice(0, 100)
-    if (recentIds.length === 0) return
-    const result = await getShots(recentIds)
-    const shots = Array.isArray(result) ? result : (result?.shots ?? [])
-
-    const sets = {
-      roaster: new Set(),
-      beanBrand: new Set(),
-      beanType: new Set(),
-      grinderModel: new Set(),
-      grinderSetting: new Set(),
-      barista: new Set(),
-    }
-
-    for (const raw of shots) {
-      const n = normalizeShot(raw)
-      const extras = raw.annotations?.extras ?? {}
-      const meta = raw.metadata ?? {}
-
-      if (n.coffeeRoaster) sets.roaster.add(n.coffeeRoaster)
-      const beanBrandVal = extras.beanBrand ?? meta.beanBrand
-      if (beanBrandVal) sets.beanBrand.add(beanBrandVal)
-      if (n.coffeeName) sets.beanType.add(n.coffeeName)
-      if (n.grinderModel) sets.grinderModel.add(n.grinderModel)
-      if (n.grinderSetting != null) sets.grinderSetting.add(String(n.grinderSetting))
-      const baristaVal = extras.barista ?? meta.barista
-      if (baristaVal) sets.barista.add(baristaVal)
-    }
-
-    historySuggestions.value = {
-      roaster: [...sets.roaster].sort(),
-      beanBrand: [...sets.beanBrand].sort(),
-      beanType: [...sets.beanType].sort(),
-      grinderModel: [...sets.grinderModel].sort(),
-      grinderSetting: [...sets.grinderSetting].sort(),
-      barista: [...sets.barista].sort(),
-    }
-  } catch {
-    // Suggestions are optional
+  if (_suggestionsCache) {
+    historySuggestions.value = _suggestionsCache
+    return
   }
+  if (_suggestionsInflight) {
+    const result = await _suggestionsInflight
+    if (result) historySuggestions.value = result
+    return
+  }
+  const myGen = _suggestionsGeneration
+  _suggestionsInflight = (async () => {
+    try {
+      const ids = await getShotIds()
+      const idList = Array.isArray(ids) ? ids : (ids?.ids ?? [])
+      const recentIds = idList.slice(0, 100)
+      if (recentIds.length === 0) return null
+      const result = await getShots(recentIds)
+      const shots = Array.isArray(result) ? result : (result?.shots ?? [])
+
+      const sets = {
+        roaster: new Set(),
+        beanBrand: new Set(),
+        beanType: new Set(),
+        grinderModel: new Set(),
+        grinderSetting: new Set(),
+        barista: new Set(),
+      }
+
+      for (const raw of shots) {
+        const n = normalizeShot(raw)
+        const extras = raw.annotations?.extras ?? {}
+        const meta = raw.metadata ?? {}
+        if (n.coffeeRoaster) sets.roaster.add(n.coffeeRoaster)
+        const beanBrandVal = extras.beanBrand ?? meta.beanBrand
+        if (beanBrandVal) sets.beanBrand.add(beanBrandVal)
+        if (n.coffeeName) sets.beanType.add(n.coffeeName)
+        if (n.grinderModel) sets.grinderModel.add(n.grinderModel)
+        if (n.grinderSetting != null) sets.grinderSetting.add(String(n.grinderSetting))
+        const baristaVal = extras.barista ?? meta.barista
+        if (baristaVal) sets.barista.add(baristaVal)
+      }
+
+      const next = {
+        roaster: [...sets.roaster].sort(),
+        beanBrand: [...sets.beanBrand].sort(),
+        beanType: [...sets.beanType].sort(),
+        grinderModel: [...sets.grinderModel].sort(),
+        grinderSetting: [...sets.grinderSetting].sort(),
+        barista: [...sets.barista].sort(),
+      }
+      // Only commit if no invalidation happened during the fetch.
+      if (myGen === _suggestionsGeneration) _suggestionsCache = next
+      return next
+    } catch {
+      return null
+    } finally {
+      _suggestionsInflight = null
+    }
+  })()
+  const next = await _suggestionsInflight
+  if (next) historySuggestions.value = next
 }
 
 function populateFromShot(shot) {
@@ -274,6 +295,10 @@ async function save() {
       },
     })
     saveSticky()
+    // Annotations may have introduced new roaster/bean/grinder/barista names;
+    // invalidate the suggestions cache so the next mount remines fresh data.
+    _suggestionsCache = null
+    _suggestionsGeneration++
     dirty.value = false
   } catch (e) {
     if (toast) toast.error(e.message || 'Failed to save')
