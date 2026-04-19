@@ -9,6 +9,7 @@ import BottomBar from '../components/BottomBar.vue'
 import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { useShotIds } from '../composables/useShotIds'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +18,7 @@ const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
+const shotIdsCache = useShotIds()
 
 const shotId = computed(() => route.params.id)
 const shot = ref(null)
@@ -323,6 +325,7 @@ const ROAST_LEVELS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark']
 const BEVERAGE_TYPES = ['Espresso', 'Lungo', 'Ristretto', 'Filter', 'Americano', 'Latte', 'Cappuccino', 'Other']
 
 onMounted(() => {
+  shotIdsCache.invalidate()
   loadShot(shotId.value)
   loadSuggestions()
 })
