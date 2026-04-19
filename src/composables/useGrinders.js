@@ -16,7 +16,11 @@ import {
 
 const entityCache = new Map()
 
+let _instance = null
+
 export function useGrinders() {
+  if (_instance) return _instance
+
   const grinders = ref([])
   const loading = ref(false)
   const error = ref(null)
@@ -68,7 +72,7 @@ export function useGrinders() {
 
   onMounted(() => refresh())
 
-  return {
+  _instance = {
     /** Reactive list of all grinders. */
     grinders,
     /** Whether a fetch is in progress. */
@@ -86,4 +90,5 @@ export function useGrinders() {
     /** Delete a grinder. */
     remove,
   }
+  return _instance
 }
