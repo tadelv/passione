@@ -109,8 +109,9 @@ async function loadSuggestions() {
     return
   }
   if (_suggestionsInflight) {
+    const myGen = _suggestionsGeneration
     const result = await _suggestionsInflight
-    if (result) historySuggestions.value = result
+    if (result && myGen === _suggestionsGeneration) historySuggestions.value = result
     return
   }
   const myGen = _suggestionsGeneration
