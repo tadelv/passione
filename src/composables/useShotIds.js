@@ -18,20 +18,26 @@ async function ensureLoaded() {
   if (ids.value !== null) return ids.value
   if (inflight) return inflight
   const myGeneration = generation
-  inflight = (async () => {
+  let myPromise
+  myPromise = (async () => {
     try {
       const result = await fetchShotIds()
       const list = Array.isArray(result) ? result : (result?.ids ?? [])
-      // Only commit to the cache if no invalidation happened during the fetch.
-      if (myGeneration === generation) ids.value = list
+      if (myGeneration !== generation) {
+        // Invalidation happened during fetch — return canonical fresh result.
+        if (inflight === myPromise) inflight = null
+        return ensureLoaded()
+      }
+      ids.value = list
       return list
     } catch {
       // Don't poison the cache — leave ids null so the next call retries.
       return []
     } finally {
-      inflight = null
+      if (inflight === myPromise) inflight = null
     }
   })()
+  inflight = myPromise
   return inflight
 }
 

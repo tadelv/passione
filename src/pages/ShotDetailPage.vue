@@ -155,6 +155,7 @@ async function onRatingChange(val) {
         annotations: { enjoyment: val },
         metadata: { rating: val },
       })
+      invalidateShotCaches()
     } catch {
       // ignore
     }
