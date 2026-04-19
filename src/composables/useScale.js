@@ -3,14 +3,19 @@
  *
  * Connects to ws/v1/scale/snapshot (5-10 Hz) and exposes reactive refs
  * for weight and battery level.
+ *
+ * Pass an `enabled` ref to gate the WebSocket on external state (e.g. the
+ * `scaleConnected` flag from useDevices). The WS will open when enabled
+ * becomes true and close when it becomes false. Without an enabled arg,
+ * the WS opens on mount unconditionally (legacy behavior).
  */
 
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted, watch, isRef } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
 import { tareScale as restTareScale } from '../api/rest'
 
-export function useScale() {
+export function useScale(enabled = true) {
   const isConnected = ref(false)
   const weight = ref(0)
   const batteryLevel = ref(null)
@@ -47,7 +52,8 @@ export function useScale() {
     batteryLevel.value = data.batteryLevel ?? null
   }
 
-  function connect() {
+  function _open() {
+    if (ws) return
     ws = new ReconnectingWebSocket(
       `${WS_URL}/ws/v1/scale/snapshot`,
       (data) => {
@@ -65,10 +71,26 @@ export function useScale() {
     ws.connect()
   }
 
-  function disconnect() {
+  function _close() {
     ws?.close()
     ws = null
     isConnected.value = false
+    weight.value = 0
+    flowRate.value = 0
+    batteryLevel.value = null
+    _prevWeight = null
+    _prevTime = null
+  }
+
+  // Honor the `enabled` source — open when true, close when false.
+  if (isRef(enabled)) {
+    watch(
+      enabled,
+      (v) => { v ? _open() : _close() },
+      { immediate: true }
+    )
+  } else if (enabled) {
+    _open()
   }
 
   /** Tare (zero) the scale. */
@@ -76,8 +98,11 @@ export function useScale() {
     return restTareScale()
   }
 
-  onMounted(connect)
-  onUnmounted(disconnect)
+  // Manual override — rarely needed, the watcher does the work.
+  function connect() { _open() }
+  function disconnect() { _close() }
+
+  onUnmounted(_close)
 
   return {
     isConnected,

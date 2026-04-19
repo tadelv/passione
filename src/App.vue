@@ -32,8 +32,8 @@ const { t } = useI18n()
 
 // Connect to all WebSocket streams
 const machine = useMachine()
-const scale = useScale()
 const devices = useDevices()
+const scale = useScale(devices.scaleConnected)
 const waterLevels = useWaterLevels()
 const timeToReady = useTimeToReady()
 const shotSettings = useShotSettings()
