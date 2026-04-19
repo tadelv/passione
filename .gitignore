@@ -6,3 +6,4 @@ dist/
 .claude/
 test-results/
 .superpowers/
+.worktrees/
