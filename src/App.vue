@@ -589,14 +589,18 @@ onMounted(async () => {
   // brief window between settings load completing and syncFromWorkflow
   // overlaying them with the gateway's actual workflow values.
   operationSettings.suppress()
+  let synced = false
   try {
     await Promise.all([settings.load(), workflowReady])
     operationSettings.syncFromWorkflow()
+    synced = true
   } finally {
-    // syncFromWorkflow already unsuppresses via its internal nextTick.
-    // This is a defensive no-op if syncFromWorkflow ran cleanly; it
-    // guarantees unsuppress runs if syncFromWorkflow throws first.
-    operationSettings.unsuppress()
+    // syncFromWorkflow handles unsuppress on its own via nextTick — calling
+    // it synchronously here would re-arm the watchers BEFORE the assignments
+    // queued inside syncFromWorkflow have flushed, defeating the suppression.
+    // Only force-unsuppress if syncFromWorkflow never ran (load/workflowReady
+    // threw) so we don't leave the watchers permanently muted.
+    if (!synced) operationSettings.unsuppress()
   }
 })
 
