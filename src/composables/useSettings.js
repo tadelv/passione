@@ -96,6 +96,7 @@ const DEFAULT_SETTINGS = {
 
 // Singleton state — shared across all consumers
 let _instance = null
+let _watchersArmed = false
 
 export function useSettings() {
   if (_instance) return _instance
@@ -216,7 +217,28 @@ export function useSettings() {
     const promises = Object.keys(GROUPS).map(groupKey => _loadKey(groupKey))
     await Promise.allSettled(promises)
     _migrateSteamFlow()
+    _armWatchers()
     loaded.value = true
+  }
+
+  /**
+   * Arm per-group save watchers. Called from load() AFTER migration so
+   * migration mutations don't trigger spurious saves. Guarded against
+   * double-arming so repeated load() calls don't compound watchers.
+   */
+  function _armWatchers() {
+    if (_watchersArmed) return
+    _watchersArmed = true
+    for (const [groupKey, keys] of Object.entries(GROUPS)) {
+      watch(
+        () => keys.map(k => settings[k]),
+        () => {
+          if (!loaded.value) return
+          _debouncedSave(groupKey, keys)
+        },
+        { deep: true }
+      )
+    }
   }
 
   /**
@@ -275,18 +297,6 @@ export function useSettings() {
    */
   function get(key) {
     return settings[key]
-  }
-
-  // Auto-save: watch each group and debounce save
-  for (const [groupKey, keys] of Object.entries(GROUPS)) {
-    watch(
-      () => keys.map(k => settings[k]),
-      () => {
-        if (!loaded.value) return
-        _debouncedSave(groupKey, keys)
-      },
-      { deep: true }
-    )
   }
 
   _instance = {
