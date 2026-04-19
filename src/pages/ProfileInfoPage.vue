@@ -3,13 +3,16 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
-import { getProfile, getProfiles } from '../api/rest.js'
+import { getProfile } from '../api/rest.js'
 import { isSimpleProfile } from '../composables/useSimpleProfile'
+import { useProfilesCache } from '../composables/useProfilesCache'
 
 const router = useRouter()
 const route = useRoute()
 const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
+
+const profilesCache = useProfilesCache()
 
 const record = ref(null)
 const loading = ref(false)
@@ -56,8 +59,7 @@ async function fetchProfile() {
   } catch {
     // Fallback: fetch all profiles and find by ID
     try {
-      const all = await getProfiles()
-      const list = Array.isArray(all) ? all : []
+      const list = await profilesCache.ensureLoaded()
       const match = list.find(r => r.id === id)
       if (match) {
         record.value = match

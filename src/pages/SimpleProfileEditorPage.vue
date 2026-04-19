@@ -5,6 +5,7 @@ import ValueInput from '../components/ValueInput.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import BottomBar from '../components/BottomBar.vue'
 import { getProfile, updateProfile, createProfile } from '../api/rest.js'
+import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 import {
   extractSimpleParams,
   generateSimpleFrames,
@@ -120,8 +121,10 @@ async function saveProfile() {
     const payload = buildProfileFromParams(params.value, isFlow.value, meta.value)
     if (profileId.value) {
       await updateProfile(profileId.value, payload)
+      invalidateProfileCaches()
     } else {
       const created = await createProfile(payload)
+      invalidateProfileCaches()
       if (created?.id) {
         router.replace(`/simple-editor/${encodeURIComponent(created.id)}`)
       }

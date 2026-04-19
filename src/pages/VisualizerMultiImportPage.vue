@@ -5,9 +5,13 @@ import BottomBar from '../components/BottomBar.vue'
 
 const router = useRouter()
 import ProfileGraph from '../components/ProfileGraph.vue'
-import { createProfile, getProfiles } from '../api/rest.js'
+import { createProfile } from '../api/rest.js'
+import { useProfilesCache } from '../composables/useProfilesCache'
+import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 
 const toast = inject('toast')
+
+const profilesCache = useProfilesCache()
 
 // --- State ---
 const shareCode = ref('')
@@ -50,8 +54,7 @@ const allImported = computed(() =>
  */
 async function loadExistingProfiles() {
   try {
-    const data = await getProfiles()
-    const arr = Array.isArray(data) ? data : []
+    const arr = await profilesCache.ensureLoaded()
     existingProfileIds.value = new Set(arr.map(r => r.id))
   } catch {
     existingProfileIds.value = new Set()
@@ -168,6 +171,7 @@ async function importSingle(index) {
   item.error = ''
   try {
     await createProfile(item.profile)
+    invalidateProfileCaches()
     item.status = 'imported'
     if (toast) toast.success(`Imported "${item.title}"`)
   } catch (e) {
@@ -203,6 +207,7 @@ async function importAll() {
     item.error = ''
     try {
       await createProfile(item.profile)
+      invalidateProfileCaches()
       item.status = 'imported'
       successCount++
     } catch (e) {

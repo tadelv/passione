@@ -6,6 +6,7 @@ import BottomBar from '../components/BottomBar.vue'
 const router = useRouter()
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { createProfile } from '../api/rest.js'
+import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 
 const toast = inject('toast')
 
@@ -96,6 +97,7 @@ async function saveProfile(profile, overwrite = false) {
   saveStatus.value = 'saving'
   try {
     await createProfile(profile)
+    invalidateProfileCaches()
     saveStatus.value = 'saved'
     shareCode.value = ''
     if (toast) toast.success('Profile imported and saved successfully!')

@@ -8,7 +8,8 @@ import PresetEditPopup from '../components/PresetEditPopup.vue'
 import LayoutEditOverlay from '../components/LayoutEditOverlay.vue'
 import { useLayout } from '../composables/useLayout.js'
 import { isComboModifiedVsWorkflow } from '../composables/useComboDirty.js'
-import { setMachineState, getProfiles } from '../api/rest.js'
+import { setMachineState } from '../api/rest.js'
+import { useProfilesCache } from '../composables/useProfilesCache'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -26,6 +27,8 @@ const toast = inject('toast', null)
 const operationSettings = inject('operationSettings', null)
 
 const editingLayout = inject('editingLayout', ref(false))
+
+const profilesCache = useProfilesCache()
 
 const isEditMode = computed(() => route.query.editLayout === 'true')
 
@@ -108,7 +111,7 @@ async function onComboSelect(index) {
       (combo.profileTitle && currentProfile?.title === combo.profileTitle)
     if (!alreadyLoaded) {
       try {
-        const records = await getProfiles()
+        const records = await profilesCache.ensureLoaded()
         const allRecords = Array.isArray(records) ? records : []
         // Match by ID first, fall back to title match (Profile objects don't carry the ProfileRecord ID)
         const record = allRecords.find(r => r.id === combo.profileId)

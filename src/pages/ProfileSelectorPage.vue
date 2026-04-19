@@ -3,7 +3,7 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
-import { getProfiles } from '../api/rest.js'
+import { useProfilesCache } from '../composables/useProfilesCache'
 
 const router = useRouter()
 const route = useRoute()
@@ -12,6 +12,8 @@ const settings = inject('settings')
 const workflow = inject('workflow')
 const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
+
+const profilesCache = useProfilesCache()
 
 // When navigated from workflow editor, use select-only mode
 const selectOnly = computed(() => route.query.from === 'workflow')
@@ -125,7 +127,7 @@ function viewProfileInfo(record) {
 async function fetchProfiles() {
   loading.value = true
   try {
-    const data = await getProfiles()
+    const data = await profilesCache.ensureLoaded()
     allProfiles.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.warn('[ProfileSelectorPage] Failed to load profiles:', e.message)

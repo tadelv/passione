@@ -10,6 +10,7 @@ import {
   updateProfile,
   uploadProfileToMachine,
 } from '../api/rest.js'
+import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 
 const router = useRouter()
 const route = useRoute()
@@ -566,6 +567,7 @@ async function saveProfile() {
     const result = existingId
       ? await updateProfile(existingId, profile)
       : await createProfile(profile)
+    invalidateProfileCaches()
     if (result?.id) {
       record.value = result
     }
