@@ -62,12 +62,6 @@ export function useAutoSleep(machine, settings, display) {
     _activityCleanup = null
   }
 
-  // Send heartbeat on machine state changes
-  watch(
-    () => machine.state.value,
-    () => sendHeartbeat().catch(() => {})
-  )
-
   // Re-sync when autoSleepMinutes changes
   watch(
     () => settings.settings.autoSleepMinutes,
