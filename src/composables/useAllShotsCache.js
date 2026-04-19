@@ -23,25 +23,37 @@ async function ensureLoaded() {
   if (cache.value) return cache.value
   if (inflight) return inflight
   const myGeneration = generation
-  inflight = (async () => {
+  const myPromise = (async () => {
     try {
       const allShots = []
       let offset = 0
       const limit = 200
       while (true) {
+        // Abandon early if invalidation happened during pagination —
+        // the freshly-running fetch will produce the canonical result.
+        if (myGeneration !== generation) break
         const result = await getShotsPaginated(limit, offset)
         const shots = result.items.map(normalizeShot)
         allShots.push(...shots)
         offset += shots.length
         if (offset >= result.total || shots.length === 0) break
       }
-      // Only commit if no invalidation occurred during the fetch.
-      if (myGeneration === generation) cache.value = allShots
+      if (myGeneration !== generation) {
+        // Generation changed during fetch — clear our slot first so the
+        // recursive call starts a fresh fetch instead of returning our own
+        // promise (which would deadlock waiting on itself).
+        if (inflight === myPromise) inflight = null
+        return ensureLoaded()
+      }
+      cache.value = allShots
       return allShots
     } finally {
-      inflight = null
+      // Only clear the inflight slot if it still points at our own promise.
+      // invalidate() or a recursive ensureLoaded() may have already replaced it.
+      if (inflight === myPromise) inflight = null
     }
   })()
+  inflight = myPromise
   return inflight
 }
 

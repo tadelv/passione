@@ -9,8 +9,7 @@ import BottomBar from '../components/BottomBar.vue'
 import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
-import { useShotIds } from '../composables/useShotIds'
-import { useAllShotsCache } from '../composables/useAllShotsCache'
+import { invalidateShotCaches } from '../composables/useShotCacheInvalidation'
 
 let _suggestionsCache = null
 let _suggestionsInflight = null
@@ -23,8 +22,6 @@ const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
-const shotIdsCache = useShotIds()
-const allShotsCacheStore = useAllShotsCache()
 
 const shotId = computed(() => route.params.id)
 const shot = ref(null)
@@ -302,7 +299,7 @@ async function save() {
     // invalidate the suggestions cache so the next mount remines fresh data.
     _suggestionsCache = null
     _suggestionsGeneration++
-    allShotsCacheStore.invalidate()
+    invalidateShotCaches()
     dirty.value = false
   } catch (e) {
     if (toast) toast.error(e.message || 'Failed to save')
@@ -354,8 +351,7 @@ const ROAST_LEVELS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark']
 const BEVERAGE_TYPES = ['Espresso', 'Lungo', 'Ristretto', 'Filter', 'Americano', 'Latte', 'Cappuccino', 'Other']
 
 onMounted(() => {
-  shotIdsCache.invalidate()
-  allShotsCacheStore.invalidate()
+  invalidateShotCaches()
   loadShot(shotId.value)
   loadSuggestions()
 })
