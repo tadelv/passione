@@ -1,7 +1,7 @@
 <script setup>
 import { ref, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getShotIds } from '../../api/rest.js'
+import { getShotsPaginated } from '../../api/rest.js'
 
 const router = useRouter()
 const settingsInstance = inject('settings', null)
@@ -13,8 +13,8 @@ const loading = ref(true)
 async function loadShotCount() {
   loading.value = true
   try {
-    const ids = await getShotIds()
-    totalShots.value = Array.isArray(ids) ? ids.length : (ids?.ids?.length ?? 0)
+    const result = await getShotsPaginated(1, 0)
+    totalShots.value = result?.total ?? 0
   } catch {
     totalShots.value = null
   }
