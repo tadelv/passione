@@ -26,7 +26,7 @@ async function ensureLoaded() {
       const list = Array.isArray(data) ? data : (data?.records ?? [])
       if (myGeneration !== generation) {
         // Invalidation happened during fetch — return canonical fresh result.
-        inflight = null
+        if (inflight === myPromise) inflight = null
         return ensureLoaded()
       }
       profiles.value = list
