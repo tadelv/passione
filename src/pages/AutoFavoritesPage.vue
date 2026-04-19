@@ -2,8 +2,7 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { getShotsPaginated } from '../api/rest.js'
-import { normalizeShot } from '../composables/useShotNormalize'
+import { useAllShotsCache } from '../composables/useAllShotsCache'
 
 const router = useRouter()
 const toast = inject('toast', null)
@@ -35,27 +34,19 @@ function groupLabel(key) {
   return key
 }
 
+const allShotsCacheStore = useAllShotsCache()
+
 async function loadAllShots() {
   loading.value = true
-  const allShots = []
-  let offset = 0
-  const limit = 200
-
   try {
-    while (true) {
-      const result = await getShotsPaginated(limit, offset)
-      const shots = result.items.map(normalizeShot)
-      allShots.push(...shots)
-      offset += shots.length
-      if (offset >= result.total || shots.length === 0) break
-    }
+    const shots = await allShotsCacheStore.ensureLoaded()
+    allShotsCache.value = shots
+    computeGroups(shots)
   } catch {
     toast?.error('Failed to load shots')
+  } finally {
+    loading.value = false
   }
-
-  allShotsCache.value = allShots
-  computeGroups(allShots)
-  loading.value = false
 }
 
 function computeGroups(shots) {

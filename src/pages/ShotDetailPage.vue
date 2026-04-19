@@ -9,6 +9,7 @@ import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useShotIds } from '../composables/useShotIds'
+import { useAllShotsCache } from '../composables/useAllShotsCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +25,7 @@ const rating = ref(0)
 // Shot navigation support (swipe between shots)
 const shotIdsCache = useShotIds()
 const allShotIds = shotIdsCache.ids
+const allShotsCacheStore = useAllShotsCache()
 
 const currentIndex = computed(() => {
   const list = allShotIds.value
@@ -168,6 +170,7 @@ async function onDelete() {
   try {
     await deleteShot(shotId.value)
     shotIdsCache.invalidate()
+    allShotsCacheStore.invalidate()
     router.push('/history')
   } catch {
     // ignore

@@ -10,6 +10,7 @@ import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useShotIds } from '../composables/useShotIds'
+import { useAllShotsCache } from '../composables/useAllShotsCache'
 
 let _suggestionsCache = null
 let _suggestionsInflight = null
@@ -23,6 +24,7 @@ const beansApi = inject('beansApi', null)
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
 const shotIdsCache = useShotIds()
+const allShotsCacheStore = useAllShotsCache()
 
 const shotId = computed(() => route.params.id)
 const shot = ref(null)
@@ -300,6 +302,7 @@ async function save() {
     // invalidate the suggestions cache so the next mount remines fresh data.
     _suggestionsCache = null
     _suggestionsGeneration++
+    allShotsCacheStore.invalidate()
     dirty.value = false
   } catch (e) {
     if (toast) toast.error(e.message || 'Failed to save')
@@ -352,6 +355,7 @@ const BEVERAGE_TYPES = ['Espresso', 'Lungo', 'Ristretto', 'Filter', 'Americano',
 
 onMounted(() => {
   shotIdsCache.invalidate()
+  allShotsCacheStore.invalidate()
   loadShot(shotId.value)
   loadSuggestions()
 })
