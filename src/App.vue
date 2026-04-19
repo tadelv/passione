@@ -585,9 +585,19 @@ onMounted(async () => {
   // WKWebView where holding the mouse/trackpad triggers contextmenu + pointercancel).
   document.addEventListener('contextmenu', onContextMenu)
 
-  // Load persisted settings, wait for workflow, then sync operation defaults
-  await Promise.all([settings.load(), workflowReady])
-  operationSettings.syncFromWorkflow()
+  // Prevent the steam/hotwater/flush watchers from firing PUTs during the
+  // brief window between settings load completing and syncFromWorkflow
+  // overlaying them with the gateway's actual workflow values.
+  operationSettings.suppress()
+  try {
+    await Promise.all([settings.load(), workflowReady])
+    operationSettings.syncFromWorkflow()
+  } finally {
+    // syncFromWorkflow already unsuppresses via its internal nextTick.
+    // This is a defensive no-op if syncFromWorkflow ran cleanly; it
+    // guarantees unsuppress runs if syncFromWorkflow throws first.
+    operationSettings.unsuppress()
+  }
 })
 
 function onContextMenu(e) {
