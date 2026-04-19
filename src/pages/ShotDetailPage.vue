@@ -6,8 +6,9 @@ import RatingInput from '../components/RatingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 import SwipeableArea from '../components/SwipeableArea.vue'
 import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
-import { getShot, getShotIds, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
+import { getShot, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { useShotIds } from '../composables/useShotIds'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,33 +22,28 @@ const confirmingDelete = ref(false)
 const rating = ref(0)
 
 // Shot navigation support (swipe between shots)
-const allShotIds = ref([])
+const shotIdsCache = useShotIds()
+const allShotIds = shotIdsCache.ids
+
 const currentIndex = computed(() => {
-  if (!allShotIds.value.length) return -1
-  return allShotIds.value.indexOf(shotId.value)
+  const list = allShotIds.value
+  if (!list || !list.length) return -1
+  return list.indexOf(shotId.value)
 })
 
 const positionText = computed(() => {
-  if (currentIndex.value < 0 || !allShotIds.value.length) return ''
-  return `${currentIndex.value + 1} / ${allShotIds.value.length}`
+  const list = allShotIds.value
+  if (!list || currentIndex.value < 0) return ''
+  return `${currentIndex.value + 1} / ${list.length}`
 })
 
-async function loadShotIds() {
-  try {
-    const result = await getShotIds()
-    allShotIds.value = Array.isArray(result) ? result : (result?.ids ?? [])
-  } catch {
-    allShotIds.value = []
-  }
-}
-
 function navigateShot(delta) {
-  if (!allShotIds.value.length || currentIndex.value < 0) return
+  const list = allShotIds.value
+  if (!list || !list.length || currentIndex.value < 0) return
   let next = currentIndex.value + delta
-  // Wrap around
-  if (next < 0) next = allShotIds.value.length - 1
-  if (next >= allShotIds.value.length) next = 0
-  const nextId = allShotIds.value[next]
+  if (next < 0) next = list.length - 1
+  if (next >= list.length) next = 0
+  const nextId = list[next]
   if (nextId) router.replace(`/shot/${encodeURIComponent(nextId)}`)
 }
 
@@ -99,7 +95,7 @@ async function loadShot(id) {
 
 onMounted(() => {
   loadShot(shotId.value)
-  loadShotIds()
+  shotIdsCache.ensureLoaded()
 })
 watch(shotId, (id) => loadShot(id))
 
@@ -171,6 +167,7 @@ async function onDelete() {
   }
   try {
     await deleteShot(shotId.value)
+    shotIdsCache.invalidate()
     router.push('/history')
   } catch {
     // ignore
