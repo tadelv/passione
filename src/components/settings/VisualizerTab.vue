@@ -235,6 +235,22 @@ watch(
         <h4 class="vis-tab__section-title">After Shot</h4>
 
         <div class="vis-tab__field">
+          <label class="vis-tab__label">Open shot review</label>
+          <button
+            class="vis-tab__toggle"
+            :class="{ 'vis-tab__toggle--on': settings.visualizerShowAfterShot }"
+            :disabled="!settings.visualizerUsername"
+            @click="settings.visualizerShowAfterShot = !settings.visualizerShowAfterShot"
+          >
+            {{ settings.visualizerShowAfterShot ? 'ON' : 'OFF' }}
+          </button>
+          <span class="vis-tab__hint">
+            Opens the post-shot review page automatically when a shot ends.
+            Requires a Visualizer username — otherwise the app returns home.
+          </span>
+        </div>
+
+        <div class="vis-tab__field">
           <label class="vis-tab__label">Default rating</label>
           <ValueInput
             :model-value="settings.defaultShotRating"
@@ -244,14 +260,6 @@ watch(
             :step="5"
             suffix="%"
           />
-        </div>
-
-        <div class="vis-tab__field">
-          <span class="vis-tab__hint">
-            With a Visualizer username set, Passione opens the post-shot review page
-            once the shot has ended and been saved. Without credentials, the app
-            returns to the home page after a shot finishes.
-          </span>
         </div>
       </div>
     </div>

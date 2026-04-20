@@ -134,6 +134,45 @@
     "failedUpdateGrinder": "Failed to update grinder",
     "failedLoadLastShot": "Failed to load last shot"
   },
+  "update": {
+    "available": {
+      "title": "Update ready",
+      "reload": "Reload",
+      "dismiss": "Dismiss"
+    }
+  },
+  "connErr": {
+    "dismiss": "Dismiss",
+    "scaleConnectFailed": {
+      "title": "Scale did not connect",
+      "suggestion": "Wake the scale and retry the scan."
+    },
+    "machineConnectFailed": {
+      "title": "Machine did not connect",
+      "suggestion": "Retry the scan, or check the machine is powered on."
+    },
+    "scaleDisconnected": {
+      "title": "Scale disconnected",
+      "suggestion": "Bring it back in range, then scan again."
+    },
+    "machineDisconnected": {
+      "title": "Machine connection lost",
+      "suggestion": "The gateway will try to reconnect."
+    },
+    "adapterOff": {
+      "title": "Bluetooth is off",
+      "suggestion": "Turn Bluetooth on to continue."
+    },
+    "bluetoothPermissionDenied": {
+      "title": "Bluetooth permission required",
+      "suggestion": "Grant Bluetooth permission to the gateway app."
+    },
+    "scanFailed": {
+      "title": "Scan could not start",
+      "suggestion": "Tap retry to try again.",
+      "action": "Retry"
+    }
+  },
   "operations": {
     "steamComplete": "Steam Complete",
     "hotWaterComplete": "Hot Water Complete",

@@ -1,9 +1,19 @@
 <script setup>
-import { inject } from 'vue'
+import { computed, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
 import ConnectionIndicator from '../ConnectionIndicator.vue'
 import { tareScale } from '../../api/rest.js'
+import { describeError } from '../../composables/useConnectionError.js'
 
 const devices = inject('devices')
+const { t } = useI18n()
+
+const errorInfo = computed(() => {
+  const err = devices.connectionError.value
+  if (!err) return null
+  const { title, detail } = describeError(err, t)
+  return { ...err, title, detail }
+})
 
 function deviceStatus(device) {
   switch (device.state) {
@@ -47,6 +57,16 @@ async function onTare() {
       >
         {{ devices.scanning.value ? 'Scanning...' : 'Scan' }}
       </button>
+    </div>
+
+    <div
+      v-if="errorInfo"
+      class="device-tab__error"
+      :class="{ 'device-tab__error--warning': errorInfo.severity === 'warning' }"
+      role="alert"
+    >
+      <span class="device-tab__error-title">{{ errorInfo.title }}</span>
+      <span v-if="errorInfo.detail" class="device-tab__error-detail">{{ errorInfo.detail }}</span>
     </div>
 
     <div v-if="devices.devices.value.length === 0" class="device-tab__empty">
@@ -127,6 +147,33 @@ async function onTare() {
   text-align: center;
   color: var(--color-text-secondary);
   font-size: var(--font-md);
+}
+
+.device-tab__error {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--color-toast-error, #c53030);
+  color: var(--color-text);
+}
+
+.device-tab__error--warning {
+  background: var(--color-toast-warning, #d97706);
+  color: var(--color-background);
+}
+
+.device-tab__error-title {
+  font-size: var(--font-md);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.device-tab__error-detail {
+  font-size: var(--font-sm);
+  line-height: 1.3;
+  opacity: 0.9;
 }
 
 .device-tab__list {

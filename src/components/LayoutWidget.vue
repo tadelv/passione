@@ -68,26 +68,30 @@ const machineState = inject('machineState', ref(''))
 let lastShotRefreshTimer = null
 let lastShotRetryTimer = null
 let lastShotRetryCount = 0
-const LAST_SHOT_MAX_RETRIES = 3
+const LAST_SHOT_MAX_RETRIES = 5
 const LAST_SHOT_RETRY_DELAY = 2000
+
+function scheduleLastShotRetry() {
+  if (lastShotRetryCount >= LAST_SHOT_MAX_RETRIES) return
+  lastShotRetryCount++
+  clearTimeout(lastShotRetryTimer)
+  lastShotRetryTimer = setTimeout(fetchLastShot, LAST_SHOT_RETRY_DELAY)
+}
 
 async function fetchLastShot() {
   try {
     const summary = await getLatestShot()
     if (summary?.id) {
       lastShot.value = await getShot(summary.id)
+      lastShotRetryCount = 0
     } else {
-      lastShot.value = null
+      // Empty response on cold-start often means the gateway hasn't indexed
+      // shots yet. Retry like we do on error, otherwise the widget stays
+      // blank until the next espresso.
+      scheduleLastShotRetry()
     }
-    lastShotRetryCount = 0
   } catch {
-    lastShot.value = null
-    // Retry on failure — covers cold-start where REST API isn't ready yet
-    if (lastShotRetryCount < LAST_SHOT_MAX_RETRIES) {
-      lastShotRetryCount++
-      clearTimeout(lastShotRetryTimer)
-      lastShotRetryTimer = setTimeout(fetchLastShot, LAST_SHOT_RETRY_DELAY)
-    }
+    scheduleLastShotRetry()
   }
 }
 
@@ -108,9 +112,12 @@ watch(machineState, (newState, oldState) => {
 
 // Retry last shot fetch when machine connects (covers cold-start race).
 // immediate: true handles the case where machineConnected is already true on mount.
+// Reset the retry counter on a connect edge so a previously-exhausted budget
+// doesn't keep the widget blank after the user wakes the machine.
 watch(machineConnected, (connected) => {
   if (props.type !== 'lastShot') return
   if (connected && !lastShot.value) {
+    lastShotRetryCount = 0
     fetchLastShot()
   }
 }, { immediate: true })
@@ -271,6 +278,12 @@ async function repeatLastShot() {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Parent columns use `align-items: center`, which leaves descendants
+     content-sized. The last-shot card's `max-width: 700px` then wins even
+     when the grid cell is narrower, overflowing the screen edge.
+     Cap the widget to its cell and let flex children shrink below content. */
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* ---- Action buttons ---- */

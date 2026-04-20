@@ -7,6 +7,7 @@ import CompletionOverlay from './components/CompletionOverlay.vue'
 import StopReasonOverlay from './components/StopReasonOverlay.vue'
 import ToastNotification from './components/ToastNotification.vue'
 import DevicePickerDialog from './components/DevicePickerDialog.vue'
+import ConnectionErrorBanner from './components/ConnectionErrorBanner.vue'
 import { useMachine } from './composables/useMachine.js'
 import { useScale } from './composables/useScale.js'
 import { useDevices } from './composables/useDevices.js'
@@ -22,6 +23,8 @@ import { useDisplay } from './composables/useDisplay.js'
 import { useVolumeMode } from './composables/useVolumeMode.js'
 import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
+import { useConnectionError } from './composables/useConnectionError.js'
+import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
 import { setMachineState, getLatestShot } from './api/rest.js'
@@ -175,22 +178,37 @@ provide('toast', toast)
 provide('operationSettings', operationSettings)
 
 // ---- Connection state toasts (driven by devices WebSocket API) ----
+//
+// Disconnect toasts are driven by the gateway's structured `connectionError`
+// (see useConnectionError below) because that signal distinguishes unexpected
+// drops from deliberate ones (e.g. machine sleep). Only connect→true
+// transitions are toasted here — they're always a positive, user-visible event
+// and not confused by deliberate-disconnect tracking.
 
 watch(devices.machineConnected, (connected, wasConnected) => {
   if (connected && !wasConnected) {
     toast.success(t('toast.machineConnected'))
-  } else if (!connected && wasConnected) {
-    toast.warning(t('toast.machineDisconnected'))
   }
 })
 
 watch(devices.scaleConnected, (connected, wasConnected) => {
   if (connected && !wasConnected) {
     toast.info(t('toast.scaleConnected'))
-  } else if (!connected && wasConnected) {
-    toast.warning(t('toast.scaleDisconnected'))
   }
 })
+
+// ---- BLE connection errors (ws/v1/devices connectionStatus.error) ----
+const connErr = useConnectionError({
+  connectionError: devices.connectionError,
+  toast,
+  t,
+  onRetryScan: () => devices.scan({ connect: true }),
+})
+
+// ---- Skin update-available singleton ----
+// Instantiated here so the 12h poll starts at app boot. The banner itself is
+// rendered only on the screensaver page (see ScreensaverPage.vue).
+useUpdateAvailable()
 
 // ---- Device picker dialog (scan ambiguity resolution) ----
 const pickerDevices = computed(() => {
@@ -424,9 +442,10 @@ function onStopReasonDismiss() {
   if (!stopReasonVisible.value) return // already dismissed by route change
   stopReasonVisible.value = false
   const goHome = () => { if (route.path !== '/') router.push('/') }
-  // Only the visualizer-enabled flow routes to the post-shot review page;
-  // otherwise dismiss goes straight home.
-  if (!settings.settings.visualizerUsername) {
+  // Auto-route to the post-shot review page only when visualizer credentials
+  // are set AND the user has opted in (`visualizerShowAfterShot`). Either
+  // condition failing → straight home.
+  if (!settings.settings.visualizerUsername || !settings.settings.visualizerShowAfterShot) {
     goHome()
     return
   }
@@ -458,7 +477,12 @@ function onStopReasonDismiss() {
     if (route.path !== '/espresso') return
     getLatestShot().then(shot => {
       if (isFreshShot(shot)) {
-        router.push(`/shot-review/${encodeURIComponent(shot.id)}`)
+        // `replace` so the user's "back" from shot-review lands on whatever
+        // preceded /espresso (home, typically) — not on /espresso, which
+        // would just bounce back to review via the state watcher or sit
+        // there until the user hits Home. Keeps the post-shot flow a
+        // single hop from home's perspective.
+        router.replace(`/shot-review/${encodeURIComponent(shot.id)}`)
         return
       }
       if (Date.now() >= deadline) {
@@ -657,6 +681,14 @@ onUnmounted(() => {
   <ToastNotification
     :toasts="toast.toasts.value"
     @dismiss="toast.dismiss"
+  />
+
+  <!-- Sticky BLE connection error banner -->
+  <ConnectionErrorBanner
+    :error="connErr.bannerError.value"
+    :action="connErr.bannerAction.value"
+    @dismiss="connErr.dismiss"
+    @action="connErr.bannerAction.value?.run()"
   />
 
   <!-- Device picker dialog (scan ambiguity) -->

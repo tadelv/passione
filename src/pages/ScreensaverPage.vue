@@ -3,7 +3,9 @@ import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
 import ShotSilhouette from '../components/ShotSilhouette.vue'
 import ScreensaverWaterWarning from '../components/ScreensaverWaterWarning.vue'
+import UpdateAvailableBanner from '../components/UpdateAvailableBanner.vue'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { useUpdateAvailable } from '../composables/useUpdateAvailable'
 
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
@@ -19,6 +21,10 @@ let clockTimer = null
 
 const is24h = computed(() => settings?.flipClock24h ?? true)
 const ssType = computed(() => settings?.screensaverType ?? 'flipClock')
+
+// Update-available banner — singleton check runs app-wide (see App.vue),
+// the UI only lives here.
+const updater = useUpdateAvailable()
 
 // Migration: the 'fluid' and 'gameOfLife' modes were removed. Users with
 // either value stored in settings get rewritten to 'ambientGlow' on first
@@ -226,6 +232,13 @@ onUnmounted(() => {
     <div v-else class="screensaver__black" />
 
     <p class="screensaver__hint">Touch to wake</p>
+
+    <UpdateAvailableBanner
+      v-if="updater.updateAvailable.value"
+      :version="updater.availableVersion.value"
+      @reload="updater.reload"
+      @dismiss="updater.dismiss"
+    />
   </div>
 </template>
 

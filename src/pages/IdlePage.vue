@@ -443,20 +443,26 @@ onMounted(() => {
   grid-area: center-left;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  /* Stretch children to the column width so descendants that use `width: 100%`
+     (e.g. the last-shot card) resolve against the grid cell — not the card's
+     own max-width, which would overflow narrow cells. Widgets still center
+     their own content via `.layout-widget`'s flex settings. */
+  align-items: stretch;
   justify-content: center;
   gap: var(--spacing-large);
   min-height: 0;
+  min-width: 0;
 }
 
 .idle-page__center-right {
   grid-area: center-right;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: var(--spacing-large);
   min-height: 0;
+  min-width: 0;
 }
 
 .idle-page__bottom-left {

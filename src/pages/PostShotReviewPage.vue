@@ -359,10 +359,14 @@ onMounted(() => {
 watch(shotId, (id) => loadShot(id))
 
 function goBack() {
-  if (shotId.value) {
-    router.push(`/shot/${encodeURIComponent(shotId.value)}`)
+  // Honest back: use SPA history when available, fall back to home on a
+  // fresh load / direct URL (no predecessor). Previously this pushed to
+  // /shot/:id, which combined with ShotDetailPage's "Edit Metadata" button
+  // created a review ↔ detail loop with no exit but Home.
+  if (window.history.state?.back) {
+    router.back()
   } else {
-    router.push('/history')
+    router.push('/')
   }
 }
 </script>

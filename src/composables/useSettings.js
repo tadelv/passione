@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS = {
   visualizerAutoUpload: false,
   visualizerMinDuration: 8,
   visualizerExtendedMetadata: false,
-  visualizerShowAfterShot: false,
+  visualizerShowAfterShot: true,
   lingerOnEspressoPage: true,
   defaultShotRating: 50,
 
@@ -89,6 +89,10 @@ const DEFAULT_SETTINGS = {
   dyeRoastLevel: '',
   dyeGrinderModel: '',
   dyeGrinderSetting: '',
+
+  // Update-available reload prompt — skin version the user dismissed.
+  // Banner re-appears once the bridge reports a still-newer version.
+  dismissedUpdateVersion: '',
 
 }
 
