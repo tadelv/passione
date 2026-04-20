@@ -1,4 +1,32 @@
 /**
+ * Summary-only fields produced by normalizeShotSlim. Kept in sync with the
+ * set of fields consumed by history rows and AutoFavorites grouping.
+ */
+export const SHOT_SUMMARY_FIELDS = [
+  'id', 'shotId', 'timestamp', 'date', 'duration',
+  'doseIn', 'doseOut', 'finalWeight', 'targetYield',
+  'coffeeName', 'coffeeRoaster',
+  'grinderModel', 'grinderSetting', 'grinderId', 'beanBatchId',
+  'profileName',
+  'rating', 'notes', 'tds', 'ey', 'barista',
+]
+
+/**
+ * Slim variant of normalizeShot. Returns only summary fields — no profile,
+ * no workflow subtree, no measurements. Callers that need the full profile
+ * (e.g. "Load into workflow" actions) must refetch via getShot(id).
+ *
+ * Designed for caches and long-lived list state where holding the full
+ * profile.frames per shot adds up fast on low-memory devices.
+ */
+export function normalizeShotSlim(shot) {
+  const full = normalizeShot(shot)
+  const out = {}
+  for (const k of SHOT_SUMMARY_FIELDS) out[k] = full[k] ?? null
+  return out
+}
+
+/**
  * Normalize a shot record to flat fields, reading context first then legacy.
  * Used by shot history, detail, review, and layout widgets.
  */

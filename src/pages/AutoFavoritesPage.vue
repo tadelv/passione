@@ -3,6 +3,7 @@ import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import { useAllShotsCache } from '../composables/useAllShotsCache'
+import { getShot } from '../api/rest.js'
 
 const router = useRouter()
 const toast = inject('toast', null)
@@ -64,7 +65,9 @@ function computeGroups(shots) {
         totalYield: 0,
         totalDuration: 0,
         doseCount: 0,
-        lastProfile: shot.profile,
+        // Cache stores summary records without profile; remember the shot id
+        // of the most recent member so "Load" can refetch the full shot.
+        lastShotId: shot.id ?? shot.shotId ?? null,
         lastProfileName: shot.profileName,
       })
     }
@@ -90,7 +93,7 @@ function computeGroups(shots) {
       avgDose: g.doseCount > 0 ? g.totalDose / g.doseCount : 0,
       avgYield: g.doseCount > 0 ? g.totalYield / g.doseCount : 0,
       avgDuration: count > 0 ? g.totalDuration / count : 0,
-      lastProfile: g.lastProfile,
+      lastShotId: g.lastShotId,
       lastProfileName: g.lastProfileName,
       lastShot: g.shots[0], // most recent (shots come desc by timestamp)
     })
@@ -114,12 +117,19 @@ function changeGroupBy(mode) {
 }
 
 async function loadProfile(group) {
-  if (!group.lastProfile) {
+  if (!group.lastShotId) {
     toast?.warning('No profile data available')
     return
   }
   try {
-    await updateWorkflow({ profile: group.lastProfile })
+    // Cache is slim; refetch the shot to get the profile.
+    const shot = await getShot(group.lastShotId)
+    const profile = shot?.profile ?? shot?.workflow?.profile
+    if (!profile) {
+      toast?.warning('No profile data available')
+      return
+    }
+    await updateWorkflow({ profile })
     toast?.success('Profile loaded')
     router.push('/')
   } catch {

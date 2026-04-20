@@ -194,8 +194,16 @@ function recreateChart() {
   nextTick(initChart)
 }
 
-watch(() => props.shots, recreateChart, { deep: true })
-watch(() => props.visibleCurves, recreateChart, { deep: true })
+// Rebuild only when the shot selection or visible-curve flags actually
+// change — a deep watch on the shots array (full shot objects, profile and
+// all) triggers on any nested mutation and fires the full data/chart rebuild
+// repeatedly.
+const chartSignature = computed(() => {
+  const ids = props.shots.map(s => s?.id ?? s?.shotId ?? '').join('|')
+  const v = props.visibleCurves || {}
+  return `${ids}::${v.pressure ? 1 : 0}${v.flow ? 1 : 0}${v.weight ? 1 : 0}`
+})
+watch(chartSignature, recreateChart)
 
 onMounted(() => {
   nextTick(() => {

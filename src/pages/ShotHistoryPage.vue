@@ -1,9 +1,9 @@
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, shallowRef, markRaw, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { getShotsPaginated } from '../api/rest.js'
-import { normalizeShot } from '../composables/useShotNormalize'
+import { getShotsPaginated, getShot } from '../api/rest.js'
+import { normalizeShotSlim } from '../composables/useShotNormalize'
 
 const router = useRouter()
 const toast = inject('toast', null)
@@ -12,7 +12,9 @@ const updateWorkflow = inject('updateWorkflow')
 const PAGE_SIZE = 50
 const SEARCH_DEBOUNCE_MS = 300
 
-const loadedShots = ref([])
+// Shallow ref + markRaw per record — the list can grow to thousands on an
+// infinite scroll; deep reactivity would wrap every nested object.
+const loadedShots = shallowRef([])
 const totalShots = ref(0)
 const loadedCount = ref(0)
 const loading = ref(false)
@@ -69,7 +71,7 @@ async function loadMore(gen = loadGeneration) {
     const opts = searchQuery.value.trim() ? { search: searchQuery.value.trim() } : {}
     const result = await getShotsPaginated(PAGE_SIZE, loadedCount.value, opts)
     if (gen !== loadGeneration) { stale = true; return }
-    const shots = result.items.map(normalizeShot)
+    const shots = result.items.map(s => markRaw(normalizeShotSlim(s)))
     loadedShots.value = [...loadedShots.value, ...shots]
     loadedCount.value += shots.length
     totalShots.value = result.total
@@ -116,7 +118,19 @@ function editShot(shot) {
 }
 
 async function loadShotWorkflow(shot) {
-  const profile = shot.profile || shot.workflow?.profile
+  // Rows carry slim records without the profile — refetch the full shot.
+  const id = shot.id || shot.shotId
+  if (!id) {
+    if (toast) toast.warning('No profile data available for this shot')
+    return
+  }
+  let profile = null
+  try {
+    const full = await getShot(id)
+    profile = full?.profile || full?.workflow?.profile || null
+  } catch {
+    // fall through — profile stays null, handled below
+  }
   if (!profile) {
     if (toast) toast.warning('No profile data available for this shot')
     return
