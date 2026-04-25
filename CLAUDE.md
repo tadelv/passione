@@ -109,6 +109,7 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 - Machine phase transitions drive navigation (espresso starts → show EspressoPage, etc.)
 - Profile exit conditions: weight exits are independent of pressure/flow exits (app-side vs machine-side)
 - Tare happens when frame 0 starts (after machine preheat)
+- **No native-dialog-backed inputs** (`type="date"`, `type="time"`, `type="color"`, etc.). The Android Flutter `flutter_inappwebview` host reloads the WebView when an Android native dialog dismisses (tracked in tadelv/reaprime#202). Use plain text inputs with `inputmode` + `pattern` hints. Server may also return ISO timestamps with time portions for date fields — slice to `YYYY-MM-DD` before binding.
 
 ## Interaction Patterns
 

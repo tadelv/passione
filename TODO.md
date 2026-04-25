@@ -10,6 +10,7 @@ Tracked items for future work.
 - [ ] **Steam calibration dialog** — blocked on ReaPrime orchestration API
 - [ ] **AI dialing assistant** — deferred per project decision
 - [ ] **Profile editors: styled confirm dialog** — ProfileEditorPage and RecipeEditorPage use browser `confirm()` for unsaved changes. Should use the same styled confirm overlay as SimpleProfileEditorPage and PostShotReviewPage.
+- [ ] **Restore native date pickers** — `<input type="date">` was replaced with plain text + `inputmode="numeric"` in `BeansTab.vue` and `PostShotReviewPage.vue` because the Android Flutter `flutter_inappwebview` host bootstraps the WebView when the native `DatePickerDialog` dismisses. Revert to native inputs once tadelv/reaprime#202 ships the host-side `android:configChanges` + `useHybridComposition` fix.
 
 ## Done (v0.3.0)
 
