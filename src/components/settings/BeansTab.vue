@@ -156,7 +156,13 @@ function cancelAddBatch() {
   addingBatchForBean.value = null
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
 async function saveNewBatch(beanId) {
+  if (newBatch.roastDate && !ISO_DATE_RE.test(newBatch.roastDate)) {
+    toast?.warning('Roast date must be YYYY-MM-DD')
+    return
+  }
   try {
     const payload = {
       roastDate: newBatch.roastDate || undefined,
@@ -184,10 +190,17 @@ async function saveNewBatch(beanId) {
   }
 }
 
+// Server returns roastDate as "YYYY-MM-DDTHH:mm:ss.SSS"; the form field wants
+// a bare "YYYY-MM-DD" so it round-trips cleanly on save.
+function toIsoDate(s) {
+  if (!s) return ''
+  return String(s).slice(0, 10)
+}
+
 function startEditBatch(batch) {
   editingBatchId.value = batch.id
   Object.assign(editBatch, {
-    roastDate: batch.roastDate || '',
+    roastDate: toIsoDate(batch.roastDate),
     roastLevel: batch.roastLevel || '',
     weight: batch.weight ?? '',
     price: batch.price ?? '',
@@ -200,6 +213,10 @@ function cancelEditBatch() {
 }
 
 async function saveEditBatchItem(beanId, batch) {
+  if (editBatch.roastDate && !ISO_DATE_RE.test(editBatch.roastDate)) {
+    toast?.warning('Roast date must be YYYY-MM-DD')
+    return
+  }
   try {
     const payload = {
       roastDate: editBatch.roastDate || undefined,
@@ -362,7 +379,15 @@ async function deleteBatch(beanId, batch) {
               <div class="beans-tab__form-grid">
                 <div class="beans-tab__field">
                   <label class="beans-tab__label">Roast Date</label>
-                  <input class="beans-tab__input" type="date" v-model="newBatch.roastDate" />
+                  <input
+                    class="beans-tab__input"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="\d{4}-\d{2}-\d{2}"
+                    placeholder="YYYY-MM-DD"
+                    maxlength="10"
+                    v-model="newBatch.roastDate"
+                  />
                 </div>
                 <div class="beans-tab__field">
                   <label class="beans-tab__label">Roast Level</label>
@@ -398,7 +423,15 @@ async function deleteBatch(beanId, batch) {
                   <div class="beans-tab__form-grid">
                     <div class="beans-tab__field">
                       <label class="beans-tab__label">Roast Date</label>
-                      <input class="beans-tab__input" type="date" v-model="editBatch.roastDate" />
+                      <input
+                        class="beans-tab__input"
+                        type="text"
+                        inputmode="numeric"
+                        pattern="\d{4}-\d{2}-\d{2}"
+                        placeholder="YYYY-MM-DD"
+                        maxlength="10"
+                        v-model="editBatch.roastDate"
+                      />
                     </div>
                     <div class="beans-tab__field">
                       <label class="beans-tab__label">Roast Level</label>

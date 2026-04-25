@@ -175,7 +175,8 @@ function populateFromShot(shot) {
   roaster.value = s.coffeeRoaster ?? ''
   beanBrand.value = extras.beanBrand ?? meta.beanBrand ?? ''
   beanType.value = s.coffeeName ?? ''
-  roastDate.value = extras.roastDate ?? meta.roastDate ?? ''
+  // Server may deliver a full ISO timestamp; the field wants a bare YYYY-MM-DD.
+  roastDate.value = String(extras.roastDate ?? meta.roastDate ?? '').slice(0, 10)
   roastLevel.value = extras.roastLevel ?? meta.roastLevel ?? ''
   grinderModel.value = s.grinderModel ?? ''
   grinderSetting.value = s.grinderSetting != null ? String(s.grinderSetting) : ''
@@ -423,7 +424,11 @@ function goBack() {
               <label class="review-page__label">Roast Date</label>
               <input
                 v-model="roastDate"
-                type="date"
+                type="text"
+                inputmode="numeric"
+                pattern="\d{4}-\d{2}-\d{2}"
+                placeholder="YYYY-MM-DD"
+                maxlength="10"
                 class="review-page__input"
               />
             </div>
