@@ -157,6 +157,14 @@ const mockBeans = []
 const mockGrinders = []
 const kvStore = {}
 
+// ---- Refresh-test scenario state (e2e only) -----------------------------
+
+let beansFailNextGet = false
+let grindersFailNextGet = false
+let beansGetCount = 0
+let grindersGetCount = 0
+const mockBeanBatches = {} // beanId -> [{ id, roastDate, ... }]
+
 // ---- MIME types --------------------------------------------------------
 
 const MIME_TYPES = {
@@ -463,8 +471,61 @@ function routeApi(path, method, body, res, url) {
     return json({ ok: true })
   }
 
+  if (path === '/api/v1/test/reset-refresh-state' && method === 'POST') {
+    beansFailNextGet = false
+    grindersFailNextGet = false
+    beansGetCount = 0
+    grindersGetCount = 0
+    for (const k of Object.keys(mockBeanBatches)) delete mockBeanBatches[k]
+    return json({ ok: true })
+  }
+
+  if (path === '/api/v1/test/refresh-state' && method === 'GET') {
+    return json({
+      beansFailNextGet,
+      grindersFailNextGet,
+      beansGetCount,
+      grindersGetCount,
+    })
+  }
+
+  if (path === '/api/v1/test/fail-next-beans-get' && method === 'POST') {
+    beansFailNextGet = true
+    return json({ ok: true })
+  }
+
+  if (path === '/api/v1/test/fail-next-grinders-get' && method === 'POST') {
+    grindersFailNextGet = true
+    return json({ ok: true })
+  }
+
+  if (path === '/api/v1/test/add-bean' && method === 'POST') {
+    // Simulate another device adding a bean — bypass POST handler and inject directly.
+    const bean = { id: 'bean-injected-' + Date.now(), ...(body || {}) }
+    mockBeans.push(bean)
+    return json(bean, 201)
+  }
+
+  if (path === '/api/v1/test/add-grinder' && method === 'POST') {
+    const grinder = { id: 'grinder-injected-' + Date.now(), ...(body || {}) }
+    mockGrinders.push(grinder)
+    return json(grinder, 201)
+  }
+
+  if (path.match(/^\/api\/v1\/test\/add-batch\/[^/]+$/) && method === 'POST') {
+    const beanId = decodeURIComponent(path.split('/').pop())
+    const batch = { id: 'batch-injected-' + Date.now(), ...(body || {}) }
+    mockBeanBatches[beanId] = [...(mockBeanBatches[beanId] || []), batch]
+    return json(batch, 201)
+  }
+
   // Beans
   if (path === '/api/v1/beans' && method === 'GET') {
+    beansGetCount++
+    if (beansFailNextGet) {
+      beansFailNextGet = false
+      return json({ error: 'Simulated failure' }, 500)
+    }
     return json(mockBeans)
   }
   if (path === '/api/v1/beans' && method === 'POST') {
@@ -476,7 +537,8 @@ function routeApi(path, method, body, res, url) {
     return json({ error: 'No body' }, 400)
   }
   if (path.match(/^\/api\/v1\/beans\/[^/]+\/batches$/) && method === 'GET') {
-    return json([])
+    const beanId = decodeURIComponent(path.split('/')[4])
+    return json(mockBeanBatches[beanId] || [])
   }
   if (path.match(/^\/api\/v1\/beans\/[^/]+\/batches$/) && method === 'POST') {
     const batch = { id: 'batch-' + Date.now(), ...body }
@@ -497,6 +559,11 @@ function routeApi(path, method, body, res, url) {
 
   // Grinders
   if (path === '/api/v1/grinders' && method === 'GET') {
+    grindersGetCount++
+    if (grindersFailNextGet) {
+      grindersFailNextGet = false
+      return json({ error: 'Simulated failure' }, 500)
+    }
     return json(mockGrinders)
   }
   if (path === '/api/v1/grinders' && method === 'POST') {
