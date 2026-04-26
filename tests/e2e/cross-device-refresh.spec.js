@@ -98,4 +98,27 @@ test.describe('Cross-device refresh', () => {
     // Initial batch is still visible too.
     await expect(page.getByText('100g')).toBeVisible()
   })
+
+  test('silent refresh failure shows error badge; success clears it', async ({ page, request }) => {
+    test.setTimeout(120_000) // two throttle windows + assertions
+
+    await page.goto('/#/settings/grinders')
+    await page.waitForSelector('.status-bar', { timeout: 10_000 })
+    await page.waitForSelector('.grinders-tab__title', { timeout: 5_000 })
+
+    // No badge initially.
+    await expect(page.locator('.refresh-error-badge')).toHaveCount(0)
+
+    // Stage failure for the next /grinders GET.
+    await request.post(`${BASE_URL}/api/v1/test/fail-next-grinders-get`)
+
+    // First visibility refresh: server returns 500, lastRefreshFailed -> true, badge appears.
+    await fireVisibilityRefresh(page)
+    await expect(page.locator('.refresh-error-badge')).toBeVisible({ timeout: 5_000 })
+
+    // Second visibility refresh: failure flag is one-shot and already self-cleared, so the
+    // server returns 200 normally, lastRefreshFailed -> false, badge disappears.
+    await fireVisibilityRefresh(page)
+    await expect(page.locator('.refresh-error-badge')).toHaveCount(0, { timeout: 5_000 })
+  })
 })
