@@ -289,20 +289,27 @@ export function useBeans() {
    * Fetch all beans, optionally with query params.
    * @param {object} [params]
    * @param {object} [opts]
-   * @param {boolean} [opts.silent=false] - If true, do not flip `loading`
-   *   and preserve `beans.value` on failure (sets `lastRefreshFailed`).
+   * @param {boolean} [opts.silent=false] - If true, do not flip `loading`,
+   *   do not touch `error`, and preserve `beans.value` on failure
+   *   (sets `lastRefreshFailed`).
    */
   async function refresh(params, opts = {}) {
     const silent = opts.silent === true
-    if (!silent) loading.value = true
-    error.value = null
+    if (!silent) {
+      loading.value = true
+      error.value = null
+    }
     try {
       const data = await fetchBeans(params)
       beans.value = Array.isArray(data) ? data : (data?.beans ?? [])
-      if (silent) lastRefreshFailed.value = false
+      lastRefreshFailed.value = false
     } catch (e) {
-      error.value = e.message || String(e)
-      if (silent) lastRefreshFailed.value = true
+      if (silent) {
+        lastRefreshFailed.value = true
+      } else {
+        error.value = e.message || String(e)
+        lastRefreshFailed.value = true
+      }
     } finally {
       if (!silent) loading.value = false
     }
