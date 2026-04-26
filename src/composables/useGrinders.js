@@ -3,9 +3,12 @@
  *
  * Provides a reactive grinder list with CRUD operations and a
  * Map-based entity cache for single-grinder lookups.
+ *
+ * Subscribes to useDataRefresh; refreshes silently when the user
+ * returns focus to the app.
  */
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import {
   getGrinders as fetchGrinders,
   getGrinder as fetchGrinder,
@@ -13,6 +16,7 @@ import {
   updateGrinder as putGrinder,
   deleteGrinder as removeGrinder,
 } from '../api/rest'
+import { useDataRefresh } from './useDataRefresh'
 
 const entityCache = new Map()
 
@@ -24,17 +28,27 @@ export function useGrinders() {
   const grinders = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const lastRefreshFailed = ref(false)
 
-  async function refresh(params = {}) {
-    loading.value = true
+  /**
+   * @param {object} [params] - Query params for fetchGrinders.
+   * @param {object} [opts]
+   * @param {boolean} [opts.silent=false] - If true, do not flip `loading`
+   *   and preserve `grinders.value` on failure (sets `lastRefreshFailed`).
+   */
+  async function refresh(params = {}, opts = {}) {
+    const silent = opts.silent === true
+    if (!silent) loading.value = true
     error.value = null
     try {
       const data = await fetchGrinders(params)
       grinders.value = Array.isArray(data) ? data : (data?.grinders ?? [])
+      if (silent) lastRefreshFailed.value = false
     } catch (e) {
       error.value = e
+      if (silent) lastRefreshFailed.value = true
     } finally {
-      loading.value = false
+      if (!silent) loading.value = false
     }
   }
 
@@ -72,6 +86,12 @@ export function useGrinders() {
 
   onMounted(() => refresh())
 
+  const { refreshTick } = useDataRefresh()
+  watch(refreshTick, async () => {
+    if (refreshTick.value === 0) return
+    await refresh({}, { silent: true })
+  })
+
   _instance = {
     /** Reactive list of all grinders. */
     grinders,
@@ -79,6 +99,8 @@ export function useGrinders() {
     loading,
     /** Last error from an API call, or null. */
     error,
+    /** True if the most recent silent refresh failed. */
+    lastRefreshFailed,
     /** Reload the grinder list from the API. */
     refresh,
     /** Fetch a single grinder by ID (cached). */
@@ -89,6 +111,8 @@ export function useGrinders() {
     update,
     /** Delete a grinder. */
     remove,
+    /** Global refresh tick from useDataRefresh (re-exposed for components). */
+    refreshTick,
   }
   return _instance
 }
