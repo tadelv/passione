@@ -1,9 +1,12 @@
 <script setup>
 import { ref, inject, computed } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import RefreshErrorBadge from '../RefreshErrorBadge.vue'
 
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
+
+const refreshFailed = computed(() => grindersApi?.lastRefreshFailed?.value ?? false)
 const toast = inject('toast', null)
 
 const showArchived = ref(false)
@@ -140,7 +143,10 @@ async function toggleArchive(grinder) {
   <div class="grinders-tab">
     <!-- Header -->
     <div class="grinders-tab__header">
-      <h3 class="grinders-tab__title">Grinders</h3>
+      <h3 class="grinders-tab__title">
+        Grinders
+        <RefreshErrorBadge :failed="refreshFailed" />
+      </h3>
       <div class="grinders-tab__header-actions">
         <label class="grinders-tab__archive-toggle">
           <input
