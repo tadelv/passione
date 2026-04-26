@@ -6,7 +6,7 @@
  * and increments a shared `refreshTick` ref no more than once every 30 s.
  * Consumers (useBeans, useGrinders) watch the tick and refetch silently.
  */
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 
 const THROTTLE_MS = 30_000
 
@@ -36,5 +36,5 @@ function bind() {
 
 export function useDataRefresh() {
   bind()
-  return { refreshTick }
+  return { refreshTick: readonly(refreshTick) }
 }
