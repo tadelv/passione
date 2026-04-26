@@ -63,4 +63,39 @@ test.describe('Cross-device refresh', () => {
     await expect(page.getByText('Other Device Bean')).toBeVisible({ timeout: 5_000 })
     await expect(page.locator('.beans-tab__bean')).toHaveCount(initialCount + 1)
   })
+
+  test('expanded bean batches refetch on tab resume', async ({ page, request }) => {
+    test.setTimeout(60_000)
+
+    const beanId = 'bean-coverage-task9'
+    // Seed: known bean + initial batch (visible to test as "100g")
+    await request.post(`${BASE_URL}/api/v1/test/add-bean`, {
+      data: { id: beanId, roaster: 'Coverage Roaster', name: 'Coverage Bean Task9' },
+    })
+    await request.post(`${BASE_URL}/api/v1/test/add-batch/${beanId}`, {
+      data: { id: 'batch-initial', roastDate: '2026-04-01', weight: 100 },
+    })
+
+    await loadBeans(page)
+
+    // Click the bean row to expand and load its batches.
+    await page.locator('.beans-tab__bean-row', { hasText: 'Coverage Bean Task9' }).click()
+    await expect(page.getByText('100g')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('250g')).toHaveCount(0)
+
+    // Simulate another device adding a batch with weight 250g.
+    await request.post(`${BASE_URL}/api/v1/test/add-batch/${beanId}`, {
+      data: { id: 'batch-new', roastDate: '2026-04-25', weight: 250 },
+    })
+
+    // Without refresh, the new batch should NOT yet be visible.
+    await expect(page.getByText('250g')).toHaveCount(0)
+
+    await fireVisibilityRefresh(page)
+
+    // After refresh, the new batch appears in the still-expanded section.
+    await expect(page.getByText('250g')).toBeVisible({ timeout: 5_000 })
+    // Initial batch is still visible too.
+    await expect(page.getByText('100g')).toBeVisible()
+  })
 })

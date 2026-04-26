@@ -249,11 +249,14 @@ export function useBeans() {
   onMounted(refresh)
 
   // Subscribe to global resume tick: silent refresh + invalidate batch cache.
+  // Clear batchCache synchronously before awaiting refresh so that any
+  // watcher that fires in the same tick (e.g. BeansTab re-fetching expanded
+  // batches) sees an empty cache and issues a fresh API call.
   const { refreshTick } = useDataRefresh()
   watch(refreshTick, async () => {
     if (refreshTick.value === 0) return
-    await refresh(undefined, { silent: true })
     batchCache.clear()
+    await refresh(undefined, { silent: true })
   })
 
   _instance = {
