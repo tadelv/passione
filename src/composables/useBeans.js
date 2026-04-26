@@ -1,11 +1,14 @@
 /**
  * Composable for coffee bean and batch management via REST.
  *
- * Fetches the bean list on mount and exposes reactive state plus CRUD helpers.
- * Includes Map-based caching for individual beans and batch queries.
+ * Singleton — same instance returned on every call. Fetches the bean list on
+ * first mount and exposes reactive state plus CRUD helpers, with Map-based
+ * caching for individual beans and batch queries. Subscribes to useDataRefresh;
+ * silently refreshes the bean list and invalidates the batch cache when the
+ * user returns focus to the app.
  */
 
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import {
   getBeans as fetchBeans,
   getBean as fetchBean,
@@ -18,11 +21,17 @@ import {
   updateBeanBatch as putBeanBatch,
   deleteBeanBatch as destroyBeanBatch,
 } from '../api/rest'
+import { useDataRefresh } from './useDataRefresh'
+
+let _instance = null
 
 export function useBeans() {
+  if (_instance) return _instance
+
   const beans = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const lastRefreshFailed = ref(false)
 
   /** Cache for individual bean entities (keyed by id). */
   const entityCache = new Map()
@@ -34,17 +43,33 @@ export function useBeans() {
   // Beans CRUD
   // ---------------------------------------------------------------------------
 
-  /** Fetch all beans, optionally with query params. */
-  async function refresh(params) {
-    loading.value = true
-    error.value = null
+  /**
+   * Fetch all beans, optionally with query params.
+   * @param {object} [params]
+   * @param {object} [opts]
+   * @param {boolean} [opts.silent=false] - If true, do not flip `loading`,
+   *   do not touch `error`, and preserve `beans.value` on failure
+   *   (sets `lastRefreshFailed`).
+   */
+  async function refresh(params, opts = {}) {
+    const silent = opts.silent === true
+    if (!silent) {
+      loading.value = true
+      error.value = null
+    }
     try {
       const data = await fetchBeans(params)
       beans.value = Array.isArray(data) ? data : (data?.beans ?? [])
+      lastRefreshFailed.value = false
     } catch (e) {
-      error.value = e.message || String(e)
+      if (silent) {
+        lastRefreshFailed.value = true
+      } else {
+        error.value = e.message || String(e)
+        lastRefreshFailed.value = true
+      }
     } finally {
-      loading.value = false
+      if (!silent) loading.value = false
     }
   }
 
@@ -223,10 +248,19 @@ export function useBeans() {
 
   onMounted(refresh)
 
-  return {
+  // Subscribe to global resume tick: silent refresh + invalidate batch cache.
+  const { refreshTick } = useDataRefresh()
+  watch(refreshTick, async () => {
+    if (refreshTick.value === 0) return
+    await refresh(undefined, { silent: true })
+    batchCache.clear()
+  })
+
+  _instance = {
     beans,
     loading,
     error,
+    lastRefreshFailed,
     refresh,
     getById,
     create,
@@ -238,5 +272,7 @@ export function useBeans() {
     updateBatch,
     removeBatch,
     activeBatchForBean,
+    refreshTick,
   }
+  return _instance
 }
