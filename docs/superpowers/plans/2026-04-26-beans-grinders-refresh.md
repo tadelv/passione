@@ -1088,7 +1088,7 @@ If working on a feature branch and the user has confirmed PR creation, follow th
 
 ## Phase 2 (out of scope for this plan)
 
-ETag-conditional GETs on `/api/v1/beans` and `/api/v1/grinders` ship in a separate plan once the upstream Streamline-Bridge feature lands. That work touches only `src/api/rest.js` (cache layer + `If-None-Match` header) and adds a small e2e test that asserts a 304 response is returned and `beansGetCount` advances without `beans.value` being replaced. Tracking issue: `tadelv/reaprime#<TBD>`.
+ETag-conditional GETs on `/api/v1/beans` and `/api/v1/grinders` ship in a separate plan once the upstream Streamline-Bridge feature lands. That work touches only `src/api/rest.js` (cache layer + `If-None-Match` header) and adds a small e2e test that asserts a 304 response is returned and `beansGetCount` advances without `beans.value` being replaced. Tracking issue: `tadelv/reaprime#203`.
 
 ---
 

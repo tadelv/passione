@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-26
 **Status:** Spec — pending implementation
-**Tracking:** Passione feedback list (`Professional/Decent/Passione.md`, item: "Beans / grinders data not refreshed")
+**Tracking:** Passione feedback list (`Professional/Decent/Passione.md`, item: "Beans / grinders data not refreshed"). Upstream gateway feature: `tadelv/reaprime#203`.
 
 ## Problem
 
