@@ -94,6 +94,8 @@ export function useDataRefresh() {
 
 ### `src/composables/useBeans.js` (modify)
 
+> **Note:** the snippets below are design-time intent. The shipped tick watcher clears `batchCache` synchronously **before** the silent refresh `await` (race with concurrent `BeansTab` watchers), and `lastRefreshFailed` is updated inside `refresh` itself rather than checked from `error.value` after the call. See `docs/superpowers/plans/2026-04-26-beans-grinders-refresh.md` Task 3 for the shipped code.
+
 - Wrap the existing factory with a `_instance` singleton cache, mirroring `useGrinders`.
 - Add `lastRefreshFailed = ref(false)`.
 - Add `silent` option to `refresh()`:

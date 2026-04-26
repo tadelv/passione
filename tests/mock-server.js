@@ -501,20 +501,23 @@ function routeApi(path, method, body, res, url) {
 
   if (path === '/api/v1/test/add-bean' && method === 'POST') {
     // Simulate another device adding a bean — bypass POST handler and inject directly.
-    const bean = { id: 'bean-injected-' + Date.now(), ...(body || {}) }
+    // Honor a client-supplied id (tests use this to seed records with known ids); fall back to a generated id.
+    const bean = { ...(body || {}), id: body?.id ?? ('bean-injected-' + Date.now()) }
     mockBeans.push(bean)
     return json(bean, 201)
   }
 
   if (path === '/api/v1/test/add-grinder' && method === 'POST') {
-    const grinder = { id: 'grinder-injected-' + Date.now(), ...(body || {}) }
+    // Honor a client-supplied id (tests use this to seed records with known ids); fall back to a generated id.
+    const grinder = { ...(body || {}), id: body?.id ?? ('grinder-injected-' + Date.now()) }
     mockGrinders.push(grinder)
     return json(grinder, 201)
   }
 
   if (path.match(/^\/api\/v1\/test\/add-batch\/[^/]+$/) && method === 'POST') {
     const beanId = decodeURIComponent(path.split('/').pop())
-    const batch = { id: 'batch-injected-' + Date.now(), ...(body || {}) }
+    // Honor a client-supplied id; fall back to a generated id.
+    const batch = { ...(body || {}), id: body?.id ?? ('batch-injected-' + Date.now()) }
     mockBeanBatches[beanId] = [...(mockBeanBatches[beanId] || []), batch]
     return json(batch, 201)
   }

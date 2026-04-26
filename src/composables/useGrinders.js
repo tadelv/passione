@@ -18,12 +18,12 @@ import {
 } from '../api/rest'
 import { useDataRefresh } from './useDataRefresh'
 
-const entityCache = new Map()
-
 let _instance = null
 
 export function useGrinders() {
   if (_instance) return _instance
+
+  const entityCache = new Map()
 
   const grinders = ref([])
   const loading = ref(false)
