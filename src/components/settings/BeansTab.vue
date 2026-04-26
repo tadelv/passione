@@ -1,5 +1,6 @@
 <script setup>
-import { ref, reactive, inject, computed } from 'vue'
+import { ref, reactive, inject, computed, watch } from 'vue'
+import RefreshErrorBadge from '../RefreshErrorBadge.vue'
 
 const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
@@ -29,6 +30,25 @@ const filteredBeans = computed(() => {
   if (showArchived.value) return beans.value
   return beans.value.filter(b => !b.archived)
 })
+
+const refreshFailed = computed(() => beansApi?.lastRefreshFailed?.value ?? false)
+
+// When useDataRefresh fires, useBeans clears its batchCache. Re-fetch batches for
+// any currently-expanded bean so the open section shows fresh data without the
+// user needing to collapse/reopen it.
+watch(
+  () => beansApi?.refreshTick?.value,
+  async (tick, oldTick) => {
+    if (!tick || tick === oldTick) return
+    for (const beanId of Object.keys(batchesByBean)) {
+      try {
+        batchesByBean[beanId] = await beansApi.getBatches(beanId)
+      } catch {
+        // Silent — useBeans flips lastRefreshFailed; per-bean failure is OK.
+      }
+    }
+  }
+)
 
 // ---------- Bean CRUD ----------
 
@@ -257,7 +277,10 @@ async function deleteBatch(beanId, batch) {
   <div class="beans-tab">
     <!-- Header -->
     <div class="beans-tab__header">
-      <h3 class="beans-tab__title">Coffee Beans</h3>
+      <h3 class="beans-tab__title">
+        Coffee Beans
+        <RefreshErrorBadge :failed="refreshFailed" />
+      </h3>
       <div class="beans-tab__header-actions">
         <label class="beans-tab__checkbox-label">
           <input type="checkbox" v-model="showArchived" />
