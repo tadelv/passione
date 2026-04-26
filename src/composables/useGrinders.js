@@ -33,20 +33,27 @@ export function useGrinders() {
   /**
    * @param {object} [params] - Query params for fetchGrinders.
    * @param {object} [opts]
-   * @param {boolean} [opts.silent=false] - If true, do not flip `loading`
-   *   and preserve `grinders.value` on failure (sets `lastRefreshFailed`).
+   * @param {boolean} [opts.silent=false] - If true, do not flip `loading`,
+   *   do not touch `error`, and preserve `grinders.value` on failure
+   *   (sets `lastRefreshFailed`).
    */
   async function refresh(params = {}, opts = {}) {
     const silent = opts.silent === true
-    if (!silent) loading.value = true
-    error.value = null
+    if (!silent) {
+      loading.value = true
+      error.value = null
+    }
     try {
       const data = await fetchGrinders(params)
       grinders.value = Array.isArray(data) ? data : (data?.grinders ?? [])
-      if (silent) lastRefreshFailed.value = false
+      lastRefreshFailed.value = false
     } catch (e) {
-      error.value = e
-      if (silent) lastRefreshFailed.value = true
+      if (silent) {
+        lastRefreshFailed.value = true
+      } else {
+        error.value = e
+        lastRefreshFailed.value = true
+      }
     } finally {
       if (!silent) loading.value = false
     }
