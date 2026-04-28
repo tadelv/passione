@@ -676,6 +676,14 @@ function routeApi(path, method, body, res, url) {
     const batch = { id: 'batch-' + Date.now(), ...body }
     return json(batch, 201)
   }
+  if (path.match(/^\/api\/v1\/bean-batches\/[^/]+$/) && method === 'GET') {
+    const batchId = decodeURIComponent(path.split('/').pop())
+    for (const beanId of Object.keys(mockBeanBatches)) {
+      const found = mockBeanBatches[beanId].find(b => b.id === batchId)
+      if (found) return json(found)
+    }
+    return json({ error: 'Not found' }, 404)
+  }
   if (path.match(/^\/api\/v1\/beans\/[^/]+$/) && method === 'GET') {
     const id = decodeURIComponent(path.split('/').pop())
     const bean = mockBeans.find(b => b.id === id)
