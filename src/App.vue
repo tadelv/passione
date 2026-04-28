@@ -441,54 +441,39 @@ const LATEST_SHOT_POLL_TIMEOUT_MS = 4000
 function onStopReasonDismiss() {
   if (!stopReasonVisible.value) return // already dismissed by route change
   stopReasonVisible.value = false
-  const goHome = () => { if (route.path !== '/') router.push('/') }
-  // Auto-route to the post-shot review page only when visualizer credentials
-  // are set AND the user has opted in (`visualizerShowAfterShot`). Either
-  // condition failing → straight home.
-  if (!settings.settings.visualizerUsername || !settings.settings.visualizerShowAfterShot) {
-    goHome()
-    return
-  }
+
+  // Visualizer users land on /shot-review/{id} on commit; everyone else on /.
+  // The poll itself runs in BOTH cases — we should never navigate away from
+  // /espresso until the gateway has committed the just-finished shot (or we
+  // hit the deadline).
+  const wantsReview =
+    !!settings.settings.visualizerUsername &&
+    !!settings.settings.visualizerShowAfterShot
 
   const sessionStart = lastShotStartMs
   const baselineId = priorLatestShotId
   const deadline = Date.now() + LATEST_SHOT_POLL_TIMEOUT_MS
   const isFreshShot = (shot) => {
     if (!shot?.id) return false
-    // Primary signal: the id moved. If we captured a prior id at shot
-    // start, any different id here means the gateway has committed the
-    // new record and this is it.
     if (baselineId != null) return shot.id !== baselineId
-    // Fallback (no baseline captured — first-ever shot, or the prior
-    // getLatestShot failed): accept if the record's timestamp is at or
-    // after session start, with a 5s tolerance for clock drift.
     const ts = shot.timestamp ?? shot.date
     const shotMs = ts ? Date.parse(ts) : NaN
     if (Number.isFinite(shotMs) && sessionStart > 0) return shotMs >= sessionStart - 5000
-    // No baseline AND no usable timestamp — treat any returned record
-    // as fresh rather than looping until timeout (better UX than
-    // always going home when signals are unavailable).
     return true
   }
 
+  const goHome = () => { if (route.path !== '/') router.push('/') }
+  const goReview = (shot) => router.replace(`/shot-review/${encodeURIComponent(shot.id)}`)
+
   const poll = () => {
-    // Bail if the user has navigated away (Home / Settings / etc.) — we
-    // shouldn't hijack their navigation with a late review push.
-    if (route.path !== '/espresso') return
+    if (route.path !== '/espresso') return // user navigated away
     getLatestShot().then(shot => {
       if (isFreshShot(shot)) {
-        // `replace` so the user's "back" from shot-review lands on whatever
-        // preceded /espresso (home, typically) — not on /espresso, which
-        // would just bounce back to review via the state watcher or sit
-        // there until the user hits Home. Keeps the post-shot flow a
-        // single hop from home's perspective.
-        router.replace(`/shot-review/${encodeURIComponent(shot.id)}`)
+        if (wantsReview) goReview(shot)
+        else goHome()
         return
       }
-      if (Date.now() >= deadline) {
-        goHome()
-        return
-      }
+      if (Date.now() >= deadline) { goHome(); return }
       setTimeout(poll, LATEST_SHOT_POLL_INTERVAL_MS)
     }).catch(() => {
       if (Date.now() >= deadline) goHome()
