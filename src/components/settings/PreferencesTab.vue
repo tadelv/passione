@@ -402,6 +402,38 @@ onUnmounted(() => {
           </button>
         </div>
 
+        <div class="pref__sleep-row">
+          <div>
+            <div class="pref__label">Show grinder RPM</div>
+            <div class="pref__hint">Add an RPM field to the recipe editor</div>
+          </div>
+          <button
+            class="pref__toggle-switch"
+            :class="{ 'pref__toggle-switch--on': settings.showGrinderRpm }"
+            @click="settings.showGrinderRpm = !settings.showGrinderRpm"
+            :aria-label="settings.showGrinderRpm ? 'Hide grinder RPM' : 'Show grinder RPM'"
+            data-testid="toggle-show-grinder-rpm"
+          >
+            <span class="pref__toggle-knob" />
+          </button>
+        </div>
+
+        <div class="pref__sleep-row">
+          <div>
+            <div class="pref__label">Show basket data</div>
+            <div class="pref__hint">Add basket size + type fields to the recipe editor</div>
+          </div>
+          <button
+            class="pref__toggle-switch"
+            :class="{ 'pref__toggle-switch--on': settings.showBasketData }"
+            @click="settings.showBasketData = !settings.showBasketData"
+            :aria-label="settings.showBasketData ? 'Hide basket data' : 'Show basket data'"
+            data-testid="toggle-show-basket-data"
+          >
+            <span class="pref__toggle-knob" />
+          </button>
+        </div>
+
       </div>
     </div>
   </div>

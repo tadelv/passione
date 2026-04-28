@@ -63,6 +63,15 @@ const profileId = ref(null)
 // profile) so the shared gateway profile library is never mutated.
 const brewTemperature = ref(93)
 
+// ---- Power-user fields (gated by Settings → Preferences toggles) ----
+// ValueInput requires a Number — initialize to common-default values that
+// the user can adjust. The toggles in PreferencesTab gate visibility; if a
+// user never opens the field, the default still flows to the workflow on
+// live-apply, but it only becomes user-visible when they enable the toggle.
+const grinderRpm = ref(1200)
+const basketSize = ref(18)
+const basketType = ref('')
+
 // ---- "Awaiting profile from picker" flag ----
 // Must survive the /recipe/edit → /profiles → /recipe/edit round-trip.
 // Pages unmount between route changes, so this can't live in a ref — we
@@ -214,6 +223,9 @@ async function loadFromPreset(index) {
   } else {
     brewTemperature.value = pickBrewTempFromProfile(workflow?.profile) ?? 93
   }
+  grinderRpm.value = preset.grinderRpm ?? null
+  basketSize.value = preset.basketSize ?? null
+  basketType.value = preset.basketType ?? ''
   // Operation settings — always restore sub-field values so they survive
   // a toggle-off/toggle-on cycle (user disables steam, re-enables later)
   includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
@@ -290,6 +302,9 @@ function overlayFromWorkflow() {
     const t = pickBrewTempFromProfile(workflow.profile)
     if (t != null) brewTemperature.value = t
   }
+  if (ctx.grinderRpm != null) grinderRpm.value = ctx.grinderRpm
+  if (ctx.basketSize != null) basketSize.value = ctx.basketSize
+  if (ctx.basketType != null) basketType.value = ctx.basketType
   // Operation settings — align include flag and sub-field values with
   // whatever the live workflow currently has.
   const ss = workflow.steamSettings
@@ -340,6 +355,9 @@ async function hydrateFromWorkflowContext() {
       batchesForBean.value = await beansApi.getBatches(selectedBeanId.value).catch(() => []) ?? []
     }
   }
+  if (ctx.grinderRpm != null) grinderRpm.value = ctx.grinderRpm
+  if (ctx.basketSize != null) basketSize.value = ctx.basketSize
+  if (ctx.basketType != null) basketType.value = ctx.basketType
 }
 
 // Load on mount if a preset is selected
@@ -415,6 +433,9 @@ function comboValues() {
     selectedBatchId: selectedBatchId.value || null,
     selectedGrinderId: selectedGrinderId.value || null,
     brewTemperature: brewTemperature.value,
+    grinderRpm: grinderRpm.value ?? null,
+    basketSize: basketSize.value ?? null,
+    basketType: basketType.value || null,
     includeSteam: includeSteam.value,
     steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : { duration: 0 },
     includeFlush: includeFlush.value,
@@ -484,6 +505,14 @@ function buildWorkflowUpdate() {
   }
   if (selectedGrinderId.value) ctx.grinderId = String(selectedGrinderId.value)
   if (selectedBatchId.value) ctx.beanBatchId = String(selectedBatchId.value)
+  // Power-user fields: only push to the workflow when their toggle is on,
+  // so disabled fields don't pollute every shot's context with default
+  // values the user never set.
+  if (settings?.settings?.showGrinderRpm) ctx.grinderRpm = grinderRpm.value ?? null
+  if (settings?.settings?.showBasketData) {
+    ctx.basketSize = basketSize.value ?? null
+    ctx.basketType = basketType.value || null
+  }
 
   const payload = { context: ctx }
   payload.steamSettings = includeSteam.value
@@ -555,6 +584,7 @@ let liveApplyTimer = null
 watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
        selectedBeanId, selectedBatchId, selectedGrinderId,
        profileId, profileTitle, brewTemperature,
+       grinderRpm, basketSize, basketType,
        includeSteam, steamDuration, steamFlow, steamTemperature,
        includeFlush, flushDuration, flushFlowRate,
        includeHotWater, hotWaterVolume, hotWaterTemperature], () => {
@@ -809,6 +839,29 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
         </template>
 
+        <div v-if="settings?.settings?.showBasketData" class="recipe-editor__basket" data-testid="recipe-basket-section">
+          <h5 class="recipe-editor__subsection-title">Basket</h5>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Size (g)</label>
+            <ValueInput
+              v-model="basketSize"
+              :min="7"
+              :max="22"
+              :step="0.5"
+              placeholder="—"
+            />
+          </div>
+          <div class="recipe-editor__field">
+            <label class="recipe-editor__label">Type</label>
+            <input
+              class="recipe-editor__input"
+              v-model="basketType"
+              placeholder="e.g. IMS Competition"
+              data-testid="recipe-basketType-input"
+            />
+          </div>
+        </div>
+
         <button class="recipe-editor__link-btn" @click="router.push('/settings/beans')">Manage...</button>
       </div>
 
@@ -853,6 +906,17 @@ watch(() => workflow?.profile, (newProfile) => {
             <GrinderSettingInput v-model="grinderSetting" :grinder="selectedGrinder" />
           </div>
         </template>
+
+        <div v-if="settings?.settings?.showGrinderRpm" class="recipe-editor__field" data-testid="recipe-grinderRpm-field">
+          <label class="recipe-editor__label">RPM</label>
+          <ValueInput
+            v-model="grinderRpm"
+            :min="50"
+            :max="3000"
+            :step="50"
+            placeholder="—"
+          />
+        </div>
 
         <button class="recipe-editor__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
       </div>

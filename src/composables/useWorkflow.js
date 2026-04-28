@@ -70,9 +70,12 @@ export function useWorkflow() {
       grinderId: null,
       grinderModel: null,
       grinderSetting: null,
+      grinderRpm: null,
       beanBatchId: null,
       coffeeName: null,
       coffeeRoaster: null,
+      basketSize: null,
+      basketType: null,
       finalBeverageType: null,
     },
     steamSettings: null,
@@ -119,6 +122,9 @@ export function useWorkflow() {
       workflow.context.coffeeName = ctx.coffeeName ?? workflow.context.coffeeName
       workflow.context.coffeeRoaster = ctx.coffeeRoaster ?? workflow.context.coffeeRoaster
       workflow.context.finalBeverageType = ctx.finalBeverageType ?? workflow.context.finalBeverageType
+      workflow.context.grinderRpm = ctx.grinderRpm ?? workflow.context.grinderRpm
+      workflow.context.basketSize = ctx.basketSize ?? workflow.context.basketSize
+      workflow.context.basketType = ctx.basketType ?? workflow.context.basketType
     }
 
     // Backfill from legacy fields when context fields are still null

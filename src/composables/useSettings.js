@@ -82,6 +82,10 @@ const DEFAULT_SETTINGS = {
   announcementMode: 'milestones',
   announcementInterval: 5,
 
+  // Power-user recipe-editor fields (gate optional inputs)
+  showGrinderRpm: false,
+  showBasketData: false,
+
   // DYE sticky metadata
   dyeBeanBrand: '',
   dyeBeanType: '',
@@ -195,6 +199,9 @@ export function useSettings() {
     ],
     espresso: [
       'lingerOnEspressoPage',
+    ],
+    powerUser: [
+      'showGrinderRpm', 'showBasketData',
     ],
     accessibility: [
       'accessibilityEnabled', 'voiceAnnouncements', 'frameTickSounds',

@@ -48,6 +48,7 @@ const SCALAR_KEYS = [
   'doseIn', 'doseOut', 'grinder', 'grinderSetting',
   'selectedBeanId', 'selectedBatchId', 'selectedGrinderId',
   'brewTemperature',
+  'grinderRpm', 'basketSize', 'basketType',
 ]
 
 // Keys the live workflow has no counterpart for — they only live on the
@@ -110,6 +111,9 @@ export function workflowToComboShape(workflow) {
     selectedBeanId: null, // not pinned on the workflow — beanId is combo metadata
     selectedBatchId: ctx.beanBatchId ? String(ctx.beanBatchId) : null,
     selectedGrinderId: ctx.grinderId ? String(ctx.grinderId) : null,
+    grinderRpm: ctx.grinderRpm ?? null,
+    basketSize: ctx.basketSize ?? null,
+    basketType: ctx.basketType ?? null,
     includeSteam: !!(ss && (ss.duration ?? 0) > 0),
     steamSettings: ss
       ? { duration: ss.duration ?? 0, flow: ss.flow ?? null, temperature: ss.targetTemperature ?? null }
