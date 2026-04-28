@@ -165,6 +165,11 @@ let beansGetCount = 0
 let grindersGetCount = 0
 const mockBeanBatches = {} // beanId -> [{ id, roastDate, ... }]
 
+// ---- Shot-poll test scenario state (e2e only) ----------------------------
+
+let latestShotGetCount = 0
+const injectedShotIds = []
+
 // ---- MIME types --------------------------------------------------------
 
 const MIME_TYPES = {
@@ -349,6 +354,12 @@ function routeApi(path, method, body, res, url) {
     return json(mockShotIds)
   }
   if (path === '/api/v1/shots/latest' && method === 'GET') {
+    latestShotGetCount++
+    // Injected ids take priority — most recent injection wins.
+    const injectedId = injectedShotIds[injectedShotIds.length - 1]
+    if (injectedId && mockShotsData[injectedId]) {
+      return json(mockShotsData[injectedId])
+    }
     const latest = mockShotsData[mockShotIds[0]]
     return latest ? json(latest) : json({ error: 'No shots' }, 404)
   }
@@ -497,6 +508,36 @@ function routeApi(path, method, body, res, url) {
   if (path === '/api/v1/test/fail-next-grinders-get' && method === 'POST') {
     grindersFailNextGet = true
     return json({ ok: true })
+  }
+
+  if (path === '/api/v1/test/shot-poll-state' && method === 'GET') {
+    return json({ latestShotGetCount, injectedShotIds: [...injectedShotIds] })
+  }
+
+  if (path === '/api/v1/test/reset-shot-poll-state' && method === 'POST') {
+    latestShotGetCount = 0
+    for (const id of injectedShotIds) {
+      if (id?.startsWith('shot-injected-')) delete mockShotsData[id]
+    }
+    injectedShotIds.length = 0
+    return json({ ok: true })
+  }
+
+  if (path === '/api/v1/test/inject-fresh-shot' && method === 'POST') {
+    // Simulate the gateway committing a fresh shot. Adds an entry to
+    // mockShotsData and registers it as the new "latest". Honors a
+    // body-supplied id; falls back to a generated one.
+    const id = body?.id ?? ('shot-injected-' + Date.now())
+    const shot = {
+      id,
+      timestamp: body?.timestamp ?? new Date().toISOString(),
+      workflow: body?.workflow ?? { name: 'Injected', profile: { title: 'Test' } },
+      measurements: body?.measurements ?? [],
+      metadata: body?.metadata ?? {},
+    }
+    mockShotsData[id] = shot
+    injectedShotIds.push(id)
+    return json(shot, 201)
   }
 
   if (path === '/api/v1/test/add-bean' && method === 'POST') {
