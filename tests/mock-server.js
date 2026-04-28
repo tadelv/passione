@@ -170,6 +170,10 @@ const mockBeanBatches = {} // beanId -> [{ id, roastDate, ... }]
 let latestShotGetCount = 0
 const injectedShotIds = []
 
+// ---- Bean-batch integrity test scenario state (e2e only) -----------------
+
+const injectedShotIdsForBeanTests = []
+
 // ---- MIME types --------------------------------------------------------
 
 const MIME_TYPES = {
@@ -561,6 +565,90 @@ function routeApi(path, method, body, res, url) {
     const batch = { ...(body || {}), id: body?.id ?? ('batch-injected-' + Date.now()) }
     mockBeanBatches[beanId] = [...(mockBeanBatches[beanId] || []), batch]
     return json(batch, 201)
+  }
+
+  if (path === '/api/v1/test/inject-bean-with-batch' && method === 'POST') {
+    // Atomically create a bean and one batch, both with caller-supplied ids.
+    // Body: { beanId, beanName, beanRoaster, batchId, roastDate?, roastLevel? }
+    const beanId = body?.beanId ?? ('bean-injected-' + Date.now())
+    const batchId = body?.batchId ?? ('batch-injected-' + Date.now())
+    const bean = {
+      id: beanId,
+      name: body?.beanName ?? 'Injected Bean',
+      roaster: body?.beanRoaster ?? 'Injected Roaster',
+    }
+    const batch = {
+      id: batchId,
+      beanId,
+      roastDate: body?.roastDate ?? '2026-04-20',
+      roastLevel: body?.roastLevel ?? 'Medium',
+    }
+    // Replace any existing entry with the same id (idempotent injection).
+    const existingBean = mockBeans.findIndex(b => b.id === beanId)
+    if (existingBean >= 0) mockBeans[existingBean] = bean
+    else mockBeans.push(bean)
+    if (!mockBeanBatches[beanId]) mockBeanBatches[beanId] = []
+    const existingBatch = mockBeanBatches[beanId].findIndex(b => b.id === batchId)
+    if (existingBatch >= 0) mockBeanBatches[beanId][existingBatch] = batch
+    else mockBeanBatches[beanId].push(batch)
+    return json({ beanId, batchId }, 201)
+  }
+
+  if (path === '/api/v1/test/inject-shot' && method === 'POST') {
+    // Inject a shot record into mockShotsData with caller-supplied workflow.context.
+    // Body: { shotId, context, timestamp? }
+    const shotId = body?.shotId ?? ('shot-injected-bean-test-' + Date.now())
+    const shot = {
+      id: shotId,
+      timestamp: body?.timestamp ?? new Date().toISOString(),
+      workflow: {
+        name: 'Injected Test Shot',
+        profile: { title: 'Test Profile', id: 'test-profile-1' },
+        context: body?.context ?? {},
+      },
+      measurements: [],
+      metadata: {},
+      annotations: { extras: {} },
+    }
+    mockShotsData[shotId] = shot
+    if (!mockShotIds.includes(shotId)) mockShotIds.unshift(shotId)
+    injectedShotIdsForBeanTests.push(shotId)
+    return json(shot, 201)
+  }
+
+  if (path.match(/^\/api\/v1\/test\/get-shot\/[^/]+$/) && method === 'GET') {
+    const shotId = decodeURIComponent(path.split('/').pop())
+    const shot = mockShotsData[shotId]
+    return shot ? json(shot) : json({ error: 'Not found' }, 404)
+  }
+
+  if (path === '/api/v1/test/reset-bean-test-state' && method === 'POST') {
+    for (const id of injectedShotIdsForBeanTests) {
+      delete mockShotsData[id]
+      const idx = mockShotIds.indexOf(id)
+      if (idx >= 0) mockShotIds.splice(idx, 1)
+    }
+    injectedShotIdsForBeanTests.length = 0
+    // Also clear injected beans/batches that the bean tests may have created.
+    // Identify them by the `bean-injected-` / `batch-injected-` prefix OR
+    // beans with ids starting with `bean-test-` (used by some test cases).
+    for (let i = mockBeans.length - 1; i >= 0; i--) {
+      const id = mockBeans[i].id
+      if (id?.startsWith('bean-injected-') || id?.startsWith('bean-test-') ||
+          id?.startsWith('bean-A') || id?.startsWith('bean-B') || id === 'bean-real') {
+        mockBeans.splice(i, 1)
+      }
+    }
+    for (const beanId of Object.keys(mockBeanBatches)) {
+      mockBeanBatches[beanId] = mockBeanBatches[beanId].filter(b => {
+        const bid = b.id
+        return !(bid?.startsWith('batch-injected-') || bid?.startsWith('batch-X') ||
+                 bid?.startsWith('batch-Y') || bid?.startsWith('batch-A') ||
+                 bid?.startsWith('batch-B') || bid?.startsWith('batch-real'))
+      })
+      if (mockBeanBatches[beanId].length === 0) delete mockBeanBatches[beanId]
+    }
+    return json({ ok: true })
   }
 
   // Beans
