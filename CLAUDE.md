@@ -90,6 +90,12 @@ Shot records have two data schemas:
 
 The normalizer reads annotations first, falls back to legacy. The PostShotReviewPage writes both for backward compatibility with older gateways. When adding new shot fields, prefer `annotations` or `annotations.extras`.
 
+### Workflow Context: extras
+
+The gateway only round-trips a fixed set of top-level `WorkflowContext` fields (`targetDoseWeight`, `targetYield`, `grinderId`, `grinderModel`, `grinderSetting`, `beanBatchId`, `coffeeName`, `coffeeRoaster`, `finalBeverageType`). Anything outside that set is silently dropped. Fields the schema proposal lists as top-level (`grinderRpm`, `basketSize`, `basketType`) are **not yet implemented** on the gateway — write them under `context.extras.{grinderRpm,basketSize,basketType}` instead. Same rule for grinder records: extra fields like RPM range live under `grinder.extras.{rpmMin,rpmMax}`. When adding new context/grinder fields, curl-test the round-trip first; if the field doesn't survive, put it under `extras`.
+
+The "power-user fields" feature (RPM + basket) is gated by `showGrinderRpm` / `showBasketData` toggles in Settings → Preferences. Both `RecipeEditorPage` and `PostShotReviewPage` render those fields conditionally and read/write only via `context.extras`.
+
 ## Feature Scope
 
 Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor/simple editor), shot history (list/detail/comparison/post-shot review/phase summary), auto-favorites, Visualizer import, layout customization, bean info, screensaver (ambient glow / last shot recap / shot graph modes), power & sleep schedule management, descaling wizard, settings.

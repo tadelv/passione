@@ -28,6 +28,7 @@ Create and manage complete brewing recipes — profile, beans, grinder, dose, an
 - Field edits apply live to the running workflow (300 ms debounce); saved recipes only change when you explicitly tap **Save** or **Save as New Recipe**
 - A small dot on the selected recipe pill marks any divergence between the live workflow and the saved recipe
 - From the home screen: tap a recipe to load it, double-tap to open the editor — the Espresso button is the only way to start a shot
+- Optional **power-user fields** — Settings → Preferences toggles "Show grinder RPM" and "Show basket data" surface RPM and basket size/type fields in the recipe editor and the shot review page. Per-grinder RPM range (Settings → Grinders) clamps the RPM input.
 
 ### Profile Management
 
