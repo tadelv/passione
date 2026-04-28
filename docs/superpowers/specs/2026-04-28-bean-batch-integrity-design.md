@@ -337,6 +337,18 @@ Mock-server additions in `tests/mock-server.js`:
   - `POST /api/v1/test/inject-bean-with-batch` — atomically creates bean + batch with the provided ids, returns `{ beanId, batchId }`.
   - `POST /api/v1/test/inject-shot` — creates a shot record in `mockShotsData` with caller-supplied `workflow.context` (used by tests 3 and 4).
 
+## Behavior: orphan link clearing on save
+
+If a shot's `workflow.context.beanBatchId` references a bean record that no longer exists server-side (the user deleted it via BeansTab on this or another device), `hydrateFromContext` calls `clearLink()` and sets `selectedBatchId.value` to `null`. The next save then writes `workflow.context.beanBatchId: null`, permanently clearing the orphan reference.
+
+This is the intended behavior:
+- The link is genuinely broken — the referenced bean record does not exist.
+- Honesty over preservation: a permanent `null` is more truthful than a silently-orphaned id that can never resolve.
+- If the user wants to re-link to a different bean, the picker is right there.
+- If the user restores the bean record from a backup later, the orphan id would still need a reconciliation pass — which a one-time audit/backfill (out of scope for this work) would do anyway.
+
+The previous behavior (save dropping `beanBatchId` from the payload entirely, allowing the orphan to persist) was an accident of the missing save-path field, not an intentional preservation strategy.
+
 ## Out-of-scope but worth tracking
 
 - **Migration / batch-fix tool.** The user's existing drifted shots auto-correct on next edit. A one-time backfill would visit every shot and apply the same logic. Possible follow-up if the auto-correct cadence is too slow.
