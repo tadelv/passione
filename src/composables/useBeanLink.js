@@ -13,6 +13,11 @@
  * link is live, eliminating the drift class of bugs (typed text getting
  * out of sync with the linked bean record).
  *
+ * `linkedBean` is stored as an explicit ref (not a `beans.value.find`
+ * computed) so hydration works correctly during initial app load when
+ * `beans.value` may not yet be populated. The composable falls through to
+ * `beansApi.getById` when the bean isn't in the local list.
+ *
  * @param {object} opts
  * @param {Ref<Array>} opts.beans       Reactive bean list (from inject('beans')).
  * @param {object}     opts.beansApi    useBeans() API (from inject('beansApi')).
@@ -25,10 +30,15 @@ export function useBeanLink({ beans, beansApi, coffeeName, roaster }) {
   const selectedBeanId = ref(null)
   const selectedBatchId = ref(null)
   const linkedBatch = ref(null)
+  const linkedBeanRef = ref(null)
 
-  const linkedBean = computed(() =>
-    selectedBeanId.value ? beans.value.find(b => b.id === selectedBeanId.value) : null
-  )
+  // Prefer the local list (so updates from CRUD elsewhere reflect here),
+  // fall back to the explicitly-fetched record when the local list hasn't
+  // populated yet.
+  const linkedBean = computed(() => {
+    if (!selectedBeanId.value) return null
+    return beans.value.find(b => b.id === selectedBeanId.value) ?? linkedBeanRef.value
+  })
 
   const isLinked = computed(() =>
     !!selectedBeanId.value && !!selectedBatchId.value && !!linkedBean.value
@@ -48,6 +58,17 @@ export function useBeanLink({ beans, beansApi, coffeeName, roaster }) {
    */
   async function enterLinked(beanId, batchId = null) {
     selectedBeanId.value = beanId
+    // Resolve the bean record. Prefer the local list; fall back to API.
+    const localBean = beans.value.find(b => b.id === beanId)
+    if (localBean) {
+      linkedBeanRef.value = localBean
+    } else if (beansApi?.getById) {
+      try {
+        linkedBeanRef.value = await beansApi.getById(beanId)
+      } catch {
+        linkedBeanRef.value = null
+      }
+    }
     if (batchId) {
       selectedBatchId.value = batchId
       try {
@@ -71,6 +92,7 @@ export function useBeanLink({ beans, beansApi, coffeeName, roaster }) {
     selectedBeanId.value = null
     selectedBatchId.value = null
     linkedBatch.value = null
+    linkedBeanRef.value = null
     // coffeeName/roaster keep their last value — user is now free-editing.
   }
 
@@ -78,12 +100,17 @@ export function useBeanLink({ beans, beansApi, coffeeName, roaster }) {
    * Hydrate the link from a workflow context (or shot record). Uses
    * `ctx.beanBatchId` as the authoritative source — text-match was the
    * source of historical drift and is intentionally not used here.
+   *
+   * Trusts the API: if the batch resolves and references a beanId, the
+   * link is valid (even if `beans.value` hasn't loaded yet — the
+   * `enterLinked` path will fetch the bean record on demand). Only an
+   * actual API failure or a batch with no `beanId` clears the link.
    */
   async function hydrateFromContext(ctx) {
     if (!ctx?.beanBatchId || !beansApi) return
     try {
       const batch = await beansApi.getBatch(ctx.beanBatchId)
-      if (batch?.beanId && beans.value.find(b => b.id === batch.beanId)) {
+      if (batch?.beanId) {
         await enterLinked(batch.beanId, batch.id)
       } else {
         clearLink()
