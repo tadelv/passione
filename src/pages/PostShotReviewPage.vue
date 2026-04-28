@@ -7,8 +7,10 @@ import ValueInput from '../components/ValueInput.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import BottomBar from '../components/BottomBar.vue'
 import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
+import BeanLinkBadge from '../components/BeanLinkBadge.vue'
 import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { useBeanLink } from '../composables/useBeanLink'
 import { invalidateShotCaches } from '../composables/useShotCacheInvalidation'
 
 let _suggestionsCache = null
@@ -34,28 +36,7 @@ const toast = inject('toast', null)
 let pendingNavigation = null
 
 // Entity enrichment
-const enrichedBean = ref(null)
 const enrichedGrinder = ref(null)
-
-async function enrichShot(s) {
-  enrichedBean.value = null
-  enrichedGrinder.value = null
-  if (s.beanBatchId && beansApi) {
-    try {
-      const batch = await beansApi.getBatch(s.beanBatchId)
-      if (batch?.beanId) {
-        const bean = await beansApi.getById(batch.beanId)
-        if (bean) enrichedBean.value = { ...bean, batch }
-      }
-    } catch {}
-  }
-  if (s.grinderId && grindersApi) {
-    try {
-      const g = await grindersApi.getById(s.grinderId)
-      if (g) enrichedGrinder.value = g
-    } catch {}
-  }
-}
 
 // Editable fields
 const roaster = ref('')
@@ -72,6 +53,56 @@ const doseOut = ref(0)
 const tds = ref(0)
 const rating = ref(0)
 const notes = ref('')
+
+// Bean-batch link state. The bean text fields (`beanBrand`, `roaster`)
+// are pegged to the linked bean's record while linked, eliminating the
+// drift class of bugs where typed text gets out of sync with the link.
+const {
+  selectedBeanId,
+  selectedBatchId,
+  linkedBean,
+  linkedBatch,
+  isLinked,
+  enterLinked,
+  clearLink,
+  hydrateFromContext,
+} = useBeanLink({ beans, beansApi, coffeeName: beanBrand, roaster })
+
+const batchesForBean = ref([])
+
+watch(selectedBeanId, async (id) => {
+  if (!id || !beansApi) {
+    batchesForBean.value = []
+    return
+  }
+  batchesForBean.value = await beansApi.getBatches(id).catch(() => []) ?? []
+})
+
+async function enrichShot(s) {
+  enrichedGrinder.value = null
+  await hydrateFromContext({ beanBatchId: s.beanBatchId })
+  if (s.grinderId && grindersApi) {
+    try {
+      const g = await grindersApi.getById(s.grinderId)
+      if (g) enrichedGrinder.value = g
+    } catch {}
+  }
+}
+
+async function onBeanSelect(beanId) {
+  markDirty()
+  if (!beanId) {
+    clearLink()
+    return
+  }
+  await enterLinked(beanId)
+}
+
+function onBatchSelect(batchId) {
+  if (!selectedBeanId.value) return
+  markDirty()
+  enterLinked(selectedBeanId.value, batchId)
+}
 
 // Computed EY
 const extractionYield = computed(() => {
@@ -225,7 +256,7 @@ async function loadShot(id) {
     shot.value = normalized
     populateFromShot(result)
     populateFromSticky()
-    enrichShot(normalized)
+    await enrichShot(normalized)
   } catch {
     shot.value = null
   }
@@ -292,6 +323,7 @@ async function save() {
           coffeeRoaster: roaster.value || undefined,
           grinderModel: grinderModel.value || undefined,
           grinderSetting: grinderSetting.value || undefined,
+          beanBatchId: selectedBatchId.value || null,
         },
       },
     })
@@ -394,58 +426,107 @@ function goBack() {
             <span class="review-page__section-title">Bean Info</span>
 
             <div class="review-page__field">
-              <label class="review-page__label">Roaster</label>
-              <SuggestionField
-                v-model="roaster"
-                placeholder="Roaster"
-                :suggestions="historySuggestions.roaster"
-              />
-            </div>
-
-            <div class="review-page__field">
-              <label class="review-page__label">Bean Brand</label>
-              <SuggestionField
-                v-model="beanBrand"
-                placeholder="Bean brand"
-                :suggestions="historySuggestions.beanBrand"
-              />
-            </div>
-
-            <div class="review-page__field">
-              <label class="review-page__label">Bean Type</label>
-              <SuggestionField
-                v-model="beanType"
-                placeholder="Bean type"
-                :suggestions="historySuggestions.beanType"
-              />
-            </div>
-
-            <div class="review-page__field">
-              <label class="review-page__label">Roast Date</label>
-              <input
-                v-model="roastDate"
-                type="text"
-                inputmode="numeric"
-                pattern="\d{4}-\d{2}-\d{2}"
-                placeholder="YYYY-MM-DD"
-                maxlength="10"
-                class="review-page__input"
-              />
-            </div>
-
-            <div class="review-page__field">
-              <label class="review-page__label">Roast Level</label>
-              <select v-model="roastLevel" class="review-page__select">
-                <option value="">--</option>
-                <option v-for="rl in ROAST_LEVELS" :key="rl" :value="rl">{{ rl }}</option>
+              <label class="review-page__label">Bean</label>
+              <select class="review-page__select" :value="selectedBeanId" @change="onBeanSelect($event.target.value)">
+                <option value="">Manual entry...</option>
+                <option v-for="b in beans" :key="b.id" :value="b.id">{{ b.roaster }} — {{ b.name }}</option>
               </select>
             </div>
 
-            <div v-if="enrichedBean" class="review-page__enriched">
-              <span class="review-page__enriched-label">Linked Bean:</span>
-              <span class="review-page__enriched-value">{{ enrichedBean.name }}</span>
-              <span v-if="enrichedBean.batch?.label" class="review-page__enriched-value"> — {{ enrichedBean.batch.label }}</span>
+            <div v-if="isLinked && batchesForBean.length > 1" class="review-page__field">
+              <label class="review-page__label">Batch</label>
+              <select class="review-page__select" :value="selectedBatchId" @change="onBatchSelect($event.target.value)">
+                <option v-for="b in batchesForBean" :key="b.id" :value="b.id">
+                  {{ b.roastDate || b.id }}{{ b.roastLevel ? ` — ${b.roastLevel}` : '' }}
+                </option>
+              </select>
             </div>
+
+            <BeanLinkBadge
+              :linked="isLinked"
+              :bean-name="linkedBean?.name ?? ''"
+              :batch-label="linkedBatch?.roastDate ?? ''"
+              @clear="clearLink"
+            />
+
+            <!-- Manual mode: free-text fields -->
+            <template v-if="!isLinked">
+              <div class="review-page__field">
+                <label class="review-page__label">Roaster</label>
+                <SuggestionField
+                  v-model="roaster"
+                  placeholder="Roaster"
+                  :suggestions="historySuggestions.roaster"
+                />
+              </div>
+
+              <div class="review-page__field">
+                <label class="review-page__label">Bean Brand</label>
+                <SuggestionField
+                  v-model="beanBrand"
+                  placeholder="Bean brand"
+                  :suggestions="historySuggestions.beanBrand"
+                />
+              </div>
+
+              <div class="review-page__field">
+                <label class="review-page__label">Bean Type / Variety</label>
+                <SuggestionField
+                  v-model="beanType"
+                  placeholder="Bean type"
+                  :suggestions="historySuggestions.beanType"
+                />
+              </div>
+
+              <div class="review-page__field">
+                <label class="review-page__label">Roast Date</label>
+                <input
+                  v-model="roastDate"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="\d{4}-\d{2}-\d{2}"
+                  placeholder="YYYY-MM-DD"
+                  maxlength="10"
+                  class="review-page__input"
+                />
+              </div>
+
+              <div class="review-page__field">
+                <label class="review-page__label">Roast Level</label>
+                <select v-model="roastLevel" class="review-page__select">
+                  <option value="">--</option>
+                  <option v-for="rl in ROAST_LEVELS" :key="rl" :value="rl">{{ rl }}</option>
+                </select>
+              </div>
+            </template>
+
+            <!-- Linked mode: read-only display sourced from the linked records -->
+            <template v-else>
+              <div class="review-page__field">
+                <label class="review-page__label">Roaster</label>
+                <span class="review-page__readonly">{{ roaster }}</span>
+              </div>
+
+              <div class="review-page__field">
+                <label class="review-page__label">Bean Brand</label>
+                <span class="review-page__readonly">{{ beanBrand }}</span>
+              </div>
+
+              <div class="review-page__field">
+                <label class="review-page__label">Bean Type / Variety</label>
+                <span class="review-page__readonly">{{ linkedBean?.name ?? beanType }}</span>
+              </div>
+
+              <div v-if="linkedBatch?.roastDate" class="review-page__field">
+                <label class="review-page__label">Roast Date</label>
+                <span class="review-page__readonly">{{ linkedBatch.roastDate }}</span>
+              </div>
+
+              <div v-if="linkedBatch?.roastLevel" class="review-page__field">
+                <label class="review-page__label">Roast Level</label>
+                <span class="review-page__readonly">{{ linkedBatch.roastLevel }}</span>
+              </div>
+            </template>
           </div>
 
           <!-- Column 2: Grinder / Beverage -->
@@ -719,6 +800,13 @@ function goBack() {
 .review-page__input:focus,
 .review-page__select:focus {
   border-color: var(--color-primary);
+}
+
+.review-page__readonly {
+  display: inline-block;
+  padding: 0.5rem;
+  color: var(--color-text-muted, rgba(255,255,255,0.6));
+  font-style: italic;
 }
 
 .review-page__enriched {
