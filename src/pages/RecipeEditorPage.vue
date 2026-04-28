@@ -8,6 +8,7 @@ import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
+import { useBeanLink } from '../composables/useBeanLink'
 import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
 
 const settings = inject('settings', null)
@@ -37,13 +38,20 @@ const ratioValue = ref(2.0)
 let _updating = false
 
 // ---- Entity selection state ----
-const selectedBeanId = ref(null)
-const selectedBatchId = ref(null)
 const selectedGrinderId = ref(null)
-const selectedBatch = ref(null)
 const selectedGrinder = computed(() => grinders.value.find(g => g.id === selectedGrinderId.value) ?? null)
 const batchesForBean = ref([])
 const showBatchList = ref(false)
+const {
+  selectedBeanId,
+  selectedBatchId,
+  linkedBean,
+  linkedBatch: selectedBatch, // alias to keep template references working
+  isLinked,
+  enterLinked,
+  clearLink,
+  hydrateFromContext,
+} = useBeanLink({ beans, beansApi, coffeeName, roaster })
 
 // ---- Profile state ----
 const profileTitle = ref('')
@@ -122,12 +130,10 @@ onMounted(() => {
   }
 })
 
-// Cancel any pending live-apply / batch-restore work when the page unmounts.
+// Cancel any pending live-apply work when the page unmounts.
 onBeforeUnmount(() => {
   clearTimeout(liveApplyTimer)
   liveApplyTimer = null
-  _pendingBatchWatch?.()
-  _pendingBatchWatch = null
 })
 
 // ---- Optional operation settings (for combo) ----
@@ -146,33 +152,24 @@ const hotWaterTemperature = ref(80)
 
 // ---- Bean/batch selection ----
 async function onBeanSelect(beanId) {
-  selectedBeanId.value = beanId || null
-  selectedBatchId.value = null
-  selectedBatch.value = null
-  batchesForBean.value = []
-  if (!beanId || !beansApi) {
+  if (!beanId) {
+    clearLink()
     coffeeName.value = ''
     roaster.value = ''
+    batchesForBean.value = []
     return
   }
-  const bean = beans.value.find(b => b.id === beanId)
-  if (bean) {
-    coffeeName.value = bean.name ?? ''
-    roaster.value = bean.roaster ?? ''
+  await enterLinked(beanId)
+  // The linked-mode watcher in useBeanLink already syncs coffeeName/roaster
+  // to the bean record. Load batches for the picker dropdown.
+  if (beansApi) {
+    batchesForBean.value = await beansApi.getBatches(beanId).catch(() => []) ?? []
   }
-  // Auto-select active batch
-  const batch = await beansApi.activeBatchForBean(beanId)
-  if (batch) {
-    selectedBatchId.value = batch.id
-    selectedBatch.value = batch
-  }
-  // Load all batches for switch UI
-  batchesForBean.value = await beansApi.getBatches(beanId) ?? []
 }
 
-function onBatchSelect(batchId) {
-  selectedBatchId.value = batchId
-  selectedBatch.value = batchesForBean.value.find(b => b.id === batchId) ?? null
+async function onBatchSelect(batchId) {
+  if (!selectedBeanId.value) return
+  await enterLinked(selectedBeanId.value, batchId)
 }
 
 // ---- Grinder selection ----
@@ -198,14 +195,7 @@ function daysSinceRoast(batch) {
 }
 
 // ---- Populate from selected preset ----
-// Cancel any pending batch-restore watcher from a previous load
-let _pendingBatchWatch = null
-
 async function loadFromPreset(index) {
-  // Cancel stale batch watcher from a previous combo switch
-  _pendingBatchWatch?.()
-  _pendingBatchWatch = null
-
   const preset = workflowCombos.value[index]
   if (!preset) return
   _updating = true
@@ -245,33 +235,22 @@ async function loadFromPreset(index) {
   // Restore entity selections — keep _updating true through async work
   // so the auto-save watcher doesn't fire with partially-loaded data
   if (preset.selectedBeanId) {
-    await onBeanSelect(preset.selectedBeanId)
+    if (preset.selectedBatchId) {
+      await enterLinked(preset.selectedBeanId, preset.selectedBatchId)
+    } else {
+      await enterLinked(preset.selectedBeanId)
+    }
+    if (beansApi) {
+      batchesForBean.value = await beansApi.getBatches(preset.selectedBeanId).catch(() => []) ?? []
+    }
   } else {
-    selectedBeanId.value = null
-    selectedBatchId.value = null
-    selectedBatch.value = null
+    clearLink()
     batchesForBean.value = []
   }
   if (preset.selectedGrinderId) {
     onGrinderSelect(preset.selectedGrinderId, { resetSetting: false })
   } else {
     selectedGrinderId.value = null
-  }
-  // Restore batch if both IDs present (after bean batches load)
-  if (preset.selectedBeanId && preset.selectedBatchId) {
-    const batchId = preset.selectedBatchId
-    if (batchesForBean.value.length > 0) {
-      onBatchSelect(batchId)
-    } else {
-      // Batches haven't loaded yet — wait for them
-      _pendingBatchWatch = watch(batchesForBean, (batches) => {
-        if (batches.length > 0) {
-          onBatchSelect(batchId)
-          _pendingBatchWatch?.()
-          _pendingBatchWatch = null
-        }
-      })
-    }
   }
   _updating = false
 }
@@ -344,6 +323,25 @@ function overlayFromWorkflow() {
   _updating = false
 }
 
+async function hydrateFromWorkflowContext() {
+  const ctx = workflow?.context
+  if (!ctx) return
+  doseIn.value = ctx.targetDoseWeight ?? 18.0
+  doseOut.value = ctx.targetYield ?? 36.0
+  if (doseIn.value > 0) ratioValue.value = +(doseOut.value / doseIn.value).toFixed(1)
+  grinder.value = ctx.grinderModel ?? ''
+  grinderSetting.value = ctx.grinderSetting ?? ''
+  coffeeName.value = ctx.coffeeName ?? ''
+  roaster.value = ctx.coffeeRoaster ?? ''
+  if (ctx.grinderId) selectedGrinderId.value = ctx.grinderId
+  if (ctx.beanBatchId) {
+    await hydrateFromContext(ctx)
+    if (selectedBeanId.value && beansApi) {
+      batchesForBean.value = await beansApi.getBatches(selectedBeanId.value).catch(() => []) ?? []
+    }
+  }
+}
+
 // Load on mount if a preset is selected
 if (selectedIndex.value >= 0) {
   // loadFromPreset is async — chain the overlay so the live workflow
@@ -351,25 +349,7 @@ if (selectedIndex.value >= 0) {
   // resolving but they only populate entity IDs, not scalar fields).
   loadFromPreset(selectedIndex.value).then(overlayFromWorkflow)
 } else {
-  // Populate from workflow context
-  const ctx = workflow?.context
-  if (ctx) {
-    doseIn.value = ctx.targetDoseWeight ?? 18.0
-    doseOut.value = ctx.targetYield ?? 36.0
-    if (doseIn.value > 0) ratioValue.value = +(doseOut.value / doseIn.value).toFixed(1)
-    grinder.value = ctx.grinderModel ?? ''
-    grinderSetting.value = ctx.grinderSetting ?? ''
-    coffeeName.value = ctx.coffeeName ?? ''
-    roaster.value = ctx.coffeeRoaster ?? ''
-    // Restore entity selections if present
-    if (ctx.grinderId) selectedGrinderId.value = ctx.grinderId
-    if (ctx.beanBatchId) {
-      selectedBatchId.value = ctx.beanBatchId
-      // Find matching bean
-      const matchingBean = beans.value.find(b => b.name === ctx.coffeeName && b.roaster === ctx.coffeeRoaster)
-      if (matchingBean) selectedBeanId.value = matchingBean.id
-    }
-  }
+  hydrateFromWorkflowContext()
 }
 // Sync profile from workflow only when no preset is loaded — presets carry their own
 // profileId/profileTitle and must not be overwritten by the machine's current workflow.
