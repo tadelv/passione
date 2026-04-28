@@ -512,11 +512,6 @@ function goBack() {
                 <span class="review-page__readonly">{{ beanBrand }}</span>
               </div>
 
-              <div class="review-page__field">
-                <label class="review-page__label">Bean Type / Variety</label>
-                <span class="review-page__readonly">{{ linkedBean?.name ?? beanType }}</span>
-              </div>
-
               <div v-if="linkedBatch?.roastDate" class="review-page__field">
                 <label class="review-page__label">Roast Date</label>
                 <span class="review-page__readonly">{{ linkedBatch.roastDate }}</span>
