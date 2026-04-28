@@ -53,6 +53,9 @@ const doseOut = ref(0)
 const tds = ref(0)
 const rating = ref(0)
 const notes = ref('')
+const grinderRpm = ref(1200)
+const basketSize = ref(18)
+const basketType = ref('')
 
 // Bean-batch link state. The bean text fields (`beanBrand`, `roaster`)
 // are pegged to the linked bean's record while linked, eliminating the
@@ -221,6 +224,11 @@ function populateFromShot(shot) {
   tds.value = s.tds ?? meta.tds ?? 0
   rating.value = s.rating ?? settings?.settings?.defaultShotRating ?? 0
   notes.value = s.notes ?? ''
+  const ctx = shot.workflow?.context ?? {}
+  const ctxExtras = ctx.extras ?? {}
+  grinderRpm.value = ctxExtras.grinderRpm ?? 1200
+  basketSize.value = ctxExtras.basketSize ?? 18
+  basketType.value = ctxExtras.basketType ?? ''
 }
 
 function populateFromSticky() {
@@ -324,6 +332,22 @@ async function save() {
           grinderModel: grinderModel.value || undefined,
           grinderSetting: grinderSetting.value || undefined,
           beanBatchId: selectedBatchId.value || null,
+          ...((settings?.settings?.showGrinderRpm || settings?.settings?.showBasketData)
+            ? {
+                extras: {
+                  ...(shot.value?.workflow?.context?.extras ?? {}),
+                  ...(settings?.settings?.showGrinderRpm
+                    ? { grinderRpm: grinderRpm.value ?? null }
+                    : {}),
+                  ...(settings?.settings?.showBasketData
+                    ? {
+                        basketSize: basketSize.value ?? null,
+                        basketType: basketType.value || null,
+                      }
+                    : {}),
+                },
+              }
+            : {}),
         },
       },
     })
@@ -383,6 +407,10 @@ const profileName = computed(() =>
 const ROAST_LEVELS = ['Light', 'Medium-Light', 'Medium', 'Medium-Dark', 'Dark']
 const BEVERAGE_TYPES = ['Espresso', 'Lungo', 'Ristretto', 'Filter', 'Americano', 'Latte', 'Cappuccino', 'Other']
 
+function fmtDate(v) {
+  return String(v ?? '').slice(0, 10)
+}
+
 onMounted(() => {
   invalidateShotCaches()
   loadShot(shotId.value)
@@ -437,7 +465,7 @@ function goBack() {
               <label class="review-page__label">Batch</label>
               <select class="review-page__select" :value="selectedBatchId" @change="onBatchSelect($event.target.value)">
                 <option v-for="b in batchesForBean" :key="b.id" :value="b.id">
-                  {{ b.roastDate || b.id }}{{ b.roastLevel ? ` — ${b.roastLevel}` : '' }}
+                  {{ fmtDate(b.roastDate) || b.id }}{{ b.roastLevel ? ` — ${b.roastLevel}` : '' }}
                 </option>
               </select>
             </div>
@@ -445,7 +473,7 @@ function goBack() {
             <BeanLinkBadge
               :linked="isLinked"
               :bean-name="linkedBean?.name ?? ''"
-              :batch-label="linkedBatch?.roastDate ?? ''"
+              :batch-label="fmtDate(linkedBatch?.roastDate)"
               @clear="clearLink"
             />
 
@@ -514,7 +542,7 @@ function goBack() {
 
               <div v-if="linkedBatch?.roastDate" class="review-page__field">
                 <label class="review-page__label">Roast Date</label>
-                <span class="review-page__readonly">{{ linkedBatch.roastDate }}</span>
+                <span class="review-page__readonly">{{ fmtDate(linkedBatch.roastDate) }}</span>
               </div>
 
               <div v-if="linkedBatch?.roastLevel" class="review-page__field">
@@ -560,6 +588,17 @@ function goBack() {
                 v-model="barista"
                 placeholder="Barista"
                 :suggestions="historySuggestions.barista"
+              />
+            </div>
+
+            <div v-if="settings?.settings?.showGrinderRpm" class="review-page__field" data-testid="review-grinderRpm-field">
+              <label class="review-page__label">RPM</label>
+              <ValueInput
+                :model-value="grinderRpm"
+                :min="enrichedGrinder?.extras?.rpmMin ?? 50"
+                :max="enrichedGrinder?.extras?.rpmMax ?? 3000"
+                :step="50" :decimals="0"
+                @update:model-value="grinderRpm = $event; markDirty()"
               />
             </div>
 
@@ -612,6 +651,29 @@ function goBack() {
               <label class="review-page__label">EY %</label>
               <span class="review-page__ey">{{ extractionYield }}%</span>
             </div>
+
+            <template v-if="settings?.settings?.showBasketData">
+              <div class="review-page__field" data-testid="review-basketSize-field">
+                <label class="review-page__label">Basket Size</label>
+                <ValueInput
+                  :model-value="basketSize"
+                  :min="7" :max="22" :step="0.5" :decimals="1"
+                  suffix=" g"
+                  @update:model-value="basketSize = $event; markDirty()"
+                />
+              </div>
+
+              <div class="review-page__field" data-testid="review-basketType-field">
+                <label class="review-page__label">Basket Type</label>
+                <input
+                  v-model="basketType"
+                  type="text"
+                  placeholder="e.g. IMS Competition"
+                  class="review-page__input"
+                  @input="markDirty()"
+                />
+              </div>
+            </template>
           </div>
         </div>
 

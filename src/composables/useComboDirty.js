@@ -111,9 +111,9 @@ export function workflowToComboShape(workflow) {
     selectedBeanId: null, // not pinned on the workflow — beanId is combo metadata
     selectedBatchId: ctx.beanBatchId ? String(ctx.beanBatchId) : null,
     selectedGrinderId: ctx.grinderId ? String(ctx.grinderId) : null,
-    grinderRpm: ctx.grinderRpm ?? null,
-    basketSize: ctx.basketSize ?? null,
-    basketType: ctx.basketType ?? null,
+    grinderRpm: ctx.extras?.grinderRpm ?? null,
+    basketSize: ctx.extras?.basketSize ?? null,
+    basketType: ctx.extras?.basketType ?? null,
     includeSteam: !!(ss && (ss.duration ?? 0) > 0),
     steamSettings: ss
       ? { duration: ss.duration ?? 0, flow: ss.flow ?? null, temperature: ss.targetTemperature ?? null }

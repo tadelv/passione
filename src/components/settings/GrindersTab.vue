@@ -26,6 +26,7 @@ function emptyGrinder() {
     settingSmallStep: 0.1,
     settingBigStep: 0.5,
     settingValues: [],
+    extras: { rpmMin: null, rpmMax: null },
   }
 }
 
@@ -45,7 +46,11 @@ function toggleExpand(id) {
   } else {
     expandedId.value = id
     const g = grinders.value.find(g => g.id === id)
-    if (g) editGrinder.value = JSON.parse(JSON.stringify(g))
+    if (g) {
+      const clone = JSON.parse(JSON.stringify(g))
+      if (!clone.extras || typeof clone.extras !== 'object') clone.extras = {}
+      editGrinder.value = clone
+    }
   }
 }
 
@@ -237,6 +242,28 @@ async function toggleArchive(grinder) {
         </div>
       </div>
 
+      <!-- RPM range -->
+      <div class="grinders-tab__row">
+        <div class="grinders-tab__field">
+          <label class="grinders-tab__label">RPM min</label>
+          <input
+            v-model.number="newGrinder.extras.rpmMin"
+            type="number"
+            class="grinders-tab__input grinders-tab__input--short"
+            placeholder="e.g. 200"
+          />
+        </div>
+        <div class="grinders-tab__field">
+          <label class="grinders-tab__label">RPM max</label>
+          <input
+            v-model.number="newGrinder.extras.rpmMax"
+            type="number"
+            class="grinders-tab__input grinders-tab__input--short"
+            placeholder="e.g. 1600"
+          />
+        </div>
+      </div>
+
       <!-- Preset values -->
       <div v-if="newGrinder.settingType === 'preset'" class="grinders-tab__field">
         <label class="grinders-tab__label">Preset values</label>
@@ -354,6 +381,28 @@ async function toggleArchive(grinder) {
                 :step="0.5"
                 :decimals="1"
                 aria-label="Big step"
+              />
+            </div>
+          </div>
+
+          <!-- RPM range -->
+          <div class="grinders-tab__row">
+            <div class="grinders-tab__field">
+              <label class="grinders-tab__label">RPM min</label>
+              <input
+                v-model.number="editGrinder.extras.rpmMin"
+                type="number"
+                class="grinders-tab__input grinders-tab__input--short"
+                placeholder="e.g. 200"
+              />
+            </div>
+            <div class="grinders-tab__field">
+              <label class="grinders-tab__label">RPM max</label>
+              <input
+                v-model.number="editGrinder.extras.rpmMax"
+                type="number"
+                class="grinders-tab__input grinders-tab__input--short"
+                placeholder="e.g. 1600"
               />
             </div>
           </div>

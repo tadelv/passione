@@ -223,8 +223,8 @@ async function loadFromPreset(index) {
   } else {
     brewTemperature.value = pickBrewTempFromProfile(workflow?.profile) ?? 93
   }
-  grinderRpm.value = preset.grinderRpm ?? null
-  basketSize.value = preset.basketSize ?? null
+  grinderRpm.value = preset.grinderRpm ?? 1200
+  basketSize.value = preset.basketSize ?? 18
   basketType.value = preset.basketType ?? ''
   // Operation settings — always restore sub-field values so they survive
   // a toggle-off/toggle-on cycle (user disables steam, re-enables later)
@@ -302,9 +302,10 @@ function overlayFromWorkflow() {
     const t = pickBrewTempFromProfile(workflow.profile)
     if (t != null) brewTemperature.value = t
   }
-  if (ctx.grinderRpm != null) grinderRpm.value = ctx.grinderRpm
-  if (ctx.basketSize != null) basketSize.value = ctx.basketSize
-  if (ctx.basketType != null) basketType.value = ctx.basketType
+  const extras = ctx.extras ?? {}
+  if (extras.grinderRpm != null) grinderRpm.value = extras.grinderRpm
+  if (extras.basketSize != null) basketSize.value = extras.basketSize
+  if (extras.basketType != null) basketType.value = extras.basketType
   // Operation settings — align include flag and sub-field values with
   // whatever the live workflow currently has.
   const ss = workflow.steamSettings
@@ -355,9 +356,10 @@ async function hydrateFromWorkflowContext() {
       batchesForBean.value = await beansApi.getBatches(selectedBeanId.value).catch(() => []) ?? []
     }
   }
-  if (ctx.grinderRpm != null) grinderRpm.value = ctx.grinderRpm
-  if (ctx.basketSize != null) basketSize.value = ctx.basketSize
-  if (ctx.basketType != null) basketType.value = ctx.basketType
+  const extras = ctx.extras ?? {}
+  if (extras.grinderRpm != null) grinderRpm.value = extras.grinderRpm
+  if (extras.basketSize != null) basketSize.value = extras.basketSize
+  if (extras.basketType != null) basketType.value = extras.basketType
 }
 
 // Load on mount if a preset is selected
@@ -508,10 +510,15 @@ function buildWorkflowUpdate() {
   // Power-user fields: only push to the workflow when their toggle is on,
   // so disabled fields don't pollute every shot's context with default
   // values the user never set.
-  if (settings?.settings?.showGrinderRpm) ctx.grinderRpm = grinderRpm.value ?? null
-  if (settings?.settings?.showBasketData) {
-    ctx.basketSize = basketSize.value ?? null
-    ctx.basketType = basketType.value || null
+  const showRpm = !!settings?.settings?.showGrinderRpm
+  const showBasket = !!settings?.settings?.showBasketData
+  if (showRpm || showBasket) {
+    ctx.extras = { ...(workflow?.context?.extras ?? {}) }
+    if (showRpm) ctx.extras.grinderRpm = grinderRpm.value ?? null
+    if (showBasket) {
+      ctx.extras.basketSize = basketSize.value ?? null
+      ctx.extras.basketType = basketType.value || null
+    }
   }
 
   const payload = { context: ctx }
@@ -743,21 +750,23 @@ watch(() => workflow?.profile, (newProfile) => {
     <!-- Profile section -->
     <div class="recipe-editor__profile-section">
       <h4 class="recipe-editor__section-title">Profile</h4>
-      <div class="recipe-editor__profile-row">
-        <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
-        <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
-      </div>
-      <div class="recipe-editor__profile-temp-row">
-        <label class="recipe-editor__label">Temperature</label>
-        <ValueInput
-          v-model="brewTemperature"
-          :min="50"
-          :max="100"
-          :step="0.5"
-          :decimals="1"
-          suffix="°C"
-          data-testid="recipe-brew-temperature"
-        />
+      <div class="recipe-editor__profile-pair">
+        <div class="recipe-editor__profile-row">
+          <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
+          <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
+        </div>
+        <div class="recipe-editor__profile-temp-row">
+          <label class="recipe-editor__label">Temperature</label>
+          <ValueInput
+            v-model="brewTemperature"
+            :min="50"
+            :max="100"
+            :step="0.5"
+            :decimals="1"
+            suffix="°C"
+            data-testid="recipe-brew-temperature"
+          />
+        </div>
       </div>
     </div>
 
@@ -911,8 +920,8 @@ watch(() => workflow?.profile, (newProfile) => {
           <label class="recipe-editor__label">RPM</label>
           <ValueInput
             v-model="grinderRpm"
-            :min="50"
-            :max="3000"
+            :min="selectedGrinder?.extras?.rpmMin ?? 50"
+            :max="selectedGrinder?.extras?.rpmMax ?? 3000"
             :step="50"
             placeholder="—"
           />
@@ -1091,12 +1100,24 @@ watch(() => workflow?.profile, (newProfile) => {
   padding: 0 16px;
 }
 
+.recipe-editor__profile-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .recipe-editor__profile-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
 .recipe-editor__profile-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  margin-top: 8px;
   border-radius: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1113,7 +1134,6 @@ watch(() => workflow?.profile, (newProfile) => {
   justify-content: space-between;
   gap: 12px;
   padding: 12px;
-  margin-top: 8px;
   border-radius: 8px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
