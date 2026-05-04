@@ -8,14 +8,13 @@ import SuggestionField from '../components/SuggestionField.vue'
 import BottomBar from '../components/BottomBar.vue'
 import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import BeanLinkBadge from '../components/BeanLinkBadge.vue'
-import { getShot, updateShot, getShotIds, getShots, callPluginEndpoint } from '../api/rest.js'
+import { getShot, updateShot, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useBeanLink } from '../composables/useBeanLink'
 import { invalidateShotCaches } from '../composables/useShotCacheInvalidation'
+import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
 
-let _suggestionsCache = null
-let _suggestionsInflight = null
-let _suggestionsGeneration = 0
+const { suggestions: historySuggestions, load: loadSuggestions, invalidate: invalidateSuggestions } = useShotHistorySuggestions()
 
 const route = useRoute()
 const router = useRouter()
@@ -126,80 +125,6 @@ const scaleWeightHint = computed(() => {
   return v != null && v > 0 ? Number(v).toFixed(1) + ' g' : null
 })
 
-// Suggestions from history
-const historySuggestions = ref({
-  roaster: [],
-  beanBrand: [],
-  beanType: [],
-  grinderModel: [],
-  grinderSetting: [],
-  barista: [],
-})
-
-async function loadSuggestions() {
-  if (_suggestionsCache) {
-    historySuggestions.value = _suggestionsCache
-    return
-  }
-  if (_suggestionsInflight) {
-    const myGen = _suggestionsGeneration
-    const result = await _suggestionsInflight
-    if (result && myGen === _suggestionsGeneration) historySuggestions.value = result
-    return
-  }
-  const myGen = _suggestionsGeneration
-  _suggestionsInflight = (async () => {
-    try {
-      const ids = await getShotIds()
-      const idList = Array.isArray(ids) ? ids : (ids?.ids ?? [])
-      const recentIds = idList.slice(0, 100)
-      if (recentIds.length === 0) return null
-      const result = await getShots(recentIds)
-      const shots = Array.isArray(result) ? result : (result?.shots ?? [])
-
-      const sets = {
-        roaster: new Set(),
-        beanBrand: new Set(),
-        beanType: new Set(),
-        grinderModel: new Set(),
-        grinderSetting: new Set(),
-        barista: new Set(),
-      }
-
-      for (const raw of shots) {
-        const n = normalizeShot(raw)
-        const extras = raw.annotations?.extras ?? {}
-        const meta = raw.metadata ?? {}
-        if (n.coffeeRoaster) sets.roaster.add(n.coffeeRoaster)
-        const beanBrandVal = extras.beanBrand ?? meta.beanBrand
-        if (beanBrandVal) sets.beanBrand.add(beanBrandVal)
-        if (n.coffeeName) sets.beanType.add(n.coffeeName)
-        if (n.grinderModel) sets.grinderModel.add(n.grinderModel)
-        if (n.grinderSetting != null) sets.grinderSetting.add(String(n.grinderSetting))
-        const baristaVal = extras.barista ?? meta.barista
-        if (baristaVal) sets.barista.add(baristaVal)
-      }
-
-      const next = {
-        roaster: [...sets.roaster].sort(),
-        beanBrand: [...sets.beanBrand].sort(),
-        beanType: [...sets.beanType].sort(),
-        grinderModel: [...sets.grinderModel].sort(),
-        grinderSetting: [...sets.grinderSetting].sort(),
-        barista: [...sets.barista].sort(),
-      }
-      // Only commit if no invalidation happened during the fetch.
-      if (myGen === _suggestionsGeneration) _suggestionsCache = next
-      return next
-    } catch {
-      return null
-    } finally {
-      _suggestionsInflight = null
-    }
-  })()
-  const next = await _suggestionsInflight
-  if (next) historySuggestions.value = next
-}
 
 function populateFromShot(shot) {
   const s = normalizeShot(shot)
@@ -354,8 +279,7 @@ async function save() {
     saveSticky()
     // Annotations may have introduced new roaster/bean/grinder/barista names;
     // invalidate the suggestions cache so the next mount remines fresh data.
-    _suggestionsCache = null
-    _suggestionsGeneration++
+    invalidateSuggestions()
     invalidateShotCaches()
     dirty.value = false
   } catch (e) {
@@ -665,12 +589,11 @@ function goBack() {
 
               <div class="review-page__field" data-testid="review-basketType-field">
                 <label class="review-page__label">Basket Type</label>
-                <input
-                  v-model="basketType"
-                  type="text"
+                <SuggestionField
+                  :model-value="basketType"
                   placeholder="e.g. IMS Competition"
-                  class="review-page__input"
-                  @input="markDirty()"
+                  :suggestions="historySuggestions.basketType"
+                  @update:model-value="basketType = $event; markDirty()"
                 />
               </div>
             </template>

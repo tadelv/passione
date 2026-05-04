@@ -10,6 +10,9 @@ import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import BottomBar from '../components/BottomBar.vue'
 import { useBeanLink } from '../composables/useBeanLink'
 import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
+import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
+
+const { suggestions: historySuggestions, load: loadHistorySuggestions } = useShotHistorySuggestions()
 
 const settings = inject('settings', null)
 const workflow = inject('workflow', null)
@@ -108,6 +111,7 @@ function setAwaitingProfileFromPicker(v, baselineId = null) {
 }
 
 onMounted(() => {
+  loadHistorySuggestions()
   // Honor a pending profile pick from ProfileSelectorPage — pages unmount
   // between navigations, so loadFromPreset() ran first and overwrote the
   // form's profileTitle with the combo's saved value. Re-sync from workflow
@@ -600,16 +604,28 @@ watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
   liveApplyTimer = setTimeout(applyToLiveWorkflow, 300)
 })
 
-// ---- Suggestion lists from existing combos ----
-const coffeeSuggestions = computed(() =>
-  [...new Set(workflowCombos.value.map(p => p.coffeeName ?? [p.beanBrand, p.beanType].filter(Boolean).join(' ')).filter(Boolean))]
-)
-const roasterSuggestions = computed(() =>
-  [...new Set(workflowCombos.value.map(p => p.roaster).filter(Boolean))]
-)
-const grinderSuggestions = computed(() =>
-  [...new Set(workflowCombos.value.map(p => p.grinder).filter(Boolean))]
-)
+// ---- Suggestion lists: merge saved combos with shot-history mining ----
+function mergeSorted(...lists) {
+  const set = new Set()
+  for (const list of lists) for (const v of list) if (v) set.add(v)
+  return [...set].sort()
+}
+const coffeeSuggestions = computed(() => mergeSorted(
+  workflowCombos.value.map(p => p.coffeeName ?? [p.beanBrand, p.beanType].filter(Boolean).join(' ')),
+  historySuggestions.value.beanType,
+))
+const roasterSuggestions = computed(() => mergeSorted(
+  workflowCombos.value.map(p => p.roaster),
+  historySuggestions.value.roaster,
+))
+const grinderSuggestions = computed(() => mergeSorted(
+  workflowCombos.value.map(p => p.grinder),
+  historySuggestions.value.grinderModel,
+))
+const basketTypeSuggestions = computed(() => mergeSorted(
+  workflowCombos.value.map(p => p.basketType),
+  historySuggestions.value.basketType,
+))
 
 // Round to one decimal without going through `+(...).toFixed(1)`, which
 // re-parses the string and can leave residual float noise (e.g. 32.0000001
@@ -862,10 +878,10 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
           <div class="recipe-editor__field">
             <label class="recipe-editor__label">Type</label>
-            <input
-              class="recipe-editor__input"
+            <SuggestionField
               v-model="basketType"
               placeholder="e.g. IMS Competition"
+              :suggestions="basketTypeSuggestions"
               data-testid="recipe-basketType-input"
             />
           </div>

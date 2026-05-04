@@ -1,3 +1,7 @@
+<script>
+export default { inheritAttrs: false }
+</script>
+
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
@@ -62,6 +66,7 @@ function onBlur() {
       :placeholder="placeholder"
       :aria-label="placeholder"
       autocomplete="off"
+      v-bind="$attrs"
       @input="onInput"
       @focus="onFocus"
       @blur="onBlur"
