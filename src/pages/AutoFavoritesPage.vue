@@ -2,7 +2,7 @@
 import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { useAllShotsCache } from '../composables/useAllShotsCache'
+import { useShotCache } from '../composables/useShotCache'
 import { getShot } from '../api/rest.js'
 
 const router = useRouter()
@@ -35,12 +35,12 @@ function groupLabel(key) {
   return key
 }
 
-const allShotsCacheStore = useAllShotsCache()
+const shotCache = useShotCache()
 
 async function loadAllShots() {
   loading.value = true
   try {
-    const shots = await allShotsCacheStore.ensureLoaded()
+    const shots = await shotCache.ensureSlim()
     allShotsCache.value = shots
     computeGroups(shots)
   } catch {

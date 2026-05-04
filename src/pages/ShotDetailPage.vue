@@ -8,8 +8,7 @@ import SwipeableArea from '../components/SwipeableArea.vue'
 import PhaseSummaryPanel from '../components/PhaseSummaryPanel.vue'
 import { getShot, updateShot, deleteShot, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
-import { useShotIds } from '../composables/useShotIds'
-import { invalidateShotCaches } from '../composables/useShotCacheInvalidation'
+import { useShotCache } from '../composables/useShotCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,8 +22,8 @@ const confirmingDelete = ref(false)
 const rating = ref(0)
 
 // Shot navigation support (swipe between shots)
-const shotIdsCache = useShotIds()
-const allShotIds = shotIdsCache.ids
+const shotCache = useShotCache()
+const allShotIds = shotCache.ids
 
 const currentIndex = computed(() => {
   const list = allShotIds.value
@@ -96,7 +95,7 @@ async function loadShot(id) {
 
 onMounted(() => {
   loadShot(shotId.value)
-  shotIdsCache.ensureLoaded()
+  shotCache.ensureIds()
 })
 watch(shotId, (id) => loadShot(id))
 
@@ -155,7 +154,7 @@ async function onRatingChange(val) {
         annotations: { enjoyment: val },
         metadata: { rating: val },
       })
-      invalidateShotCaches()
+      await shotCache.patch(shotId.value)
     } catch {
       // ignore
     }
@@ -169,7 +168,7 @@ async function onDelete() {
   }
   try {
     await deleteShot(shotId.value)
-    invalidateShotCaches()
+    shotCache.remove(shotId.value)
     router.push('/history')
   } catch {
     // ignore

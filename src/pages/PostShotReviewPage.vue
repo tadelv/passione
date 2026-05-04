@@ -11,10 +11,11 @@ import BeanLinkBadge from '../components/BeanLinkBadge.vue'
 import { getShot, updateShot, callPluginEndpoint } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useBeanLink } from '../composables/useBeanLink'
-import { invalidateShotCaches } from '../composables/useShotCacheInvalidation'
+import { useShotCache } from '../composables/useShotCache'
 import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
 
 const { suggestions: historySuggestions, load: loadSuggestions, invalidate: invalidateSuggestions } = useShotHistorySuggestions()
+const shotCache = useShotCache()
 
 const route = useRoute()
 const router = useRouter()
@@ -280,7 +281,7 @@ async function save() {
     // Annotations may have introduced new roaster/bean/grinder/barista names;
     // invalidate the suggestions cache so the next mount remines fresh data.
     invalidateSuggestions()
-    invalidateShotCaches()
+    await shotCache.patch(shotId.value)
     dirty.value = false
   } catch (e) {
     if (toast) toast.error(e.message || 'Failed to save')
@@ -336,7 +337,6 @@ function fmtDate(v) {
 }
 
 onMounted(() => {
-  invalidateShotCaches()
   loadShot(shotId.value)
   loadSuggestions()
 })
