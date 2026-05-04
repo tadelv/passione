@@ -196,3 +196,17 @@ curl -X POST http://localhost:8080/api/v1/webui/skins/install/github-branch \
 Target WCAG AAA where practical — enhanced contrast, comprehensive ARIA, keyboard navigation, 44–56px minimum touch targets.
 
 Full design system details in `.impeccable.md`.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues at `tadelv/passione` via `gh` CLI; mirror summary to Obsidian note `Professional/Decent/Passione.md`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical defaults (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context (`CONTEXT.md` + `docs/adr/` at repo root). See `docs/agents/domain.md`.
