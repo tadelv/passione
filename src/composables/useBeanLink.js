@@ -4,14 +4,15 @@
  *
  * `selectedBeanId` and `selectedBatchId` are the canonical source of truth
  * for the link. While both are set and resolve to live bean+batch records,
- * `isLinked` is true — the consumer should render bound text refs
- * (`coffeeName`, `roaster`) read-only and trust the bean/batch records for
- * display. When unlinked, the consumer renders free-edit inputs.
+ * `isLinked` is true — the consumer should render the linked bean/batch
+ * records directly (read `linkedBean.name` / `linkedBean.roaster`) and
+ * persist only the batchId. When unlinked, the consumer renders free-edit
+ * inputs bound to the `coffeeName` / `roaster` refs.
  *
- * The watcher inside this composable keeps the bound `coffeeName` /
- * `roaster` refs pegged to the linked bean's values for as long as the
- * link is live, eliminating the drift class of bugs (typed text getting
- * out of sync with the linked bean record).
+ * On `enterLinked`, the bound `coffeeName` / `roaster` refs are blanked —
+ * the linked bean record is the source of truth, so keeping a redundant
+ * string copy invites drift (typed text getting out of sync with the bean
+ * record). Consumers read from `linkedBean` while linked.
  *
  * `linkedBean` is stored as an explicit ref (not a `beans.value.find`
  * computed) so hydration works correctly during initial app load when
@@ -21,10 +22,10 @@
  * @param {object} opts
  * @param {Ref<Array>} opts.beans       Reactive bean list (from inject('beans')).
  * @param {object}     opts.beansApi    useBeans() API (from inject('beansApi')).
- * @param {Ref<string>} opts.coffeeName Bound name ref. Updated when entering/exiting link.
- * @param {Ref<string>} opts.roaster    Bound roaster ref.
+ * @param {Ref<string>} opts.coffeeName Bound name ref. Blanked on enterLinked.
+ * @param {Ref<string>} opts.roaster    Bound roaster ref. Blanked on enterLinked.
  */
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
 export function useBeanLink({ beans, beansApi, coffeeName, roaster }) {
   const selectedBeanId = ref(null)
@@ -44,20 +45,17 @@ export function useBeanLink({ beans, beansApi, coffeeName, roaster }) {
     !!selectedBeanId.value && !!selectedBatchId.value && !!linkedBean.value
   )
 
-  // While linked, force coffeeName/roaster to mirror the bean record.
-  watch([linkedBean, isLinked], ([bean, linked]) => {
-    if (linked && bean) {
-      coffeeName.value = bean.name ?? ''
-      roaster.value = bean.roaster ?? ''
-    }
-  }, { immediate: true })
-
   /**
    * Set the link to a specific bean (and optionally a specific batch). When
    * `batchId` is omitted, the bean's active batch is auto-selected.
+   *
+   * Blanks the bound coffeeName/roaster refs — once linked, the bean record
+   * is the source of truth and the redundant text copy must not be persisted.
    */
   async function enterLinked(beanId, batchId = null) {
     selectedBeanId.value = beanId
+    coffeeName.value = ''
+    roaster.value = ''
     // Resolve the bean record. Prefer the local list; fall back to API.
     const localBean = beans.value.find(b => b.id === beanId)
     if (localBean) {

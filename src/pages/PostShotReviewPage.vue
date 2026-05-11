@@ -84,6 +84,10 @@ watch(selectedBeanId, async (id) => {
 async function enrichShot(s) {
   enrichedGrinder.value = null
   await hydrateFromContext({ beanBatchId: s.beanBatchId })
+  // Successful link: drop the stored coffeeName copy too. On failure the
+  // hydrate path leaves the link clear and the stored values remain as a
+  // legacy fallback for display.
+  if (isLinked.value) beanType.value = ''
   if (s.grinderId && grindersApi) {
     try {
       const g = await grindersApi.getById(s.grinderId)
@@ -99,6 +103,9 @@ async function onBeanSelect(beanId) {
     return
   }
   await enterLinked(beanId)
+  // beanType holds coffeeName in this page; like roaster/beanBrand it is
+  // redundant once the bean record is the source of truth.
+  beanType.value = ''
 }
 
 function onBatchSelect(batchId) {
@@ -170,10 +177,14 @@ function populateFromSticky() {
 
 function saveSticky() {
   if (!settings) return
-  settings.settings.dyeBeanBrand = beanBrand.value
-  settings.settings.dyeBeanType = beanType.value
-  settings.settings.dyeRoastDate = roastDate.value
-  settings.settings.dyeRoastLevel = roastLevel.value
+  // Bean fields are blank while linked (the bean record is the source of
+  // truth) — skip those so we don't wipe sticky from a prior manual entry.
+  if (!isLinked.value) {
+    settings.settings.dyeBeanBrand = beanBrand.value
+    settings.settings.dyeBeanType = beanType.value
+    settings.settings.dyeRoastDate = roastDate.value
+    settings.settings.dyeRoastLevel = roastLevel.value
+  }
   settings.settings.dyeGrinderModel = grinderModel.value
   settings.settings.dyeGrinderSetting = grinderSetting.value
 }
@@ -253,8 +264,11 @@ async function save() {
       },
       workflow: {
         context: {
-          coffeeName: beanType.value || undefined,
-          coffeeRoaster: roaster.value || undefined,
+          // When a bean record is linked, the bean is the source of truth —
+          // drop the redundant text copy. Explicit null clears any legacy
+          // value the gateway may still hold on this shot.
+          coffeeName: selectedBeanId.value ? null : (beanType.value || undefined),
+          coffeeRoaster: selectedBeanId.value ? null : (roaster.value || undefined),
           grinderModel: grinderModel.value || undefined,
           grinderSetting: grinderSetting.value || undefined,
           beanBatchId: selectedBatchId.value || null,
@@ -452,16 +466,18 @@ function goBack() {
               </div>
             </template>
 
-            <!-- Linked mode: read-only display sourced from the linked records -->
+            <!-- Linked mode: read-only display sourced from the linked
+                 records. Falls back to any legacy stored text (covers the
+                 case where the upstream bean was deleted). -->
             <template v-else>
               <div class="review-page__field">
                 <label class="review-page__label">Roaster</label>
-                <span class="review-page__readonly">{{ roaster }}</span>
+                <span class="review-page__readonly">{{ linkedBean?.roaster || roaster }}</span>
               </div>
 
               <div class="review-page__field">
                 <label class="review-page__label">Bean Brand</label>
-                <span class="review-page__readonly">{{ beanBrand }}</span>
+                <span class="review-page__readonly">{{ linkedBean?.name || beanBrand }}</span>
               </div>
 
               <div v-if="linkedBatch?.roastDate" class="review-page__field">

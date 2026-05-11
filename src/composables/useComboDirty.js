@@ -62,16 +62,24 @@ const SCALAR_KEYS = [
 // combo-only for lenient compare.
 const COMBO_ONLY_KEYS = new Set(['selectedBeanId', 'brewTemperature'])
 
+// When a bean record is linked on either side, the redundant text copy
+// (coffeeName / roaster) is no longer authoritative — the bean record is.
+// Skip them in the diff so a legacy combo carrying both id and stale names
+// doesn't read as "modified" against a form that has dropped the names.
+const BEAN_TEXT_KEYS = new Set(['coffeeName', 'roaster'])
+
 function norm(v) {
   if (v == null || v === '') return null
   return v
 }
 
 function scalarsDiffer(a, b, { requireSavedNonNull }) {
+  const beanLinked = !!(a.selectedBeanId || b.selectedBeanId)
   for (const k of SCALAR_KEYS) {
     // Lenient mode: skip combo-only keys outright — the workflow shape
     // can never carry them, so any saved value would read as "changed".
     if (requireSavedNonNull && COMBO_ONLY_KEYS.has(k)) continue
+    if (beanLinked && BEAN_TEXT_KEYS.has(k)) continue
     const saved = norm(b[k])
     const curr = norm(a[k])
     // Lenient mode: skip fields the saved combo never pinned. Used by

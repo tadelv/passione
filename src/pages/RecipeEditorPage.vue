@@ -296,8 +296,14 @@ function overlayFromWorkflow() {
   if (doseIn.value > 0 && doseOut.value > 0) {
     ratioValue.value = round1(doseOut.value / doseIn.value)
   }
-  if (ctx.coffeeName != null) coffeeName.value = ctx.coffeeName
-  if (ctx.coffeeRoaster != null) roaster.value = ctx.coffeeRoaster
+  // Skip coffeeName/coffeeRoaster while a bean is linked — the refs are
+  // intentionally blank in that case so the saved combo doesn't carry
+  // redundant text. The live ctx text is denormalized from the bean record
+  // and would just re-dirty the refs.
+  if (!selectedBeanId.value) {
+    if (ctx.coffeeName != null) coffeeName.value = ctx.coffeeName
+    if (ctx.coffeeRoaster != null) roaster.value = ctx.coffeeRoaster
+  }
   if (ctx.grinderModel != null) grinder.value = ctx.grinderModel
   if (ctx.grinderSetting != null) grinderSetting.value = String(ctx.grinderSetting)
   if (workflow.profile) {
@@ -501,11 +507,19 @@ const dirty = computed(() => {
 
 // ---- Build workflow update payload from current form state ----
 function buildWorkflowUpdate() {
+  // When a bean record is linked, useBeanLink blanks the coffeeName/roaster
+  // refs (the bean record is the source of truth). The live workflow ctx,
+  // though, is read by many downstream views (IdlePage pill, screensaver,
+  // LayoutWidget) that don't resolve via beanBatchId — keep the denormalized
+  // text populated from the linked bean record so those views keep working.
+  // The SAVED combo gets the blank refs via comboValues() — so the recipe
+  // template stays normalized (id only).
+  const beanLinked = !!selectedBeanId.value
   const ctx = {
     targetDoseWeight: doseIn.value,
     targetYield: doseOut.value,
-    coffeeName: coffeeName.value || null,
-    coffeeRoaster: roaster.value || null,
+    coffeeName: beanLinked ? (linkedBean.value?.name || null) : (coffeeName.value || null),
+    coffeeRoaster: beanLinked ? (linkedBean.value?.roaster || null) : (roaster.value || null),
     grinderModel: selectedGrinder.value?.model ?? (grinder.value || null),
     grinderSetting: grinderSetting.value != null ? String(grinderSetting.value) : null,
   }
@@ -575,7 +589,9 @@ function saveToSelectedCombo() {
 // "Created …" toast with the auto-generated name. Returns -1 on failure.
 function saveAsNew() {
   if (!settings) return -1
-  const autoName = coffeeName.value || profileTitle.value || t('recipe.newRecipeName')
+  // Prefer the linked bean's name (coffeeName is blank while linked) so a
+  // recipe created from a bean record still gets a meaningful default name.
+  const autoName = linkedBean.value?.name || coffeeName.value || profileTitle.value || t('recipe.newRecipeName')
   const vals = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     name: autoName,
@@ -821,16 +837,18 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
         </template>
 
-        <!-- Entity mode: read-only bean display + batch info -->
+        <!-- Entity mode: read-only bean display + batch info. Read from the
+             linked bean record; fall back to any legacy stored text (covers
+             the case where the upstream bean was deleted). -->
         <template v-else>
           <div class="recipe-editor__field">
             <label class="recipe-editor__label">Name</label>
-            <span class="recipe-editor__readonly">{{ coffeeName }}</span>
+            <span class="recipe-editor__readonly">{{ linkedBean?.name || coffeeName }}</span>
           </div>
 
           <div class="recipe-editor__field">
             <label class="recipe-editor__label">Roaster</label>
-            <span class="recipe-editor__readonly">{{ roaster }}</span>
+            <span class="recipe-editor__readonly">{{ linkedBean?.roaster || roaster }}</span>
           </div>
 
           <div v-if="selectedBatch" class="recipe-editor__batch-info">
