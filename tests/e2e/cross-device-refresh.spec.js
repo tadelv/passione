@@ -99,6 +99,29 @@ test.describe('Cross-device refresh', () => {
     await expect(page.getByText('100g')).toBeVisible()
   })
 
+  test('unchanged refresh resolves via ETag 304', async ({ page, request }) => {
+    test.setTimeout(60_000)
+
+    await loadBeans(page)
+
+    // Snapshot counters after initial render so we measure only the silent refresh.
+    const before = await (await request.get(`${BASE_URL}/api/v1/test/refresh-state`)).json()
+
+    await fireVisibilityRefresh(page)
+
+    // Poll counters: useDataRefresh fires the refresh asynchronously after the
+    // visibilitychange dispatch. Wait until at least one new GET has hit the
+    // mock server.
+    await expect.poll(
+      async () => (await (await request.get(`${BASE_URL}/api/v1/test/refresh-state`)).json()).beans304Count,
+      { timeout: 5_000 }
+    ).toBeGreaterThan(before.beans304Count)
+
+    const after = await (await request.get(`${BASE_URL}/api/v1/test/refresh-state`)).json()
+    // Round-tripped: at least one GET on beans, served as 304 (cached payload reused).
+    expect(after.beansGetCount).toBeGreaterThan(before.beansGetCount)
+  })
+
   test('silent refresh failure shows error badge; success clears it', async ({ page, request }) => {
     test.setTimeout(120_000) // two throttle windows + assertions
 

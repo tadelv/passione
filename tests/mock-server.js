@@ -163,6 +163,8 @@ let beansFailNextGet = false
 let grindersFailNextGet = false
 let beansGetCount = 0
 let grindersGetCount = 0
+let beans304Count = 0
+let grinders304Count = 0
 const mockBeanBatches = {} // beanId -> [{ id, roastDate, ... }]
 
 // ---- Shot-poll test scenario state (e2e only) ----------------------------
@@ -246,14 +248,41 @@ function handleApi(req, res) {
       if (body) {
         try { parsed = JSON.parse(body) } catch { /* ignore */ }
       }
-      resolve(routeApi(path, method, parsed, res, url))
+      resolve(routeApi(path, method, parsed, res, url, req.headers))
     })
   })
 }
 
-function routeApi(path, method, body, res, url) {
+function routeApi(path, method, body, res, url, headers = {}) {
   const json = (data, status = 200) => {
     res.writeHead(status, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify(data))
+  }
+
+  // Cheap stable hash of a JSON-serializable value — good enough for an
+  // ETag in tests. Returns a quoted ETag string per RFC 7232.
+  const computeEtag = (data) => {
+    const s = JSON.stringify(data)
+    let h = 5381
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) + h + s.charCodeAt(i)) | 0
+    }
+    return `"${(h >>> 0).toString(16)}"`
+  }
+
+  // Serve a payload with ETag/If-None-Match support. `notMatchedCounter` is
+  // an optional callback fired when the request resolves to 304 — lets tests
+  // assert the conditional path actually ran.
+  const jsonWithEtag = (data, notMatchedCounter) => {
+    const etag = computeEtag(data)
+    const ifNoneMatch = headers['if-none-match']
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      if (notMatchedCounter) notMatchedCounter()
+      res.writeHead(304, { ETag: etag })
+      res.end()
+      return
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json', ETag: etag })
     res.end(JSON.stringify(data))
   }
 
@@ -491,6 +520,8 @@ function routeApi(path, method, body, res, url) {
     grindersFailNextGet = false
     beansGetCount = 0
     grindersGetCount = 0
+    beans304Count = 0
+    grinders304Count = 0
     for (const k of Object.keys(mockBeanBatches)) delete mockBeanBatches[k]
     return json({ ok: true })
   }
@@ -501,6 +532,8 @@ function routeApi(path, method, body, res, url) {
       grindersFailNextGet,
       beansGetCount,
       grindersGetCount,
+      beans304Count,
+      grinders304Count,
     })
   }
 
@@ -658,7 +691,7 @@ function routeApi(path, method, body, res, url) {
       beansFailNextGet = false
       return json({ error: 'Simulated failure' }, 500)
     }
-    return json(mockBeans)
+    return jsonWithEtag(mockBeans, () => { beans304Count++ })
   }
   if (path === '/api/v1/beans' && method === 'POST') {
     if (body) {
@@ -670,7 +703,7 @@ function routeApi(path, method, body, res, url) {
   }
   if (path.match(/^\/api\/v1\/beans\/[^/]+\/batches$/) && method === 'GET') {
     const beanId = decodeURIComponent(path.split('/')[4])
-    return json(mockBeanBatches[beanId] || [])
+    return jsonWithEtag(mockBeanBatches[beanId] || [])
   }
   if (path.match(/^\/api\/v1\/beans\/[^/]+\/batches$/) && method === 'POST') {
     const batch = { id: 'batch-' + Date.now(), ...body }
@@ -704,7 +737,7 @@ function routeApi(path, method, body, res, url) {
       grindersFailNextGet = false
       return json({ error: 'Simulated failure' }, 500)
     }
-    return json(mockGrinders)
+    return jsonWithEtag(mockGrinders, () => { grinders304Count++ })
   }
   if (path === '/api/v1/grinders' && method === 'POST') {
     if (body) {

@@ -37,6 +37,53 @@ export async function sendCommand(endpoint, method = 'GET', body = null) {
 }
 
 // ---------------------------------------------------------------------------
+// ETag-conditional GET layer
+// ---------------------------------------------------------------------------
+//
+// Backs the singleton list fetches (`getBeans`, `getGrinders`, `getBeanBatches`)
+// used by useDataRefresh-driven silent refreshes. On a tab-resume tick the
+// composable calls these endpoints again; when the gateway supports ETags and
+// nothing changed, we get a 304 back, return the same payload reference, and
+// Vue's `beans.value = payload` becomes a no-op — zero render churn.
+//
+// Feature-detected: a 200 without an `ETag` header skips cache write and
+// behaves like a normal fetch on the next call. Mutating endpoints aren't
+// invalidated locally — the server's hash changes post-mutation, so the next
+// GET sends a stale If-None-Match and naturally receives 200 + fresh payload.
+
+const _etagCache = new Map() // url -> { etag, payload }
+
+async function getWithEtag(endpoint) {
+  const url = `${GATEWAY_URL}${endpoint}`
+  const cached = _etagCache.get(url)
+  const headers = cached?.etag ? { 'If-None-Match': cached.etag } : {}
+
+  const response = await fetch(url, { headers })
+
+  if (response.status === 304 && cached) {
+    return cached.payload
+  }
+
+  if (!response.ok) {
+    let errorMsg
+    try {
+      const err = await response.json()
+      errorMsg = err.message || err.e || `HTTP ${response.status}`
+    } catch {
+      errorMsg = `HTTP ${response.status}`
+    }
+    throw new Error(errorMsg)
+  }
+
+  if (response.status === 204) return null
+  const payload = await response.json()
+  const etag = response.headers.get('ETag')
+  if (etag) _etagCache.set(url, { etag, payload })
+  else _etagCache.delete(url)
+  return payload
+}
+
+// ---------------------------------------------------------------------------
 // Machine state
 // ---------------------------------------------------------------------------
 
@@ -412,7 +459,7 @@ export function callPluginEndpoint(pluginId, endpoint, method = 'GET', body = nu
 
 export function getBeans(params = {}) {
   const qs = new URLSearchParams(params).toString()
-  return sendCommand(`/api/v1/beans${qs ? '?' + qs : ''}`)
+  return getWithEtag(`/api/v1/beans${qs ? '?' + qs : ''}`)
 }
 
 export function getBean(id) {
@@ -437,7 +484,7 @@ export function deleteBean(id) {
 
 export function getBeanBatches(beanId, params = {}) {
   const qs = new URLSearchParams(params).toString()
-  return sendCommand(`/api/v1/beans/${encodeURIComponent(beanId)}/batches${qs ? '?' + qs : ''}`)
+  return getWithEtag(`/api/v1/beans/${encodeURIComponent(beanId)}/batches${qs ? '?' + qs : ''}`)
 }
 
 export function createBeanBatch(beanId, data) {
@@ -462,7 +509,7 @@ export function deleteBeanBatch(id) {
 
 export function getGrinders(params = {}) {
   const qs = new URLSearchParams(params).toString()
-  return sendCommand(`/api/v1/grinders${qs ? '?' + qs : ''}`)
+  return getWithEtag(`/api/v1/grinders${qs ? '?' + qs : ''}`)
 }
 
 export function getGrinder(id) {
