@@ -18,12 +18,79 @@ export const SHOT_SUMMARY_FIELDS = [
  *
  * Designed for caches and long-lived list state where holding the full
  * profile.frames per shot adds up fast on low-memory devices.
+ *
+ * Reads fields directly off the source — avoids the `{...shot}` spread and
+ * intermediate full-normalize allocation that paginated loads (200+ records)
+ * would otherwise pay in GC churn.
  */
 export function normalizeShotSlim(shot) {
-  const full = normalizeShot(shot)
-  const out = {}
-  for (const k of SHOT_SUMMARY_FIELDS) out[k] = full[k] ?? null
-  return out
+  if (!shot) return shot
+  const w = shot.workflow ?? {}
+  const ctx = w.context ?? {}
+  const dd = w.doseData ?? {}
+  const coffee = w.coffeeData ?? {}
+  const grinder = w.grinderData ?? {}
+  const ann = shot.annotations ?? {}
+  const meta = shot.metadata ?? {}
+  const extras = ann.extras ?? {}
+
+  const fallbackGrinderName = [grinder.manufacturer, (grinder.grinder ?? grinder.name)]
+    .filter(Boolean).join(' ') || null
+
+  // Final weight: walk weight[] / measurements[] backwards for last non-zero
+  // sample. Falls back to annotations.actualYield when telemetry lacks scale.
+  let finalWeight = null
+  if (Array.isArray(shot.weight) && shot.weight.length > 0) {
+    for (let i = shot.weight.length - 1; i >= 0; i--) {
+      const v = Number(shot.weight[i])
+      if (Number.isFinite(v) && v > 0) { finalWeight = v; break }
+    }
+  } else if (Array.isArray(shot.measurements) && shot.measurements.length > 0) {
+    for (let i = shot.measurements.length - 1; i >= 0; i--) {
+      const m = shot.measurements[i]
+      const v = Number(m?.scale?.weight ?? m?.weight)
+      if (Number.isFinite(v) && v > 0) { finalWeight = v; break }
+    }
+  }
+  if (finalWeight == null) finalWeight = ann.actualYield ?? null
+
+  // Duration: prefer shot.duration, else derive from measurements endpoints.
+  let duration = shot.duration ?? null
+  if (duration == null && Array.isArray(shot.measurements) && shot.measurements.length >= 2) {
+    const first = shot.measurements[0]
+    const last = shot.measurements[shot.measurements.length - 1]
+    const getTs = (m) => {
+      if (m.elapsed != null) return m.elapsed
+      const ts = m.machine?.timestamp ?? m.timestamp ?? m.scale?.timestamp
+      return ts ? (typeof ts === 'number' && ts > 1e12 ? ts / 1000 : new Date(ts).getTime() / 1000) : 0
+    }
+    const d = getTs(last) - getTs(first)
+    if (d > 0) duration = d
+  }
+
+  return {
+    id: shot.id ?? null,
+    shotId: shot.shotId ?? null,
+    timestamp: shot.timestamp ?? null,
+    date: shot.date ?? null,
+    duration,
+    doseIn: shot.doseIn ?? ann.actualDoseWeight ?? ctx.targetDoseWeight ?? dd.doseIn ?? dd.dose ?? null,
+    doseOut: shot.doseOut ?? ann.actualYield ?? ctx.targetYield ?? dd.doseOut ?? dd.targetWeight ?? null,
+    finalWeight,
+    targetYield: shot.targetYield ?? ctx.targetYield ?? dd.doseOut ?? dd.targetWeight ?? null,
+    coffeeName: shot.coffeeName ?? ctx.coffeeName ?? coffee.name ?? meta.beanType ?? null,
+    coffeeRoaster: shot.coffeeRoaster ?? ctx.coffeeRoaster ?? coffee.roaster ?? meta.roaster ?? null,
+    grinderModel: shot.grinderModel ?? ctx.grinderModel ?? grinder.model ?? fallbackGrinderName,
+    grinderSetting: shot.grinderSetting ?? ctx.grinderSetting ?? grinder.setting ?? grinder.grindSetting ?? meta.grinderSetting ?? null,
+    grinderId: ctx.grinderId ?? null,
+    beanBatchId: ctx.beanBatchId ?? null,
+    profileName: shot.profileName ?? w.profile?.title ?? w.name ?? null,
+    rating: shot.rating ?? ann.enjoyment ?? meta.rating ?? null,
+    notes: shot.notes ?? ann.espressoNotes ?? shot.shotNotes ?? null,
+    tds: shot.tds ?? ann.drinkTds ?? meta.tds ?? null,
+    ey: shot.ey ?? ann.drinkEy ?? null,
+    barista: shot.barista ?? extras.barista ?? meta.barista ?? null,
+  }
 }
 
 /**
