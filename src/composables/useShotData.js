@@ -110,17 +110,19 @@ export function useShotData() {
     }
     len++
 
-    // Build uPlot-compatible array of arrays (plain JS arrays sliced from typed arrays).
+    // uPlot accepts typed-array views directly — pass subarrays without
+    // cloning to JS arrays. Cuts per-tick allocations (10Hz × 9 series ≈
+    // 90 array clones/sec during a shot).
     data.value = [
-      Array.from(buf.time.subarray(0, len)),
-      Array.from(buf.pressure.subarray(0, len)),
-      Array.from(buf.targetPressure.subarray(0, len)),
-      Array.from(buf.flow.subarray(0, len)),
-      Array.from(buf.targetFlow.subarray(0, len)),
-      Array.from(buf.temperature.subarray(0, len)),
-      Array.from(buf.targetTemperature.subarray(0, len)),
-      Array.from(buf.weight.subarray(0, len)),
-      Array.from(buf.weightFlow.subarray(0, len)),
+      buf.time.subarray(0, len),
+      buf.pressure.subarray(0, len),
+      buf.targetPressure.subarray(0, len),
+      buf.flow.subarray(0, len),
+      buf.targetFlow.subarray(0, len),
+      buf.temperature.subarray(0, len),
+      buf.targetTemperature.subarray(0, len),
+      buf.weight.subarray(0, len),
+      buf.weightFlow.subarray(0, len),
     ]
   }
 
