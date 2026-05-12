@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject, onMounted, watch } from 'vue'
+import { ref, shallowRef, markRaw, computed, inject, onMounted, watch } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import HistoryShotGraph from '../components/HistoryShotGraph.vue'
 import RatingInput from '../components/RatingInput.vue'
@@ -26,7 +26,9 @@ const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
 
 const shotId = computed(() => route.params.id)
-const shot = ref(null)
+// shallowRef + markRaw — full shot carries measurements[] and profile.frames;
+// edits are tracked in separate local refs and committed via updateShot().
+const shot = shallowRef(null)
 const loading = ref(true)
 const saving = ref(false)
 const dirty = ref(false)
@@ -197,7 +199,7 @@ async function loadShot(id) {
     // Store the normalized shot so the template/computeds can read derived
     // fields (targetYield, finalWeight, etc.) — normalizeShot spreads the
     // raw record so workflow/measurements are still available.
-    const normalized = normalizeShot(result)
+    const normalized = markRaw(normalizeShot(result))
     shot.value = normalized
     populateFromShot(result)
     populateFromSticky()

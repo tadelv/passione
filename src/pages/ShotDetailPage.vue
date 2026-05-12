@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch, inject } from 'vue'
+import { ref, shallowRef, markRaw, computed, onMounted, watch, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import HistoryShotGraph from '../components/HistoryShotGraph.vue'
 import RatingInput from '../components/RatingInput.vue'
@@ -16,7 +16,9 @@ const beansApi = inject('beansApi', null)
 const grindersApi = inject('grindersApi', null)
 
 const shotId = computed(() => route.params.id)
-const shot = ref(null)
+// shallowRef + markRaw — full shot carries measurements[] and profile.frames;
+// page only reads via shot.value?.foo and reassigns wholesale on nav.
+const shot = shallowRef(null)
 const loading = ref(true)
 const confirmingDelete = ref(false)
 const rating = ref(0)
@@ -80,7 +82,7 @@ async function loadShot(id) {
   try {
     const raw = await getShot(id)
     if (raw) {
-      const result = normalizeShot(raw)
+      const result = markRaw(normalizeShot(raw))
       shot.value = result
       rating.value = result.rating ?? 0
       enrichShot(result)
