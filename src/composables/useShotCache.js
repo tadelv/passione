@@ -8,6 +8,8 @@
  * - `slim` — shallowRef of `markRaw`'d records produced by `normalizeShotSlim`.
  *   The full paginated walk (200/page) is expensive; do it once per session.
  *   Each record drops `profile` (frame array dominates retained size).
+ *   Capped at MAX_SLIM most-recent records to bound memory on devices with
+ *   deep shot history. AutoFavoritesPage aggregation is bounded by this cap.
  *
  * On any shot mutation:
  *   - `patch(id)` — single GET → re-normalize → splice into `slim`. If the id
@@ -23,6 +25,8 @@ import {
   getShot,
 } from '../api/rest.js'
 import { normalizeShotSlim } from './useShotNormalize'
+
+const MAX_SLIM = 200
 
 const ids = ref(null)
 const slim = shallowRef(null)
@@ -74,8 +78,10 @@ async function ensureSlim() {
           allShots.push(markRaw(normalizeShotSlim(item)))
         }
         offset += result.items.length
+        if (allShots.length >= MAX_SLIM) break
         if (offset >= result.total || result.items.length === 0) break
       }
+      if (allShots.length > MAX_SLIM) allShots.length = MAX_SLIM
       if (myGeneration !== generation) {
         if (slimInflight === myPromise) slimInflight = null
         return ensureSlim()
@@ -115,7 +121,9 @@ async function patch(id) {
       next[idx] = updated
       slim.value = next
     } else {
-      slim.value = [updated, ...list]
+      const next = [updated, ...list]
+      if (next.length > MAX_SLIM) next.length = MAX_SLIM
+      slim.value = next
     }
   }
   if (ids.value !== null && !ids.value.includes(id)) {
