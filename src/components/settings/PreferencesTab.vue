@@ -44,12 +44,27 @@ const toast = inject('toast', null)
 
 const isML = computed(() => settings?.waterLevelDisplayUnit === 'ml')
 
+// Debounce gateway writes — ValueInput repeats at 80ms during press-and-hold,
+// which would otherwise flood the machine with POSTs while the user adjusts.
+let refillSendTimer = null
+function scheduleRefillSend(mm) {
+  if (refillSendTimer) clearTimeout(refillSendTimer)
+  refillSendTimer = setTimeout(async () => {
+    refillSendTimer = null
+    try {
+      await updateWaterLevelThreshold(mm)
+    } catch (e) {
+      toast?.error(`Failed to set refill level: ${e?.message || e}`)
+    }
+  }, 300)
+}
+
 const refillThresholdDisplay = computed({
   get: () => isML.value ? waterMmToMl(settings.waterRefillThreshold) : settings.waterRefillThreshold,
   set: (v) => {
     const mm = isML.value ? waterMlToMm(v) : v
     settings.waterRefillThreshold = mm
-    updateWaterLevelThreshold(mm).catch(() => {})
+    scheduleRefillSend(mm)
   },
 })
 
@@ -237,6 +252,14 @@ onMounted(loadAll)
 
 onUnmounted(() => {
   clearTimeout(confirmDeleteTimer)
+  if (refillSendTimer) {
+    // Flush any pending refill threshold write before tearing down.
+    clearTimeout(refillSendTimer)
+    refillSendTimer = null
+    updateWaterLevelThreshold(settings.waterRefillThreshold).catch((e) => {
+      toast?.error(`Failed to set refill level: ${e?.message || e}`)
+    })
+  }
 })
 </script>
 
