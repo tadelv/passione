@@ -170,6 +170,12 @@ async function repeatLastShot() {
     if (s.grinderSetting != null) context.grinderSetting = String(s.grinderSetting)
     if (s.doseIn) context.targetDoseWeight = s.doseIn
     if (s.doseOut) context.targetYield = s.doseOut
+    const srcExtras = raw.workflow?.context?.extras ?? {}
+    const extras = {}
+    if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
+    if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
+    if (srcExtras.basketType != null) extras.basketType = srcExtras.basketType
+    if (Object.keys(extras).length > 0) context.extras = extras
     if (Object.keys(context).length > 0) update.context = context
     await updateWorkflow(update)
     toast?.success('Workflow loaded from last shot')

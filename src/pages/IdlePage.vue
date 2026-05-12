@@ -128,7 +128,8 @@ async function onComboSelect(index) {
   }
 
   const coffeeName = combo.coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
-  if (coffeeName || combo.roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting) {
+  const hasBasketExtras = combo.grinderRpm != null || combo.basketSize != null || combo.basketType != null
+  if (coffeeName || combo.roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting || hasBasketExtras) {
     update.context = {
       coffeeName: coffeeName || null,
       coffeeRoaster: combo.roaster || null,
@@ -136,6 +137,13 @@ async function onComboSelect(index) {
       targetYield: combo.doseOut ?? undefined,
       grinderModel: combo.grinder || null,
       grinderSetting: combo.grinderSetting != null ? String(combo.grinderSetting) : null,
+    }
+    if (hasBasketExtras) {
+      update.context.extras = {
+        grinderRpm: combo.grinderRpm ?? null,
+        basketSize: combo.basketSize ?? null,
+        basketType: combo.basketType ?? null,
+      }
     }
   }
 

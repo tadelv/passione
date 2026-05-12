@@ -125,8 +125,9 @@ async function loadShotWorkflow(shot) {
     return
   }
   let profile = null
+  let full = null
   try {
-    const full = await getShot(id)
+    full = await getShot(id)
     profile = full?.profile || full?.workflow?.profile || null
   } catch {
     // fall through — profile stays null, handled below
@@ -146,6 +147,12 @@ async function loadShotWorkflow(shot) {
     if (shot.grinderSetting != null) context.grinderSetting = String(shot.grinderSetting)
     if (shot.doseIn) context.targetDoseWeight = shot.doseIn
     if (shot.doseOut) context.targetYield = shot.doseOut
+    const srcExtras = full?.workflow?.context?.extras ?? {}
+    const extras = {}
+    if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
+    if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
+    if (srcExtras.basketType != null) extras.basketType = srcExtras.basketType
+    if (Object.keys(extras).length > 0) context.extras = extras
     if (Object.keys(context).length > 0) update.context = context
 
     await updateWorkflow(update)
