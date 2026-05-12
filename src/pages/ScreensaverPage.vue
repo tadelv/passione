@@ -143,7 +143,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="screensaver" @click="wake" @touchstart.passive="wake">
+  <div class="screensaver">
     <ScreensaverWaterWarning v-if="ssType !== 'disabled'" />
 
     <!-- Flip Clock Mode -->
@@ -231,7 +231,13 @@ onUnmounted(() => {
     <!-- Black Screen Mode (disabled type or fallback) -->
     <div v-else class="screensaver__black" />
 
-    <p class="screensaver__hint">Touch to wake</p>
+    <button
+      type="button"
+      class="screensaver__wake-btn"
+      @click.stop="wake"
+      @touchstart.stop.passive="wake"
+      aria-label="Wake machine"
+    >Tap to wake</button>
 
     <UpdateAvailableBanner
       v-if="updater.updateAvailable.value"
@@ -252,7 +258,6 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -603,12 +608,37 @@ onUnmounted(() => {
   flex: 1;
 }
 
-/* Hint */
-.screensaver__hint {
+/* Wake button — explicit tap target; the rest of the screen is inert. */
+.screensaver__wake-btn {
   position: absolute;
-  bottom: 40px;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-height: 56px;
+  min-width: 200px;
+  padding: 14px 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
   font-size: var(--font-md);
-  color: rgba(255, 255, 255, 0.15);
+  font-weight: 500;
   letter-spacing: 1px;
+  cursor: pointer;
+  z-index: var(--z-chart);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.screensaver__wake-btn:hover,
+.screensaver__wake-btn:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.4);
+  outline: none;
+}
+
+.screensaver__wake-btn:active {
+  background: rgba(255, 255, 255, 0.18);
 }
 </style>
