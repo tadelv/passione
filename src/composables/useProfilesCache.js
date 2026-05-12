@@ -8,10 +8,14 @@
  * Call invalidate() whenever profiles are created, updated, or deleted.
  */
 
-import { ref } from 'vue'
+import { shallowRef, markRaw } from 'vue'
 import { getProfiles } from '../api/rest.js'
 
-const profiles = ref(null)
+// Catalog is a long-lived, static collection of profile records. Each record
+// carries the full profile object (frames array). Use shallowRef + markRaw
+// so Vue doesn't deep-proxy the whole catalog — outer ref still triggers
+// updates on whole-list replacement (load/invalidate).
+const profiles = shallowRef(null)
 let inflight = null
 let generation = 0
 
@@ -29,8 +33,8 @@ async function ensureLoaded() {
         if (inflight === myPromise) inflight = null
         return ensureLoaded()
       }
-      profiles.value = list
-      return list
+      profiles.value = list.map((r) => markRaw(r))
+      return profiles.value
     } finally {
       if (inflight === myPromise) inflight = null
     }
