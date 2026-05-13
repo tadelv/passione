@@ -222,8 +222,56 @@ function isLastActiveDay(schedule, isoDay) {
   return days.length === 1 && days[0] === isoDay
 }
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
+
+function normalizeTimeInput(raw) {
+  // Accept "7", "07", "7:00", "0700", "7:5" etc. Return HH:MM or null.
+  if (!raw) return null
+  const s = String(raw).trim()
+  let h, m
+  if (s.includes(':')) {
+    const [hh, mm = '0'] = s.split(':', 2)
+    h = parseInt(hh, 10)
+    m = parseInt(mm, 10)
+  } else if (/^\d{3,4}$/.test(s)) {
+    h = parseInt(s.slice(0, s.length - 2), 10)
+    m = parseInt(s.slice(-2), 10)
+  } else if (/^\d{1,2}$/.test(s)) {
+    h = parseInt(s, 10)
+    m = 0
+  } else {
+    return null
+  }
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 function setTime(scheduleId, time) {
   updateScheduleField(scheduleId, { time })
+}
+
+function commitTime(scheduleId, raw, currentValue) {
+  const next = normalizeTimeInput(raw)
+  if (!next) return currentValue || '07:00'
+  if (next !== currentValue) setTime(scheduleId, next)
+  return next
+}
+
+function onTimeInputBlur(e, schedule) {
+  const normalized = commitTime(schedule.id, e.target.value, schedule.time)
+  e.target.value = normalized
+}
+
+function onTimeInputKeydown(e, schedule) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    e.target.blur()
+  } else if (e.key === 'Escape') {
+    e.preventDefault()
+    e.target.value = schedule.time || '07:00'
+    e.target.blur()
+  }
 }
 
 function setKeepAwakeFor(scheduleId, value) {
@@ -319,15 +367,18 @@ onUnmounted(() => {
             <template v-else>
               <div class="pref__card-top">
                 <div class="pref__card-left">
-                  <label class="pref__time-wrapper">
-                    <span class="pref__time">{{ schedule.time || '07:00' }}</span>
-                    <input
-                      type="time"
-                      class="pref__time-input"
-                      :value="schedule.time || '07:00'"
-                      @change="e => setTime(schedule.id, e.target.value)"
-                    />
-                  </label>
+                  <input
+                    type="text"
+                    class="pref__time-input"
+                    inputmode="numeric"
+                    pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                    maxlength="5"
+                    aria-label="Wake time (24-hour, HH:MM)"
+                    :value="schedule.time || '07:00'"
+                    @blur="e => onTimeInputBlur(e, schedule)"
+                    @keydown="e => onTimeInputKeydown(e, schedule)"
+                    @click.stop
+                  />
                   <select
                     class="pref__awake-badge"
                     :value="schedule.keepAwakeFor ?? ''"
@@ -561,28 +612,36 @@ onUnmounted(() => {
   gap: 10px;
 }
 
-/* ---- Time display/input ---- */
-
-.pref__time-wrapper {
-  position: relative;
-  cursor: pointer;
-}
-
-.pref__time {
-  font-size: var(--font-title);
-  font-weight: 600;
-  color: var(--color-text);
-  letter-spacing: -0.5px;
-}
+/* ---- Time input ---- */
 
 .pref__time-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  font-size: var(--font-body);
+  width: 5ch;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-title);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pref__time-input:hover {
+  border-color: var(--color-border);
+}
+
+.pref__time-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-background);
+}
+
+.pref__time-input:invalid {
+  color: var(--color-error);
 }
 
 /* ---- Keep-awake badge ---- */
