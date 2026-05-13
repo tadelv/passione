@@ -1,5 +1,6 @@
 <script setup>
 import { ref, inject, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import ValueInput from '../ValueInput.vue'
 import SettingsToggle from './SettingsToggle.vue'
 import {
@@ -7,6 +8,23 @@ import {
   getPluginSettings,
   updatePluginSettings,
 } from '../../api/rest.js'
+
+const router = useRouter()
+
+function relativeTime(timestamp) {
+  if (!timestamp) return ''
+  const t = typeof timestamp === 'number' ? timestamp : Date.parse(timestamp)
+  if (!Number.isFinite(t)) return ''
+  const delta = Math.max(0, Date.now() - t)
+  const mins = Math.floor(delta / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs} hr ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 14) return `${days} day${days === 1 ? '' : 's'} ago`
+  return new Date(t).toLocaleDateString()
+}
 
 const PLUGIN_ID = 'visualizer.reaplugin'
 
@@ -152,18 +170,18 @@ watch(
 
         <div class="vis-tab__field vis-tab__field--row">
           <button
-            class="vis-tab__test-btn"
-            :disabled="testing || !settings.visualizerUsername || !settings.visualizerPassword || !pluginOnline"
-            @click="testConnection"
-          >
-            {{ testing ? 'Testing...' : 'Test Connection' }}
-          </button>
-          <button
-            class="vis-tab__sync-btn"
+            class="vis-tab__sync-btn vis-tab__sync-btn--primary"
             :disabled="syncing || !settings.visualizerUsername || !pluginOnline"
             @click="onSaveCredentials"
           >
-            {{ syncing ? 'Syncing...' : 'Save to Plugin' }}
+            {{ syncing ? 'Saving...' : 'Save to plugin' }}
+          </button>
+          <button
+            class="vis-tab__test-btn vis-tab__test-btn--secondary"
+            :disabled="testing || !settings.visualizerUsername || !settings.visualizerPassword || !pluginOnline"
+            @click="testConnection"
+          >
+            {{ testing ? 'Testing...' : 'Test connection' }}
           </button>
         </div>
 
@@ -182,10 +200,22 @@ watch(
           >Connection failed (is the plugin running?)</span>
         </div>
 
-        <div v-if="lastUpload?.visId" class="vis-tab__field">
-          <span class="vis-tab__hint">
-            Last upload: shot {{ lastUpload.visId }}
+        <div v-if="lastUpload?.visId || lastUpload?.reaId" class="vis-tab__last-upload">
+          <span class="vis-tab__last-upload-label">Last upload</span>
+          <span v-if="lastUpload.timestamp" class="vis-tab__last-upload-time">
+            {{ relativeTime(lastUpload.timestamp) }}
           </span>
+          <button
+            v-if="lastUpload.reaId"
+            type="button"
+            class="vis-tab__last-upload-link"
+            @click="router.push(`/shot/${encodeURIComponent(lastUpload.reaId)}`)"
+          >
+            View shot
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -297,11 +327,9 @@ watch(
 
 .vis-tab__test-btn,
 .vis-tab__sync-btn {
+  min-height: 44px;
   padding: 10px 24px;
   border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
-  color: var(--color-text);
   font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
@@ -309,7 +337,13 @@ watch(
   white-space: nowrap;
 }
 
-.vis-tab__sync-btn {
+.vis-tab__sync-btn--primary {
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-text);
+}
+
+.vis-tab__test-btn--secondary {
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -319,7 +353,48 @@ watch(
 .vis-tab__sync-btn:disabled {
   background-color: var(--button-disabled);
   color: var(--button-disabled-text);
+  border-color: transparent;
   cursor: default;
+}
+
+.vis-tab__last-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.vis-tab__last-upload-label {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.vis-tab__last-upload-time {
+  opacity: 0.7;
+}
+
+.vis-tab__last-upload-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.vis-tab__last-upload-link:hover {
+  background: var(--color-surface);
 }
 
 .vis-tab__result {

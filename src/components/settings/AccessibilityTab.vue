@@ -70,12 +70,22 @@ function testTickSound() {
         </div>
 
         <div class="a11y-tab__field" :class="{ 'a11y-tab__field--disabled': isDisabled }">
-          <label class="a11y-tab__label">Voice announcements</label>
-          <SettingsToggle
-            v-model="settings.voiceAnnouncements"
-            :disabled="isDisabled"
-            aria-label="Voice announcements"
-          />
+          <div class="a11y-tab__row">
+            <label class="a11y-tab__label">Voice announcements</label>
+            <div class="a11y-tab__controls">
+              <button
+                type="button"
+                class="a11y-tab__test-btn a11y-tab__test-btn--inline"
+                :disabled="isDisabled || !speechSupported"
+                @click="testSpeech"
+              >Test</button>
+              <SettingsToggle
+                v-model="settings.voiceAnnouncements"
+                :disabled="isDisabled"
+                aria-label="Voice announcements"
+              />
+            </div>
+          </div>
           <span class="a11y-tab__hint">Spoken updates using Web Speech API</span>
           <span class="a11y-tab__hint a11y-tab__hint--warn" v-if="!speechSupported">
             Speech synthesis not available in this browser
@@ -83,12 +93,22 @@ function testTickSound() {
         </div>
 
         <div class="a11y-tab__field" :class="{ 'a11y-tab__field--disabled': isDisabled }">
-          <label class="a11y-tab__label">Frame tick sounds</label>
-          <SettingsToggle
-            v-model="settings.frameTickSounds"
-            :disabled="isDisabled"
-            aria-label="Frame tick sounds"
-          />
+          <div class="a11y-tab__row">
+            <label class="a11y-tab__label">Frame tick sounds</label>
+            <div class="a11y-tab__controls">
+              <button
+                type="button"
+                class="a11y-tab__test-btn a11y-tab__test-btn--inline"
+                :disabled="isDisabled"
+                @click="testTickSound"
+              >Test</button>
+              <SettingsToggle
+                v-model="settings.frameTickSounds"
+                :disabled="isDisabled"
+                aria-label="Frame tick sounds"
+              />
+            </div>
+          </div>
           <span class="a11y-tab__hint">Play a tick when extraction frames change</span>
         </div>
       </div>
@@ -143,30 +163,6 @@ function testTickSound() {
         </div>
       </div>
 
-      <!-- Column 3: Test -->
-      <div class="a11y-tab__column">
-        <h4 class="a11y-tab__section-title">Test</h4>
-
-        <div class="a11y-tab__field">
-          <button
-            class="a11y-tab__test-btn"
-            @click="testSpeech"
-          >
-            Test Speech
-          </button>
-          <span class="a11y-tab__hint">Plays a sample extraction announcement</span>
-        </div>
-
-        <div class="a11y-tab__field">
-          <button
-            class="a11y-tab__test-btn a11y-tab__test-btn--secondary"
-            @click="testTickSound"
-          >
-            Test Tick Sound
-          </button>
-          <span class="a11y-tab__hint">Plays a sample frame tick</span>
-        </div>
-      </div>
     </div>
   </div>
   <div v-else class="a11y-tab__empty">Settings not available.</div>
@@ -264,23 +260,46 @@ function testTickSound() {
   cursor: default;
 }
 
-.a11y-tab__test-btn {
-  padding: 10px 24px;
+.a11y-tab__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.a11y-tab__row .a11y-tab__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.a11y-tab__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.a11y-tab__test-btn--inline {
+  min-height: 36px;
+  padding: 6px 14px;
   border-radius: 8px;
-  border: none;
-  background: var(--color-primary);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   color: var(--color-text);
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  width: fit-content;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
-.a11y-tab__test-btn--secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+.a11y-tab__test-btn--inline:hover:not(:disabled) {
+  background: var(--color-background);
+}
+
+.a11y-tab__test-btn--inline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .a11y-tab__empty {

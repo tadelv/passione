@@ -223,22 +223,28 @@ onBeforeUnmount(() => {
 }
 
 .about-tab__update-btn {
-  min-width: 200px;
-  padding: 12px 20px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  min-width: 220px;
+  min-height: 48px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  border: none;
+  background: var(--color-primary);
   color: var(--color-text);
   font-size: var(--font-body);
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
 .about-tab__update-btn:hover:not(:disabled) {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
+  filter: brightness(1.08);
+}
+
+.about-tab__update-btn:active:not(:disabled) {
+  filter: brightness(0.92);
+  transform: scale(0.98);
 }
 
 .about-tab__update-btn:disabled {
