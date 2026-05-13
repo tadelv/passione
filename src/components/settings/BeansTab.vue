@@ -1,6 +1,10 @@
 <script setup>
 import { ref, reactive, inject, computed, watch } from 'vue'
 import RefreshErrorBadge from '../RefreshErrorBadge.vue'
+import { useConfirmAction } from '../../composables/useConfirmAction.js'
+
+const deleteBeanConfirm = useConfirmAction()
+const deleteBatchConfirm = useConfirmAction()
 
 const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
@@ -137,16 +141,17 @@ async function saveEditBean(bean) {
   }
 }
 
-async function deleteBean(bean) {
-  if (!window.confirm(`Delete "${bean.roaster} ${bean.name}" and all its batches?`)) return
-  try {
-    await beansApi.remove(bean.id)
-    if (expandedBeanId.value === bean.id) expandedBeanId.value = null
-    delete batchesByBean[bean.id]
-    toast?.success('Bean deleted')
-  } catch (e) {
-    toast?.error(`Failed to delete bean: ${e.message}`)
-  }
+function onDeleteBean(bean) {
+  deleteBeanConfirm.attempt(bean.id, async () => {
+    try {
+      await beansApi.remove(bean.id)
+      if (expandedBeanId.value === bean.id) expandedBeanId.value = null
+      delete batchesByBean[bean.id]
+      toast?.success('Bean deleted')
+    } catch (e) {
+      toast?.error(`Failed to delete bean: ${e.message}`)
+    }
+  })
 }
 
 // ---------- Batch CRUD ----------
@@ -258,18 +263,19 @@ async function saveEditBatchItem(beanId, batch) {
   }
 }
 
-async function deleteBatch(beanId, batch) {
-  if (!window.confirm('Delete this batch?')) return
-  try {
-    await beansApi.removeBatch(batch.id)
-    const list = batchesByBean[beanId]
-    if (list) {
-      batchesByBean[beanId] = list.filter(b => b.id !== batch.id)
+function onDeleteBatch(beanId, batch) {
+  deleteBatchConfirm.attempt(batch.id, async () => {
+    try {
+      await beansApi.removeBatch(batch.id)
+      const list = batchesByBean[beanId]
+      if (list) {
+        batchesByBean[beanId] = list.filter(b => b.id !== batch.id)
+      }
+      toast?.success('Batch deleted')
+    } catch (e) {
+      toast?.error(`Failed to delete batch: ${e.message}`)
     }
-    toast?.success('Batch deleted')
-  } catch (e) {
-    toast?.error(`Failed to delete batch: ${e.message}`)
-  }
+  })
 }
 </script>
 
@@ -386,7 +392,14 @@ async function deleteBatch(beanId, batch) {
             </div>
             <div class="beans-tab__form-actions">
               <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveEditBean(bean)">Save</button>
-              <button type="button" class="beans-tab__btn beans-tab__btn--danger" @click="deleteBean(bean)">Delete Bean</button>
+              <button
+                type="button"
+                class="beans-tab__btn beans-tab__btn--danger"
+                :class="{ 'beans-tab__btn--armed': deleteBeanConfirm.isArmed(bean.id) }"
+                @click="onDeleteBean(bean)"
+              >
+                {{ deleteBeanConfirm.isArmed(bean.id) ? 'Tap again to confirm' : 'Delete Bean' }}
+              </button>
             </div>
           </div>
 
@@ -476,7 +489,14 @@ async function deleteBatch(beanId, batch) {
                   <div class="beans-tab__form-actions">
                     <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveEditBatchItem(bean.id, batch)">Save</button>
                     <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelEditBatch">Cancel</button>
-                    <button type="button" class="beans-tab__btn beans-tab__btn--danger" @click="deleteBatch(bean.id, batch)">Delete</button>
+                    <button
+                      type="button"
+                      class="beans-tab__btn beans-tab__btn--danger"
+                      :class="{ 'beans-tab__btn--armed': deleteBatchConfirm.isArmed(batch.id) }"
+                      @click="onDeleteBatch(bean.id, batch)"
+                    >
+                      {{ deleteBatchConfirm.isArmed(batch.id) ? 'Tap again to confirm' : 'Delete' }}
+                    </button>
                   </div>
                 </div>
               </template>
@@ -488,7 +508,16 @@ async function deleteBatch(beanId, batch) {
                     <span v-if="batch.frozen" class="beans-tab__batch-frozen">Frozen</span>
                   </div>
                   <div class="beans-tab__batch-actions">
-                    <button type="button" class="beans-tab__btn beans-tab__btn--icon" @click.stop="deleteBatch(bean.id, batch)">&#x2715;</button>
+                    <button
+                      type="button"
+                      class="beans-tab__btn beans-tab__btn--icon"
+                      :class="{ 'beans-tab__btn--armed': deleteBatchConfirm.isArmed(batch.id) }"
+                      :aria-label="deleteBatchConfirm.isArmed(batch.id) ? 'Tap again to confirm deletion' : 'Delete batch'"
+                      @click.stop="onDeleteBatch(bean.id, batch)"
+                    >
+                      <span v-if="deleteBatchConfirm.isArmed(batch.id)" class="beans-tab__icon-confirm">Confirm</span>
+                      <span v-else>&#x2715;</span>
+                    </button>
                   </div>
                 </div>
               </template>
@@ -725,6 +754,24 @@ async function deleteBatch(beanId, batch) {
 
 .beans-tab__btn--icon:hover {
   color: var(--color-danger);
+}
+
+.beans-tab__btn--armed {
+  background: var(--color-danger);
+  color: var(--color-text);
+  border-color: var(--color-danger);
+  animation: beans-tab__pulse 0.6s ease-in-out infinite alternate;
+}
+
+.beans-tab__icon-confirm {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+@keyframes beans-tab__pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
 }
 
 /* Batches */

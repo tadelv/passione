@@ -2,6 +2,9 @@
 import { ref, inject, computed } from 'vue'
 import ValueInput from '../ValueInput.vue'
 import RefreshErrorBadge from '../RefreshErrorBadge.vue'
+import { useConfirmAction } from '../../composables/useConfirmAction.js'
+
+const deleteConfirm = useConfirmAction()
 
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
@@ -121,15 +124,16 @@ async function saveGrinder(grinder) {
 
 // ---- Delete ----
 
-async function deleteGrinder(grinder) {
-  if (!window.confirm(`Delete "${grinder.model}"? This cannot be undone.`)) return
-  try {
-    await grindersApi?.remove(grinder.id)
-    if (expandedId.value === grinder.id) expandedId.value = null
-    toast?.success('Grinder deleted')
-  } catch {
-    toast?.error('Failed to delete grinder')
-  }
+function onDeleteClick(grinder) {
+  deleteConfirm.attempt(grinder.id, async () => {
+    try {
+      await grindersApi?.remove(grinder.id)
+      if (expandedId.value === grinder.id) expandedId.value = null
+      toast?.success('Grinder deleted')
+    } catch {
+      toast?.error('Failed to delete grinder')
+    }
+  })
 }
 
 // ---- Archive ----
@@ -432,8 +436,12 @@ async function toggleArchive(grinder) {
           </div>
 
           <div class="grinders-tab__edit-actions">
-            <button class="grinders-tab__btn grinders-tab__btn--danger" @click="deleteGrinder(grinder)">
-              Delete
+            <button
+              class="grinders-tab__btn grinders-tab__btn--danger"
+              :class="{ 'grinders-tab__btn--armed': deleteConfirm.isArmed(grinder.id) }"
+              @click="onDeleteClick(grinder)"
+            >
+              {{ deleteConfirm.isArmed(grinder.id) ? 'Tap again to confirm' : 'Delete' }}
             </button>
             <button class="grinders-tab__btn grinders-tab__btn--secondary" @click="toggleArchive(grinder)">
               {{ grinder.archived ? 'Unarchive' : 'Archive' }}
@@ -754,6 +762,15 @@ async function toggleArchive(grinder) {
 
 .grinders-tab__btn--danger:active {
   opacity: 0.8;
+}
+
+.grinders-tab__btn--armed {
+  animation: grinders-tab__pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes grinders-tab__pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
 }
 
 .grinders-tab__edit-actions .grinders-tab__btn--danger {

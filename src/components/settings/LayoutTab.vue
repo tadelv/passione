@@ -2,9 +2,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayout } from '../../composables/useLayout.js'
+import { useConfirmAction } from '../../composables/useConfirmAction.js'
 
 const router = useRouter()
 const { loaded, load, resetLayout } = useLayout()
+const resetConfirm = useConfirmAction()
 
 const saving = ref(false)
 const saveMessage = ref('')
@@ -22,12 +24,14 @@ onUnmounted(() => {
   clearTimeout(saveMessageTimer)
 })
 
-async function onReset() {
-  saving.value = true
-  await resetLayout()
-  saving.value = false
-  saveMessage.value = 'Reset to default'
-  saveMessageTimer = setTimeout(() => { saveMessage.value = '' }, 2000)
+function onReset() {
+  resetConfirm.attempt('reset-layout', async () => {
+    saving.value = true
+    await resetLayout()
+    saving.value = false
+    saveMessage.value = 'Reset to default'
+    saveMessageTimer = setTimeout(() => { saveMessage.value = '' }, 2000)
+  })
 }
 </script>
 
@@ -43,9 +47,10 @@ async function onReset() {
       </button>
       <button
         class="layout-tab__reset-btn"
+        :class="{ 'layout-tab__reset-btn--armed': resetConfirm.isArmed('reset-layout') }"
         :disabled="saving"
         @click="onReset"
-      >Reset to Default</button>
+      >{{ resetConfirm.isArmed('reset-layout') ? 'Tap again to confirm' : 'Reset to Default' }}</button>
       <span v-if="saveMessage" class="layout-tab__save-message">{{ saveMessage }}</span>
       <span v-if="saving" class="layout-tab__save-message">Saving...</span>
     </div>
@@ -111,6 +116,17 @@ async function onReset() {
 
 .layout-tab__reset-btn:not(:disabled):active {
   transform: scale(0.96);
+}
+
+.layout-tab__reset-btn--armed {
+  background: var(--color-error);
+  color: var(--color-text);
+  animation: layout-tab__pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes layout-tab__pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
 }
 
 .layout-tab__save-message {

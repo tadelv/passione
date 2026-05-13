@@ -1,8 +1,10 @@
 <script setup>
 import { ref, inject, computed } from 'vue'
+import { useConfirmAction } from '../../composables/useConfirmAction.js'
 
 const theme = inject('theme', null)
 const settings = inject('settings', null)
+const resetConfirm = useConfirmAction()
 
 const presetNames = computed(() => theme?.getPresetNames?.() ?? [])
 
@@ -81,13 +83,15 @@ function randomize() {
   }
 }
 
-function resetTheme() {
-  if (theme) {
-    theme.resetToDefault()
-    if (selectedColorToken.value) {
-      hexInput.value = theme.colors.value[selectedColorToken.value] || ''
+function onResetClick() {
+  resetConfirm.attempt('reset-theme', () => {
+    if (theme) {
+      theme.resetToDefault()
+      if (selectedColorToken.value) {
+        hexInput.value = theme.colors.value[selectedColorToken.value] || ''
+      }
     }
-  }
+  })
 }
 </script>
 
@@ -108,8 +112,12 @@ function resetTheme() {
       <button class="themes-tab__random-btn" @click="randomize">
         Random
       </button>
-      <button class="themes-tab__reset-btn" @click="resetTheme">
-        Reset
+      <button
+        class="themes-tab__reset-btn"
+        :class="{ 'themes-tab__reset-btn--armed': resetConfirm.isArmed('reset-theme') }"
+        @click="onResetClick"
+      >
+        {{ resetConfirm.isArmed('reset-theme') ? 'Tap again to confirm' : 'Reset' }}
       </button>
     </div>
 
@@ -235,6 +243,17 @@ function resetTheme() {
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.themes-tab__reset-btn--armed {
+  background: var(--color-error);
+  color: var(--color-text);
+  animation: themes-tab__pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes themes-tab__pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); }
 }
 
 .themes-tab__main {
