@@ -78,7 +78,9 @@ The core real-time data structure (~10Hz via WebSocket):
 
 ### Key Composables
 
-- **`useMachine`** — WebSocket snapshot consumer (~10Hz). Exposes reactive refs for all telemetry. `PHASE_MAP` maps machine states to UI phases. `OPERATION_STATES` controls wake-lock protection (includes `fwUpgrade`, `selfTest`, `calibration`, `airPurge`).
+- **`useMachine`** — WebSocket snapshot consumer (~10Hz). Exposes reactive refs for all telemetry. `PHASE_MAP` maps machine states to UI phases. `OPERATION_STATES` controls wake-lock protection (includes `fwUpgrade`, `selfTest`, `calibration`, `airPurge`). Exposes `firstFrame` promise that resolves on the first WS snapshot — installed as the `useBootReady` trigger.
+- **`useBootReady`** — Module-level singleton coordinating cold-start work. Anything not user-blocking on first render should `await bootReady()` before firing (network or WS). The Teclast host shares its radio between Wi-Fi and BLE; a parallel HTTP/WS burst at boot starves GATT timing and drops the espresso-machine pairing. `useMachine` installs the trigger; consumers (`useBeans`, `useGrinders`, `useAutoSleep`, `useWaterLevels`, `useDisplay`, `useTimeToReady`, `useShotSettings`, LayoutWidget's last-shot card) gate behind it. 5s fallback so consumers never hang when no trigger is installed.
+- **`useShotCache`** — Singleton cache of shot data: `ids` (ordered list), `slim` (paginated normalized summaries, capped at 200), `latest` (full record of the most recent shot, shared by the home-screen last-shot card so it doesn't run its own `/shots/latest` chain). `patch(id)` and `remove(id)` keep `latest` in sync when mutations land on the current id.
 - **`useShotNormalize`** — Central shot record normalizer. All pages that display shot data call `normalizeShot(raw)` to get a flat, display-ready object. Handles: dose (annotations → context → legacy), coffee, grinder, rating, notes, TDS/EY, profileName, barista, duration, profile ref. Do NOT add per-page normalization — extend this composable instead.
 - **`useSimpleProfile`** — Pure functions for simple profile editing (settings_2a/2b). `extractSimpleParams()` reads params from profile root, `generateSimpleFrames()` creates the frames array, `buildProfileFromParams()` assembles the full API payload.
 
@@ -94,7 +96,7 @@ The normalizer reads annotations first, falls back to legacy. The PostShotReview
 
 The gateway only round-trips a fixed set of top-level `WorkflowContext` fields (`targetDoseWeight`, `targetYield`, `grinderId`, `grinderModel`, `grinderSetting`, `beanBatchId`, `coffeeName`, `coffeeRoaster`, `finalBeverageType`). Anything outside that set is silently dropped. Fields the schema proposal lists as top-level (`grinderRpm`, `basketSize`, `basketType`) are **not yet implemented** on the gateway — write them under `context.extras.{grinderRpm,basketSize,basketType}` instead. Same rule for grinder records: extra fields like RPM range live under `grinder.extras.{rpmMin,rpmMax}`. When adding new context/grinder fields, curl-test the round-trip first; if the field doesn't survive, put it under `extras`.
 
-The "power-user fields" feature (RPM + basket) is gated by `showGrinderRpm` / `showBasketData` toggles in Settings → Preferences. Both `RecipeEditorPage` and `PostShotReviewPage` render those fields conditionally and read/write only via `context.extras`.
+The "power-user fields" feature (RPM + basket) is gated by `showGrinderRpm` / `showBasketData` toggles in Settings → Brewing. Both `RecipeEditorPage` and `PostShotReviewPage` render those fields conditionally and read/write only via `context.extras`.
 
 ### Bean-link denormalization
 
@@ -102,7 +104,9 @@ When a bean record is linked (`ctx.beanBatchId` set), the bean is the source of 
 
 ## Feature Scope
 
-Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor/simple editor), shot history (list/detail/comparison/post-shot review/phase summary), auto-favorites, Visualizer import, layout customization, bean info, screensaver (ambient glow / last shot recap / shot graph modes), power & sleep schedule management, descaling wizard, settings.
+Core brewing flow, profile management (browse/search/favorites/visual editor/recipe editor/simple editor), shot history (list/detail/comparison/post-shot review/phase summary), auto-favorites, Visualizer import, layout customization, bean + grinder catalog (`/catalog` route with sub-tabs, reachable from the home-screen nav widget), bean info, screensaver (ambient glow / last shot recap / shot graph modes), power & sleep schedule management, descaling wizard, settings.
+
+**Settings tabs:** Brewing, Power, Water, Display (layout + screensaver + theme), Visualizer, Bridge (device list + bridge config), Accessibility, About. Tab ids in the URL (`/settings/<id>`) are preserved across reorgs; renamed/removed ids redirect via `TAB_REDIRECTS` in `SettingsPage.vue`. Beans + Grinders live at `/catalog/{beans,grinders}` (not under Settings).
 
 **Espresso Page:** Phase timeline (real-time extraction phases with tracking color), cup fill visualization, shot graph, info bar with pressure/flow/temp/weight.
 
@@ -120,6 +124,7 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 - Profile exit conditions: weight exits are independent of pressure/flow exits (app-side vs machine-side)
 - Tare happens when frame 0 starts (after machine preheat)
 - **No native-dialog-backed inputs** (`type="date"`, `type="time"`, `type="color"`, etc.). The Android Flutter `flutter_inappwebview` host reloads the WebView when an Android native dialog dismisses (tracked in tadelv/reaprime#202). Use plain text inputs with `inputmode` + `pattern` hints. Server may also return ISO timestamps with time portions for date fields — slice to `YYYY-MM-DD` before binding.
+- **Boot-quiet on cold start.** On the Teclast host, Wi-Fi and BLE share the same radio — a parallel burst of REST/WS handshakes at app boot starves GATT timing and the espresso-machine pairing drops. Anything that is not user-blocking on first render must `await bootReady()` before firing (REST GET, WS open). Only the machine + devices WS plus the workflow + settings load are allowed to run eagerly; everything else (beans/grinders refresh, presence sync, water-level WS, display WS, time-to-ready WS, shot-settings WS, last-shot fetch, update-available poll) lives behind the gate. When adding a new composable that touches the network on mount, default to gated unless you can argue for eager.
 
 ## Interaction Patterns
 
