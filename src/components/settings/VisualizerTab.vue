@@ -225,35 +225,6 @@ watch(
         </div>
       </div>
 
-      <!-- Column 3: After Shot -->
-      <div class="vis-tab__column">
-        <h4 class="vis-tab__section-title">After Shot</h4>
-
-        <div class="vis-tab__field">
-          <label class="vis-tab__label">Open shot review</label>
-          <SettingsToggle
-            v-model="settings.visualizerShowAfterShot"
-            :disabled="!settings.visualizerUsername"
-            aria-label="Open shot review after each shot"
-          />
-          <span class="vis-tab__hint">
-            Opens the post-shot review page automatically when a shot ends.
-            Requires a Visualizer username — otherwise the app returns home.
-          </span>
-        </div>
-
-        <div class="vis-tab__field">
-          <label class="vis-tab__label">Default rating</label>
-          <ValueInput
-            :model-value="settings.defaultShotRating"
-            @update:model-value="v => settings.defaultShotRating = v"
-            :min="0"
-            :max="100"
-            :step="5"
-            suffix="%"
-          />
-        </div>
-      </div>
     </div>
   </div>
   <div v-else class="vis-tab__empty">Settings not available.</div>

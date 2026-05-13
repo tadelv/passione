@@ -7,14 +7,16 @@ const route = useRoute()
 const router = useRouter()
 
 const TABS = [
-  { id: 'gateway', label: 'Bridge' },
-  { id: 'preferences', label: 'Preferences' },
-  { id: 'display', label: 'Display' },
-  { id: 'visualizer', label: 'Visualizer' },
+  { id: 'brewing', label: 'Brewing' },
+  { id: 'power', label: 'Power' },
+  { id: 'water', label: 'Water' },
   { id: 'beans', label: 'Beans' },
   { id: 'grinders', label: 'Grinders' },
-  { id: 'about', label: 'About' },
+  { id: 'display', label: 'Display' },
+  { id: 'visualizer', label: 'Visualizer' },
+  { id: 'gateway', label: 'Bridge' },
   { id: 'accessibility', label: 'Accessibility' },
+  { id: 'about', label: 'About' },
 ]
 
 const currentTab = ref(0)
@@ -29,6 +31,7 @@ const TAB_REDIRECTS = {
   layout: 'display',
   screensaver: 'display',
   themes: 'display',
+  preferences: 'brewing',
 }
 
 function syncTabFromRoute() {
@@ -110,18 +113,22 @@ function onTabKeydown(e) {
 // Lazy-load tab components
 import { defineAsyncComponent } from 'vue'
 
-const BridgeTab = defineAsyncComponent(() => import('../components/settings/BridgeTab.vue'))
-const PreferencesTab = defineAsyncComponent(() => import('../components/settings/PreferencesTab.vue'))
-const DisplayTab = defineAsyncComponent(() => import('../components/settings/DisplayTab.vue'))
-const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
+const BrewingTab = defineAsyncComponent(() => import('../components/settings/BrewingTab.vue'))
+const PowerTab = defineAsyncComponent(() => import('../components/settings/PowerTab.vue'))
+const WaterTab = defineAsyncComponent(() => import('../components/settings/WaterTab.vue'))
 const BeansTab = defineAsyncComponent(() => import('../components/settings/BeansTab.vue'))
 const GrindersTab = defineAsyncComponent(() => import('../components/settings/GrindersTab.vue'))
-const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
+const DisplayTab = defineAsyncComponent(() => import('../components/settings/DisplayTab.vue'))
+const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
+const BridgeTab = defineAsyncComponent(() => import('../components/settings/BridgeTab.vue'))
 const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
+const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
 
 const tabComponents = [
-  BridgeTab, PreferencesTab, DisplayTab, VisualizerTab,
-  BeansTab, GrindersTab, AboutTab, AccessibilityTab,
+  BrewingTab, PowerTab, WaterTab,
+  BeansTab, GrindersTab,
+  DisplayTab, VisualizerTab, BridgeTab,
+  AccessibilityTab, AboutTab,
 ]
 </script>
 
