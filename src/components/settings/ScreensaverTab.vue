@@ -41,14 +41,25 @@ const TYPES = [
         <h4 class="ss-tab__section-title">Flip Clock</h4>
 
         <div class="ss-tab__field">
-          <label class="ss-tab__label">24-hour format</label>
-          <button
-            class="ss-tab__toggle"
-            :class="{ 'ss-tab__toggle--on': settings.flipClock24h }"
-            @click="settings.flipClock24h = !settings.flipClock24h"
-          >
-            {{ settings.flipClock24h ? '24H' : '12H' }}
-          </button>
+          <label class="ss-tab__label">Clock format</label>
+          <div class="ss-tab__seg-group" role="radiogroup" aria-label="Clock format">
+            <button
+              type="button"
+              class="ss-tab__seg"
+              :class="{ 'ss-tab__seg--active': !settings.flipClock24h }"
+              role="radio"
+              :aria-checked="!settings.flipClock24h"
+              @click="settings.flipClock24h = false"
+            >12h</button>
+            <button
+              type="button"
+              class="ss-tab__seg"
+              :class="{ 'ss-tab__seg--active': settings.flipClock24h }"
+              role="radio"
+              :aria-checked="settings.flipClock24h"
+              @click="settings.flipClock24h = true"
+            >24h</button>
+          </div>
         </div>
       </div>
     </div>
@@ -142,11 +153,19 @@ const TYPES = [
   opacity: 0.8;
 }
 
-.ss-tab__toggle {
-  width: 80px;
-  height: 40px;
-  border-radius: 20px;
+.ss-tab__seg-group {
+  display: inline-flex;
+  border-radius: 10px;
   border: 1px solid var(--color-border);
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.ss-tab__seg {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
   background: var(--color-surface);
   color: var(--color-text-secondary);
   font-size: var(--font-md);
@@ -156,10 +175,13 @@ const TYPES = [
   -webkit-tap-highlight-color: transparent;
 }
 
-.ss-tab__toggle--on {
-  background: var(--color-success);
+.ss-tab__seg + .ss-tab__seg {
+  border-left: 1px solid var(--color-border);
+}
+
+.ss-tab__seg--active {
+  background: var(--color-primary);
   color: var(--color-text);
-  border-color: var(--color-success);
 }
 
 .ss-tab__empty {
