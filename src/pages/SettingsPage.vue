@@ -7,14 +7,10 @@ const route = useRoute()
 const router = useRouter()
 
 const TABS = [
-  { id: 'device', label: 'Device' },
-  { id: 'preferences', label: 'Preferences' },
-  { id: 'layout', label: 'Layout' },
-  { id: 'visualizer', label: 'Visualizer' },
-  { id: 'history', label: 'History' },
   { id: 'gateway', label: 'Bridge' },
-  { id: 'screensaver', label: 'Screensaver' },
-  { id: 'themes', label: 'Themes' },
+  { id: 'preferences', label: 'Preferences' },
+  { id: 'display', label: 'Display' },
+  { id: 'visualizer', label: 'Visualizer' },
   { id: 'beans', label: 'Beans' },
   { id: 'grinders', label: 'Grinders' },
   { id: 'about', label: 'About' },
@@ -24,12 +20,27 @@ const TABS = [
 const currentTab = ref(0)
 
 // Deep-link support: sync tab from route param
+// Redirects for tabs that have been folded into other tabs. Keeps old
+// deep-links (e.g. /settings/device → Bridge) working after the
+// reorganization.
+const TAB_REDIRECTS = {
+  device: 'gateway',
+  history: 'about',
+  layout: 'display',
+  screensaver: 'display',
+  themes: 'display',
+}
+
 function syncTabFromRoute() {
   const tabParam = route.params.tab
-  if (tabParam) {
-    const idx = TABS.findIndex(t => t.id === tabParam)
-    if (idx >= 0) currentTab.value = idx
+  if (!tabParam) return
+  const redirected = TAB_REDIRECTS[tabParam]
+  if (redirected) {
+    router.replace({ params: { tab: redirected } })
+    return
   }
+  const idx = TABS.findIndex(t => t.id === tabParam)
+  if (idx >= 0) currentTab.value = idx
 }
 
 onMounted(syncTabFromRoute)
@@ -99,22 +110,17 @@ function onTabKeydown(e) {
 // Lazy-load tab components
 import { defineAsyncComponent } from 'vue'
 
-const DeviceTab = defineAsyncComponent(() => import('../components/settings/DeviceTab.vue'))
+const BridgeTab = defineAsyncComponent(() => import('../components/settings/BridgeTab.vue'))
 const PreferencesTab = defineAsyncComponent(() => import('../components/settings/PreferencesTab.vue'))
-const LayoutTab = defineAsyncComponent(() => import('../components/settings/LayoutTab.vue'))
+const DisplayTab = defineAsyncComponent(() => import('../components/settings/DisplayTab.vue'))
 const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
-const ShotHistoryTab = defineAsyncComponent(() => import('../components/settings/ShotHistoryTab.vue'))
-const GatewayTab = defineAsyncComponent(() => import('../components/settings/GatewayTab.vue'))
-const ScreensaverTab = defineAsyncComponent(() => import('../components/settings/ScreensaverTab.vue'))
-const ThemesTab = defineAsyncComponent(() => import('../components/settings/ThemesTab.vue'))
 const BeansTab = defineAsyncComponent(() => import('../components/settings/BeansTab.vue'))
 const GrindersTab = defineAsyncComponent(() => import('../components/settings/GrindersTab.vue'))
 const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
 const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
 
 const tabComponents = [
-  DeviceTab, PreferencesTab, LayoutTab, VisualizerTab,
-  ShotHistoryTab, GatewayTab, ScreensaverTab, ThemesTab,
+  BridgeTab, PreferencesTab, DisplayTab, VisualizerTab,
   BeansTab, GrindersTab, AboutTab, AccessibilityTab,
 ]
 </script>

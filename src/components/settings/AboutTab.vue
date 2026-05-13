@@ -1,13 +1,16 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getBuildInfo, checkForSkinUpdates, getSkin } from '../../api/rest.js'
+import { useRouter } from 'vue-router'
+import { getBuildInfo, checkForSkinUpdates, getSkin, getShotsPaginated } from '../../api/rest.js'
 
 const SKIN_ID = 'passione'
 const { t } = useI18n()
 
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
 const buildInfo = ref(null)
+const totalShots = ref(null)
+const router = useRouter()
 
 // Update-check state machine: 'idle' | 'checking' | 'updated' | 'current' | 'error'
 const updateState = ref('idle')
@@ -56,6 +59,12 @@ onMounted(async () => {
     buildInfo.value = await getBuildInfo()
   } catch {
     // Gateway may not support /info yet
+  }
+  try {
+    const result = await getShotsPaginated(1, 0)
+    totalShots.value = result?.total ?? 0
+  } catch {
+    totalShots.value = null
   }
 })
 
@@ -107,6 +116,21 @@ onBeforeUnmount(() => {
           </p>
         </div>
       </template>
+
+      <div class="about-tab__divider" />
+
+      <div class="about-tab__section">
+        <p class="about-tab__label">Shots recorded</p>
+        <button
+          type="button"
+          class="about-tab__shot-count"
+          :aria-label="totalShots != null ? `Browse ${totalShots} recorded shots` : 'Browse shot history'"
+          @click="router.push('/history')"
+        >
+          <span v-if="totalShots != null">{{ totalShots.toLocaleString() }}</span>
+          <span v-else>—</span>
+        </button>
+      </div>
 
       <div class="about-tab__divider" />
 
@@ -220,5 +244,28 @@ onBeforeUnmount(() => {
 .about-tab__update-btn:disabled {
   opacity: 0.6;
   cursor: wait;
+}
+
+.about-tab__shot-count {
+  font-size: var(--font-title);
+  font-weight: 700;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-variant-numeric: tabular-nums;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.about-tab__shot-count:hover {
+  color: var(--color-primary);
+}
+
+.about-tab__shot-count:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 </style>

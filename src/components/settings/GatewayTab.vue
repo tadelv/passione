@@ -148,9 +148,25 @@ onMounted(loadSettings)
         :href="bridgeSettingsUrl"
         target="_blank"
         rel="noopener"
-        class="gateway-tab__link-btn"
+        class="gateway-tab__link"
       >
-        Streamline-Bridge Settings
+        Open Streamline-Bridge configuration
+        <svg
+          class="gateway-tab__link-icon"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+          <polyline points="15 3 21 3 21 9" />
+          <line x1="10" y1="14" x2="21" y2="3" />
+        </svg>
       </a>
     </div>
 
@@ -262,22 +278,30 @@ onMounted(loadSettings)
   padding-top: 8px;
 }
 
-.gateway-tab__link-btn {
+.gateway-tab__link {
   display: inline-flex;
   align-items: center;
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: 1px solid var(--color-primary);
-  background: transparent;
-  color: var(--color-primary);
+  gap: 6px;
+  padding: 8px 4px;
+  color: var(--color-text-secondary);
   font-size: var(--font-md);
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
 }
 
-.gateway-tab__link-btn:active {
+.gateway-tab__link:hover {
+  color: var(--color-text);
+}
+
+.gateway-tab__link:active {
+  opacity: 0.7;
+}
+
+.gateway-tab__link-icon {
+  flex-shrink: 0;
   opacity: 0.7;
 }
 

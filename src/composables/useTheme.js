@@ -169,6 +169,11 @@ export function useTheme() {
     return Object.keys(PRESETS)
   }
 
+  /** Read a preset's palette by name. Returns `null` for unknown names. */
+  function getPreset(name) {
+    return PRESETS[name] ?? null
+  }
+
   // Watch for changes and re-apply to :root
   watch(colors, applyToRoot, { immediate: true, deep: true })
 
@@ -180,6 +185,7 @@ export function useTheme() {
     resetToDefault,
     generateRandomPalette,
     getPresetNames,
+    getPreset,
     applyToRoot,
   }
 }

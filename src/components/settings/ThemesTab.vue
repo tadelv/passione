@@ -8,6 +8,11 @@ const resetConfirm = useConfirmAction()
 
 const presetNames = computed(() => theme?.getPresetNames?.() ?? [])
 
+function presetPreviewColor(name) {
+  const p = theme?.getPreset?.(name)
+  return p?.primary || p?.accent || 'var(--color-border)'
+}
+
 const selectedColorToken = ref('')
 
 // Color categories for the left panel
@@ -104,20 +109,14 @@ function onResetClick() {
         :key="name"
         class="themes-tab__preset-btn"
         :class="{ 'themes-tab__preset-btn--active': settings?.settings?.activeThemeName === name }"
-        :style="{ background: name === 'default' ? '#4e85f4' : undefined }"
         @click="applyPreset(name)"
       >
-        {{ name }}
-      </button>
-      <button class="themes-tab__random-btn" @click="randomize">
-        Random
-      </button>
-      <button
-        class="themes-tab__reset-btn"
-        :class="{ 'themes-tab__reset-btn--armed': resetConfirm.isArmed('reset-theme') }"
-        @click="onResetClick"
-      >
-        {{ resetConfirm.isArmed('reset-theme') ? 'Tap again to confirm' : 'Reset' }}
+        <span
+          class="themes-tab__preset-swatch"
+          :style="{ background: presetPreviewColor(name) }"
+          aria-hidden="true"
+        />
+        <span class="themes-tab__preset-label">{{ name }}</span>
       </button>
     </div>
 
@@ -183,6 +182,20 @@ function onResetClick() {
         Select a color to edit
       </div>
     </div>
+
+    <!-- Footer actions -->
+    <div class="themes-tab__footer">
+      <button class="themes-tab__random-btn" @click="randomize">
+        Surprise me
+      </button>
+      <button
+        class="themes-tab__reset-btn"
+        :class="{ 'themes-tab__reset-btn--armed': resetConfirm.isArmed('reset-theme') }"
+        @click="onResetClick"
+      >
+        {{ resetConfirm.isArmed('reset-theme') ? 'Tap again to confirm' : 'Reset theme' }}
+      </button>
+    </div>
   </div>
   <div v-else class="themes-tab__empty">Theme not available.</div>
 </template>
@@ -201,16 +214,20 @@ function onResetClick() {
 }
 
 .themes-tab__preset-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 22px;
   border: 2px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
-  text-transform: capitalize;
   -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease;
 }
 
 .themes-tab__preset-btn:active {
@@ -221,11 +238,31 @@ function onResetClick() {
   border-color: var(--color-text);
 }
 
+.themes-tab__preset-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.themes-tab__preset-label {
+  text-transform: capitalize;
+}
+
+.themes-tab__footer {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
 .themes-tab__random-btn {
-  padding: 8px 16px;
+  padding: 10px 18px;
   border-radius: 8px;
-  border: none;
-  background: linear-gradient(135deg, #f44336, #ff9800, #ffeb3b, #4caf50, #2196f3, #9c27b0);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--font-md);
   font-weight: 600;

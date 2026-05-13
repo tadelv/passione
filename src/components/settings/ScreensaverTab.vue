@@ -14,33 +14,22 @@ const TYPES = [
 
 <template>
   <div class="ss-tab" v-if="settings">
-    <div class="ss-tab__grid">
-      <!-- Column 1: Type -->
-      <div class="ss-tab__column">
-        <h4 class="ss-tab__section-title">Screensaver</h4>
+    <div class="ss-tab__type-list">
+      <template v-for="t in TYPES" :key="t.value">
+        <button
+          class="ss-tab__type-option"
+          :class="{ 'ss-tab__type-option--active': settings.screensaverType === t.value }"
+          @click="settings.screensaverType = t.value"
+        >
+          <span class="ss-tab__type-name">{{ t.label }}</span>
+          <span class="ss-tab__type-desc">{{ t.desc }}</span>
+        </button>
 
-        <div class="ss-tab__field">
-          <label class="ss-tab__label">Type</label>
-          <div class="ss-tab__type-list">
-            <button
-              v-for="t in TYPES"
-              :key="t.value"
-              class="ss-tab__type-option"
-              :class="{ 'ss-tab__type-option--active': settings.screensaverType === t.value }"
-              @click="settings.screensaverType = t.value"
-            >
-              <span class="ss-tab__type-name">{{ t.label }}</span>
-              <span class="ss-tab__type-desc">{{ t.desc }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Column 2: Flip Clock Options -->
-      <div class="ss-tab__column" v-if="settings.screensaverType === 'flipClock'">
-        <h4 class="ss-tab__section-title">Flip Clock</h4>
-
-        <div class="ss-tab__field">
+        <!-- Inline type-specific config under the selected option -->
+        <div
+          v-if="t.value === 'flipClock' && settings.screensaverType === 'flipClock'"
+          class="ss-tab__type-config"
+        >
           <label class="ss-tab__label">Clock format</label>
           <div class="ss-tab__seg-group" role="radiogroup" aria-label="Clock format">
             <button
@@ -61,7 +50,7 @@ const TYPES = [
             >24h</button>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
   <div v-else class="ss-tab__empty">Settings not available.</div>
@@ -72,32 +61,6 @@ const TYPES = [
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.ss-tab__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
-}
-
-.ss-tab__column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.ss-tab__section-title {
-  font-size: var(--font-body);
-  font-weight: 600;
-  color: var(--color-text);
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.ss-tab__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .ss-tab__label {
@@ -151,6 +114,17 @@ const TYPES = [
 .ss-tab__type-option--active .ss-tab__type-desc {
   color: var(--color-text);
   opacity: 0.8;
+}
+
+.ss-tab__type-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: -2px 0 6px 16px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  border-radius: 0 8px 8px 0;
 }
 
 .ss-tab__seg-group {
