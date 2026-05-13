@@ -147,6 +147,19 @@ const shotDate = computed(() => {
 
 const notes = computed(() => shot.value?.notes ?? '')
 
+// Coffee / grinder display fall back to the resolved entity records. After
+// 7852d5b, linked shots persist coffeeName/Roaster as null — the bean record
+// is the source of truth.
+const coffeeDisplayName = computed(() => shot.value?.coffeeName ?? enrichedBean.value?.name ?? null)
+const coffeeDisplayRoaster = computed(() => shot.value?.coffeeRoaster ?? enrichedBean.value?.roaster ?? null)
+const grinderDisplayModel = computed(() => {
+  const s = shot.value
+  if (s?.grinderModel) return s.grinderModel
+  const g = enrichedGrinder.value
+  if (!g) return null
+  return [g.manufacturer, g.grinder ?? g.name].filter(Boolean).join(' ') || g.model || null
+})
+
 // Rating updates
 async function onRatingChange(val) {
   rating.value = val
@@ -265,19 +278,19 @@ async function uploadToVisualizer() {
           <span class="shot-detail__card-value">{{ shotDate }}</span>
         </div>
 
-        <div v-if="shot.coffeeName || shot.coffeeRoaster" class="shot-detail__card">
+        <div v-if="coffeeDisplayName || coffeeDisplayRoaster" class="shot-detail__card">
           <span class="shot-detail__card-label">Coffee</span>
           <span class="shot-detail__card-value">
-            {{ [shot.coffeeRoaster, shot.coffeeName].filter(Boolean).join(' — ') }}
+            {{ [coffeeDisplayRoaster, coffeeDisplayName].filter(Boolean).join(' — ') }}
             <span v-if="enrichedBean?.country" class="shot-detail__card-detail"> &middot; {{ enrichedBean.country }}</span>
             <span v-if="enrichedBean?.processing" class="shot-detail__card-detail"> &middot; {{ enrichedBean.processing }}</span>
           </span>
         </div>
 
-        <div v-if="shot.grinderModel" class="shot-detail__card">
+        <div v-if="grinderDisplayModel" class="shot-detail__card">
           <span class="shot-detail__card-label">Grinder</span>
           <span class="shot-detail__card-value">
-            {{ shot.grinderModel }}
+            {{ grinderDisplayModel }}
             <template v-if="shot.grinderSetting"> @ {{ shot.grinderSetting }}</template>
             <span v-if="enrichedGrinder?.burrs" class="shot-detail__card-detail"> &middot; {{ enrichedGrinder.burrs }}</span>
           </span>

@@ -8,6 +8,59 @@ import { normalizeShotSlim } from '../composables/useShotNormalize'
 const router = useRouter()
 const toast = inject('toast', null)
 const updateWorkflow = inject('updateWorkflow')
+const beans = inject('beans', null)
+const beansApi = inject('beansApi', null)
+
+// Resolved bean records keyed by beanBatchId. After 7852d5b, linked shots
+// persist coffeeName/Roaster as null in ctx/annotations — the bean record is
+// the source of truth. Resolve on demand so history rows show coffee text.
+const beanByBatchId = ref(new Map())
+const inflightBatchIds = new Set()
+
+async function resolveBeansForShots(shots) {
+  if (!beansApi) return
+  const ids = new Set()
+  for (const s of shots) {
+    const bid = s.beanBatchId
+    if (!bid) continue
+    if (s.coffeeName && s.coffeeRoaster) continue
+    if (beanByBatchId.value.has(bid)) continue
+    if (inflightBatchIds.has(bid)) continue
+    ids.add(bid)
+  }
+  if (!ids.size) return
+  for (const bid of ids) inflightBatchIds.add(bid)
+  await Promise.all([...ids].map(async (bid) => {
+    try {
+      const batch = await beansApi.getBatch(bid)
+      const beanId = batch?.beanId
+      if (!beanId) return
+      let bean = beans?.value?.find?.((b) => b.id === beanId)
+      if (!bean && beansApi.getById) bean = await beansApi.getById(beanId)
+      if (bean) {
+        const next = new Map(beanByBatchId.value)
+        next.set(bid, bean)
+        beanByBatchId.value = next
+      }
+    } catch {
+      // ignore — row stays blank if resolution fails
+    } finally {
+      inflightBatchIds.delete(bid)
+    }
+  }))
+}
+
+function displayCoffeeName(shot) {
+  if (shot.coffeeName) return shot.coffeeName
+  if (shot.beanBatchId) return beanByBatchId.value.get(shot.beanBatchId)?.name ?? null
+  return null
+}
+
+function displayCoffeeRoaster(shot) {
+  if (shot.coffeeRoaster) return shot.coffeeRoaster
+  if (shot.beanBatchId) return beanByBatchId.value.get(shot.beanBatchId)?.roaster ?? null
+  return null
+}
 
 const PAGE_SIZE = 50
 const SEARCH_DEBOUNCE_MS = 300
@@ -75,6 +128,7 @@ async function loadMore(gen = loadGeneration) {
     loadedShots.value = [...loadedShots.value, ...shots]
     loadedCount.value += shots.length
     totalShots.value = result.total
+    resolveBeansForShots(shots)
   } catch {
     // ignore
   } finally {
@@ -139,15 +193,25 @@ async function loadShotWorkflow(shot) {
   try {
     const update = { profile }
 
-    // Restore full workflow context from the shot (coffee, grinder, dose)
+    // Restore full workflow context from the shot (coffee, grinder, dose).
+    // Prefer the entity IDs over text — once the bean/grinder records are
+    // linked, the gateway and consumers read live from the records. Falling
+    // back to text only when no link exists keeps manual-entry shots working.
+    const srcCtx = full?.workflow?.context ?? {}
     const context = {}
-    if (shot.coffeeName) context.coffeeName = shot.coffeeName
-    if (shot.coffeeRoaster) context.coffeeRoaster = shot.coffeeRoaster
-    if (shot.grinderModel) context.grinderModel = shot.grinderModel
-    if (shot.grinderSetting != null) context.grinderSetting = String(shot.grinderSetting)
+    if (srcCtx.beanBatchId) context.beanBatchId = srcCtx.beanBatchId
+    if (srcCtx.grinderId) context.grinderId = srcCtx.grinderId
+    if (!context.beanBatchId) {
+      if (shot.coffeeName) context.coffeeName = shot.coffeeName
+      if (shot.coffeeRoaster) context.coffeeRoaster = shot.coffeeRoaster
+    }
+    if (!context.grinderId) {
+      if (shot.grinderModel) context.grinderModel = shot.grinderModel
+      if (shot.grinderSetting != null) context.grinderSetting = String(shot.grinderSetting)
+    }
     if (shot.doseIn) context.targetDoseWeight = shot.doseIn
     if (shot.doseOut) context.targetYield = shot.doseOut
-    const srcExtras = full?.workflow?.context?.extras ?? {}
+    const srcExtras = srcCtx.extras ?? {}
     const extras = {}
     if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
     if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
@@ -268,8 +332,8 @@ onMounted(() => {
           <span class="shot-history__profile">
             {{ shot.profileName || shot.profile?.title || 'Unknown Profile' }}
           </span>
-          <span v-if="shot.coffeeName || shot.coffeeRoaster" class="shot-history__coffee">
-            {{ [shot.coffeeRoaster, shot.coffeeName].filter(Boolean).join(' — ') }}
+          <span v-if="displayCoffeeName(shot) || displayCoffeeRoaster(shot)" class="shot-history__coffee">
+            {{ [displayCoffeeRoaster(shot), displayCoffeeName(shot)].filter(Boolean).join(' — ') }}
           </span>
           <span class="shot-history__meta">
             {{ formatDoseYield(shot) }}
