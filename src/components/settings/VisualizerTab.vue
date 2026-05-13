@@ -1,6 +1,7 @@
 <script setup>
 import { ref, inject, onMounted, watch } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import SettingsToggle from './SettingsToggle.vue'
 import {
   callPluginEndpoint,
   getPluginSettings,
@@ -194,14 +195,11 @@ watch(
 
         <div class="vis-tab__field">
           <label class="vis-tab__label">Auto-upload shots</label>
-          <button
-            class="vis-tab__toggle"
-            :class="{ 'vis-tab__toggle--on': settings.visualizerAutoUpload }"
-            @click="settings.visualizerAutoUpload = !settings.visualizerAutoUpload"
-          >
-            {{ settings.visualizerAutoUpload ? 'ON' : 'OFF' }}
-          </button>
-          <span class="vis-tab__hint">Plugin uploads shots automatically when enabled</span>
+          <SettingsToggle
+            v-model="settings.visualizerAutoUpload"
+            aria-label="Auto-upload shots"
+          />
+          <span class="vis-tab__hint">Required for unattended uploads after each shot</span>
         </div>
 
         <div class="vis-tab__field">
@@ -219,13 +217,10 @@ watch(
 
         <div class="vis-tab__field">
           <label class="vis-tab__label">Extended metadata</label>
-          <button
-            class="vis-tab__toggle"
-            :class="{ 'vis-tab__toggle--on': settings.visualizerExtendedMetadata }"
-            @click="settings.visualizerExtendedMetadata = !settings.visualizerExtendedMetadata"
-          >
-            {{ settings.visualizerExtendedMetadata ? 'ON' : 'OFF' }}
-          </button>
+          <SettingsToggle
+            v-model="settings.visualizerExtendedMetadata"
+            aria-label="Include extended metadata in uploads"
+          />
           <span class="vis-tab__hint">Include bean info, grinder, etc.</span>
         </div>
       </div>
@@ -236,14 +231,11 @@ watch(
 
         <div class="vis-tab__field">
           <label class="vis-tab__label">Open shot review</label>
-          <button
-            class="vis-tab__toggle"
-            :class="{ 'vis-tab__toggle--on': settings.visualizerShowAfterShot }"
+          <SettingsToggle
+            v-model="settings.visualizerShowAfterShot"
             :disabled="!settings.visualizerUsername"
-            @click="settings.visualizerShowAfterShot = !settings.visualizerShowAfterShot"
-          >
-            {{ settings.visualizerShowAfterShot ? 'ON' : 'OFF' }}
-          </button>
+            aria-label="Open shot review after each shot"
+          />
           <span class="vis-tab__hint">
             Opens the post-shot review page automatically when a shot ends.
             Requires a Visualizer username — otherwise the app returns home.
@@ -330,26 +322,6 @@ watch(
 .vis-tab__input::placeholder {
   color: var(--color-text-secondary);
   opacity: 0.5;
-}
-
-.vis-tab__toggle {
-  width: 80px;
-  height: 40px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.vis-tab__toggle--on {
-  background: var(--color-success);
-  color: var(--color-text);
-  border-color: var(--color-success);
 }
 
 .vis-tab__test-btn,

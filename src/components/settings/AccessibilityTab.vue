@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, inject } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import SettingsToggle from './SettingsToggle.vue'
 
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
@@ -61,30 +62,20 @@ function testTickSound() {
         </p>
 
         <div class="a11y-tab__field">
-          <label class="a11y-tab__label">Enable accessibility</label>
-          <button
-            class="a11y-tab__toggle"
-            :class="{ 'a11y-tab__toggle--on': settings.accessibilityEnabled }"
-            role="switch"
-            :aria-checked="settings.accessibilityEnabled"
-            @click="settings.accessibilityEnabled = !settings.accessibilityEnabled"
-          >
-            {{ settings.accessibilityEnabled ? 'ON' : 'OFF' }}
-          </button>
+          <label class="a11y-tab__label">Enable audio feedback</label>
+          <SettingsToggle
+            v-model="settings.accessibilityEnabled"
+            aria-label="Enable audio feedback"
+          />
         </div>
 
         <div class="a11y-tab__field" :class="{ 'a11y-tab__field--disabled': isDisabled }">
           <label class="a11y-tab__label">Voice announcements</label>
-          <button
-            class="a11y-tab__toggle"
-            :class="{ 'a11y-tab__toggle--on': settings.voiceAnnouncements }"
-            role="switch"
-            :aria-checked="settings.voiceAnnouncements"
+          <SettingsToggle
+            v-model="settings.voiceAnnouncements"
             :disabled="isDisabled"
-            @click="settings.voiceAnnouncements = !settings.voiceAnnouncements"
-          >
-            {{ settings.voiceAnnouncements ? 'ON' : 'OFF' }}
-          </button>
+            aria-label="Voice announcements"
+          />
           <span class="a11y-tab__hint">Spoken updates using Web Speech API</span>
           <span class="a11y-tab__hint a11y-tab__hint--warn" v-if="!speechSupported">
             Speech synthesis not available in this browser
@@ -93,16 +84,11 @@ function testTickSound() {
 
         <div class="a11y-tab__field" :class="{ 'a11y-tab__field--disabled': isDisabled }">
           <label class="a11y-tab__label">Frame tick sounds</label>
-          <button
-            class="a11y-tab__toggle"
-            :class="{ 'a11y-tab__toggle--on': settings.frameTickSounds }"
-            role="switch"
-            :aria-checked="settings.frameTickSounds"
+          <SettingsToggle
+            v-model="settings.frameTickSounds"
             :disabled="isDisabled"
-            @click="settings.frameTickSounds = !settings.frameTickSounds"
-          >
-            {{ settings.frameTickSounds ? 'ON' : 'OFF' }}
-          </button>
+            aria-label="Frame tick sounds"
+          />
           <span class="a11y-tab__hint">Play a tick when extraction frames change</span>
         </div>
       </div>
@@ -246,30 +232,6 @@ function testTickSound() {
 .a11y-tab__hint--warn {
   color: var(--color-warning, #e6a700);
   opacity: 1;
-}
-
-.a11y-tab__toggle {
-  width: 80px;
-  height: 40px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.a11y-tab__toggle--on {
-  background: var(--color-success);
-  color: var(--color-text);
-  border-color: var(--color-success);
-}
-
-.a11y-tab__toggle:disabled {
-  cursor: default;
 }
 
 .a11y-tab__toggle-group {

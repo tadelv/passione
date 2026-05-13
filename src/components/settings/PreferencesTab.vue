@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import SettingsToggle from './SettingsToggle.vue'
 import {
   updateWaterLevelThreshold,
   getPresenceSchedules,
@@ -337,14 +338,12 @@ onUnmounted(() => {
                     </option>
                   </select>
                 </div>
-                <button
-                  class="pref__toggle-switch"
-                  :class="{ 'pref__toggle-switch--on': schedule.enabled }"
-                  @click.stop="toggleEnabled(schedule.id)"
+                <SettingsToggle
+                  :model-value="!!schedule.enabled"
                   :aria-label="schedule.enabled ? 'Disable schedule' : 'Enable schedule'"
-                >
-                  <span class="pref__toggle-knob" />
-                </button>
+                  @update:model-value="() => toggleEnabled(schedule.id)"
+                  @click.stop
+                />
               </div>
 
               <div class="pref__day-pills">
@@ -415,46 +414,34 @@ onUnmounted(() => {
             <div class="pref__label">Linger on shot graph</div>
             <div class="pref__hint">Stay on espresso page after shot ends</div>
           </div>
-          <button
-            class="pref__toggle-switch"
-            :class="{ 'pref__toggle-switch--on': settings.lingerOnEspressoPage }"
-            @click="settings.lingerOnEspressoPage = !settings.lingerOnEspressoPage"
+          <SettingsToggle
+            v-model="settings.lingerOnEspressoPage"
             :aria-label="settings.lingerOnEspressoPage ? 'Disable linger' : 'Enable linger'"
-          >
-            <span class="pref__toggle-knob" />
-          </button>
+          />
         </div>
 
         <div class="pref__sleep-row">
           <div>
             <div class="pref__label">Show grinder RPM</div>
-            <div class="pref__hint">Add an RPM field to the recipe editor</div>
+            <div class="pref__hint">Track grinder RPM on each recipe and shot</div>
           </div>
-          <button
-            class="pref__toggle-switch"
-            :class="{ 'pref__toggle-switch--on': settings.showGrinderRpm }"
-            @click="settings.showGrinderRpm = !settings.showGrinderRpm"
+          <SettingsToggle
+            v-model="settings.showGrinderRpm"
             :aria-label="settings.showGrinderRpm ? 'Hide grinder RPM' : 'Show grinder RPM'"
             data-testid="toggle-show-grinder-rpm"
-          >
-            <span class="pref__toggle-knob" />
-          </button>
+          />
         </div>
 
         <div class="pref__sleep-row">
           <div>
             <div class="pref__label">Show basket data</div>
-            <div class="pref__hint">Add basket size + type fields to the recipe editor</div>
+            <div class="pref__hint">Track basket size and type on each recipe and shot</div>
           </div>
-          <button
-            class="pref__toggle-switch"
-            :class="{ 'pref__toggle-switch--on': settings.showBasketData }"
-            @click="settings.showBasketData = !settings.showBasketData"
+          <SettingsToggle
+            v-model="settings.showBasketData"
             :aria-label="settings.showBasketData ? 'Hide basket data' : 'Show basket data'"
             data-testid="toggle-show-basket-data"
-          >
-            <span class="pref__toggle-knob" />
-          </button>
+          />
         </div>
 
       </div>
@@ -610,43 +597,6 @@ onUnmounted(() => {
   font-size: var(--font-sm);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}
-
-/* ---- Toggle switch ---- */
-
-.pref__toggle-switch {
-  width: 52px;
-  height: 30px;
-  border-radius: 15px;
-  border: none;
-  background: var(--color-border);
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  flex-shrink: 0;
-  -webkit-tap-highlight-color: transparent;
-  padding: 0;
-}
-
-.pref__toggle-switch--on {
-  background: var(--color-success);
-}
-
-.pref__toggle-knob {
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #fff;
-  transform: translateY(-50%);
-  transition: left 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.pref__toggle-switch--on .pref__toggle-knob {
-  left: 25px;
 }
 
 /* ---- Day pills ---- */

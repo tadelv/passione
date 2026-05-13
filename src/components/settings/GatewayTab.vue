@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
+import SettingsToggle from './SettingsToggle.vue'
 import { getReaSettings, updateReaSettings } from '../../api/rest.js'
 
 const reaSettings = ref(null)
@@ -40,10 +41,10 @@ onMounted(loadSettings)
 
 <template>
   <div class="gateway-tab">
-    <div v-if="loading" class="gateway-tab__loading">Loading gateway settings...</div>
+    <div v-if="loading" class="gateway-tab__loading">Loading Bridge settings...</div>
 
     <div v-else-if="!reaSettings" class="gateway-tab__empty">
-      Could not load gateway settings.
+      Could not load Bridge settings.
       <button class="gateway-tab__retry-btn" @click="loadSettings">Retry</button>
     </div>
 
@@ -53,7 +54,7 @@ onMounted(loadSettings)
         <h4 class="gateway-tab__section-title">General</h4>
 
         <div class="gateway-tab__field">
-          <label class="gateway-tab__label">Gateway mode</label>
+          <label class="gateway-tab__label">Bridge mode</label>
           <span class="gateway-tab__value">
             {{ reaSettings.gatewayMode ?? reaSettings.mode ?? 'N/A' }}
           </span>
@@ -131,14 +132,12 @@ onMounted(loadSettings)
         <h4 class="gateway-tab__section-title">Display</h4>
 
         <div class="gateway-tab__field">
-          <label class="gateway-tab__label">Low battery brightness limit</label>
-          <button
-            class="gateway-tab__toggle"
-            :class="{ 'gateway-tab__toggle--on': reaSettings.lowBatteryBrightnessLimit }"
-            @click="saveField('lowBatteryBrightnessLimit', !reaSettings.lowBatteryBrightnessLimit)"
-          >
-            {{ reaSettings.lowBatteryBrightnessLimit ? 'ON' : 'OFF' }}
-          </button>
+          <label class="gateway-tab__label">Dim screen on low battery</label>
+          <SettingsToggle
+            :model-value="!!reaSettings.lowBatteryBrightnessLimit"
+            aria-label="Dim screen on low battery"
+            @update:model-value="v => saveField('lowBatteryBrightnessLimit', v)"
+          />
           <span class="gateway-tab__hint">Cap brightness at 20% when battery drops below 30%</span>
         </div>
       </div>
@@ -251,26 +250,6 @@ onMounted(loadSettings)
   font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
-}
-
-.gateway-tab__toggle {
-  width: 80px;
-  height: 40px;
-  border-radius: 20px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.gateway-tab__toggle--on {
-  background: var(--color-success);
-  color: var(--color-text);
-  border-color: var(--color-success);
 }
 
 .gateway-tab__hint {
