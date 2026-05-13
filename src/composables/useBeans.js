@@ -22,6 +22,7 @@ import {
   deleteBeanBatch as destroyBeanBatch,
 } from '../api/rest'
 import { useDataRefresh } from './useDataRefresh'
+import { bootReady } from './useBootReady'
 
 let _instance = null
 
@@ -246,7 +247,13 @@ export function useBeans() {
     return active[0] ?? null
   }
 
-  onMounted(refresh)
+  // Defer the initial refresh until the machine WS is up. Boot-quiet —
+  // beans aren't user-blocking on the idle screen and starving BLE during
+  // pairing on the Teclast was costing us machine connections.
+  onMounted(async () => {
+    await bootReady()
+    refresh()
+  })
 
   // Subscribe to global resume tick: silent refresh + invalidate batch cache.
   // Clear batchCache synchronously before awaiting refresh so that any

@@ -9,6 +9,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
+import { bootReady } from './useBootReady'
 
 export function useDisplay() {
   const brightness = ref(100)                    // 0-100 actual applied brightness
@@ -71,7 +72,12 @@ export function useDisplay() {
     isConnected.value = false
   }
 
-  onMounted(connect)
+  // Non-critical — defer until after machine WS first frame (see
+  // useBootReady) so the cold-start handshake burst doesn't starve BLE.
+  onMounted(async () => {
+    await bootReady()
+    connect()
+  })
   onUnmounted(disconnect)
 
   return {

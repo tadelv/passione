@@ -8,7 +8,8 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
-import { setMachineState, getMachineState } from '../api/rest'
+import { setMachineState } from '../api/rest'
+import { setBootReadyTrigger } from './useBootReady'
 
 // States where the machine is actively performing an operation
 const OPERATION_STATES = new Set(['espresso', 'steam', 'hotWater', 'flush', 'descaling', 'cleaning', 'calibration', 'selfTest', 'airPurge', 'fwUpgrade'])
@@ -109,7 +110,18 @@ export function useMachine() {
 
   let ws = null
 
+  // Resolves on the first snapshot from the gateway. Boot-quiet consumers
+  // (last-shot card, presence sync, update check) await this so they don't
+  // pile onto the cold-start HTTP burst that competes with BLE on Teclast.
+  let _firstFrameResolve = null
+  const firstFrame = new Promise((resolve) => { _firstFrameResolve = resolve })
+  setBootReadyTrigger(firstFrame)
+
   function onMessage(data) {
+    if (_firstFrameResolve) {
+      _firstFrameResolve(data)
+      _firstFrameResolve = null
+    }
     snapshot.value = data
     timestamp.value = data.timestamp ?? null
 
@@ -198,9 +210,11 @@ export function useMachine() {
   // ---- Connection management ------------------------------------------------
 
   function connect() {
-    // Fetch current state via REST so the UI reflects the machine's state
-    // immediately, without waiting for the first WebSocket frame.
-    getMachineState().then(onMessage).catch(() => {})
+    // The first WebSocket frame arrives within ~100 ms and carries the same
+    // payload as `getMachineState()`, so the parallel REST GET that used to
+    // sit here was just doubling the cold-start request count. Removed —
+    // consumers that need machine state before the first frame can `await
+    // firstFrame` instead.
 
     ws = new ReconnectingWebSocket(
       `${WS_URL}/ws/v1/machine/snapshot`,
@@ -244,6 +258,7 @@ export function useMachine() {
   return {
     // connection
     isConnected,
+    firstFrame,
     // state
     state,
     substate,

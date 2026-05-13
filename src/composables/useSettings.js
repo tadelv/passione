@@ -223,10 +223,21 @@ export function useSettings() {
 
   /**
    * Load all setting groups from the server.
+   *
+   * Each group is a separate KV-store key. Fetching them sequentially
+   * (rather than fanning out 13 parallel requests) keeps the cold-start
+   * HTTP burst short — on the Teclast host the BLE radio shares hardware
+   * with Wi-Fi, and a parallel burst here can starve the GATT timing
+   * mid-pair with the espresso machine.
    */
   async function load() {
-    const promises = Object.keys(GROUPS).map(groupKey => _loadKey(groupKey))
-    await Promise.allSettled(promises)
+    for (const groupKey of Object.keys(GROUPS)) {
+      try {
+        await _loadKey(groupKey)
+      } catch {
+        // Per-group failure is non-fatal — settings stay at defaults.
+      }
+    }
     _migrateSteamFlow()
     _armWatchers()
     loaded.value = true

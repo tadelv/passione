@@ -10,6 +10,7 @@
 
 import { watch, onMounted, onUnmounted } from 'vue'
 import { sendHeartbeat, getPresenceSettings, updatePresenceSettings } from '../api/rest.js'
+import { bootReady } from './useBootReady'
 
 export function useAutoSleep(machine, settings, display) {
   let _activityCleanup = null
@@ -69,6 +70,10 @@ export function useAutoSleep(machine, settings, display) {
   )
 
   onMounted(async () => {
+    // Defer until machine WS is up — presence sync is not user-blocking and
+    // its GET + heartbeat POST + PUT chain piles onto the cold-start burst.
+    await bootReady()
+
     // Load server's current presence settings as source of truth
     try {
       const serverSettings = await getPresenceSettings()

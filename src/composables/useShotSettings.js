@@ -8,6 +8,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
+import { bootReady } from './useBootReady'
 
 export function useShotSettings() {
   const isConnected = ref(false)
@@ -51,7 +52,11 @@ export function useShotSettings() {
     isConnected.value = false
   }
 
-  onMounted(connect)
+  // Non-critical — defer past machine WS first frame (see useBootReady).
+  onMounted(async () => {
+    await bootReady()
+    connect()
+  })
   onUnmounted(disconnect)
 
   return {

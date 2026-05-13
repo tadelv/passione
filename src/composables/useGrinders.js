@@ -17,6 +17,7 @@ import {
   deleteGrinder as removeGrinder,
 } from '../api/rest'
 import { useDataRefresh } from './useDataRefresh'
+import { bootReady } from './useBootReady'
 
 let _instance = null
 
@@ -91,7 +92,11 @@ export function useGrinders() {
     entityCache.delete(id)
   }
 
-  onMounted(() => refresh())
+  // Defer until machine WS is up — see useBeans.js for the BLE-on-Teclast rationale.
+  onMounted(async () => {
+    await bootReady()
+    refresh()
+  })
 
   const { refreshTick } = useDataRefresh()
   watch(refreshTick, async () => {

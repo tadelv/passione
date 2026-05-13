@@ -8,6 +8,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
+import { bootReady } from './useBootReady'
 
 export function useWaterLevels() {
   const isConnected = ref(false)
@@ -38,7 +39,12 @@ export function useWaterLevels() {
     isConnected.value = false
   }
 
-  onMounted(connect)
+  // Non-critical — open after machine WS first frame so the cold-start
+  // burst doesn't starve BLE on Teclast.
+  onMounted(async () => {
+    await bootReady()
+    connect()
+  })
   onUnmounted(disconnect)
 
   return {
