@@ -10,8 +10,10 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
-import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
+import { setMachineState } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { useShotCache } from '../composables/useShotCache'
+import { bootReady } from '../composables/useBootReady'
 import { espressoIcon, steamIcon, hotWaterIcon, flushIcon } from '../assets/icons/operations.js'
 
 const HistoryShotGraph = defineAsyncComponent(() => import('./HistoryShotGraph.vue'))
@@ -63,68 +65,51 @@ const updateWorkflow = inject('updateWorkflow', null)
 const toast = inject('toast', null)
 
 // ---- Last Shot ----
-const lastShot = ref(null)
+//
+// The widget reads from useShotCache.latest (a shared shallowRef holding the
+// most-recent shot record). The cache fetches /shots/latest + /shots/<id>
+// once per session, caches the result, and broadcasts patches when a shot
+// mutation lands on the current id. Previously this widget had its own
+// fetch chain + 5-retry × 2 s loop + an `immediate: true` watcher that
+// double-fired the request on mount — together those were the worst-case
+// cold-start offender for BLE on Teclast.
+const shotCache = useShotCache()
+const lastShot = shotCache.latest
 const machineState = inject('machineState', ref(''))
 let lastShotRefreshTimer = null
-let lastShotRetryTimer = null
-let lastShotRetryCount = 0
-const LAST_SHOT_MAX_RETRIES = 5
-const LAST_SHOT_RETRY_DELAY = 2000
 
-function scheduleLastShotRetry() {
-  if (lastShotRetryCount >= LAST_SHOT_MAX_RETRIES) return
-  lastShotRetryCount++
-  clearTimeout(lastShotRetryTimer)
-  lastShotRetryTimer = setTimeout(fetchLastShot, LAST_SHOT_RETRY_DELAY)
-}
-
-async function fetchLastShot() {
-  try {
-    const summary = await getLatestShot()
-    if (summary?.id) {
-      lastShot.value = await getShot(summary.id)
-      lastShotRetryCount = 0
-    } else {
-      // Empty response on cold-start often means the gateway hasn't indexed
-      // shots yet. Retry like we do on error, otherwise the widget stays
-      // blank until the next espresso.
-      scheduleLastShotRetry()
-    }
-  } catch {
-    scheduleLastShotRetry()
-  }
-}
-
-onMounted(() => {
-  if (props.type === 'lastShot') {
-    fetchLastShot()
-  }
+// Defer the initial fetch until the machine WS is up — see useBootReady.
+onMounted(async () => {
+  if (props.type !== 'lastShot') return
+  await bootReady()
+  shotCache.ensureLatest()
 })
 
-// Re-fetch last shot when espresso ends — delay to allow ReaPrime to save it
+// After an espresso ends, give ReaPrime ~3 s to commit the record then
+// pick up the newly-saved shot through the cache (refreshLatest invalidates
+// only the latest entry — slim/ids stay intact).
 watch(machineState, (newState, oldState) => {
   if (props.type !== 'lastShot') return
   if (oldState === 'espresso' && newState === 'idle') {
     clearTimeout(lastShotRefreshTimer)
-    lastShotRefreshTimer = setTimeout(fetchLastShot, 3000)
+    lastShotRefreshTimer = setTimeout(() => {
+      shotCache.refreshLatest()
+    }, 3000)
   }
 })
 
-// Retry last shot fetch when machine connects (covers cold-start race).
-// immediate: true handles the case where machineConnected is already true on mount.
-// Reset the retry counter on a connect edge so a previously-exhausted budget
-// doesn't keep the widget blank after the user wakes the machine.
-watch(machineConnected, (connected) => {
+// Re-attempt only on the connect *edge*, not on mount (the bootReady gate
+// above handles initial fetch). Covers the case where the machine drops and
+// reconnects mid-session.
+watch(machineConnected, (connected, prevConnected) => {
   if (props.type !== 'lastShot') return
-  if (connected && !lastShot.value) {
-    lastShotRetryCount = 0
-    fetchLastShot()
+  if (connected && !prevConnected && !lastShot.value) {
+    shotCache.refreshLatest()
   }
-}, { immediate: true })
+})
 
 onUnmounted(() => {
   clearTimeout(lastShotRefreshTimer)
-  clearTimeout(lastShotRetryTimer)
 })
 
 const lastShotInfo = computed(() => {
@@ -256,7 +241,16 @@ async function repeatLastShot() {
         <button class="layout-widget__nav-btn" @click="router.push('/history')">{{ t('idle.history') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/catalog')">{{ t('idle.catalog') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/settings')">{{ t('idle.settings') }}</button>
-        <button class="layout-widget__nav-btn layout-widget__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">{{ t('idle.sleep') }}</button>
+      </div>
+    </template>
+
+    <!-- Sleep button (separate widget so it doesn't unbalance the nav row) -->
+    <template v-else-if="type === 'sleepButton'">
+      <div class="layout-widget__sleep">
+        <button
+          class="layout-widget__nav-btn layout-widget__nav-btn--sleep"
+          @click="setMachineState('sleeping').catch(() => {})"
+        >{{ t('idle.sleep') }}</button>
       </div>
     </template>
 
@@ -548,6 +542,13 @@ async function repeatLastShot() {
 .layout-widget__nav-btn--sleep {
   border-color: var(--color-text-secondary);
   color: var(--color-text-secondary);
+}
+
+/* ---- Sleep widget (own zone) ---- */
+.layout-widget__sleep {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 /* ---- Mobile: stack last shot card, wrap nav buttons ---- */

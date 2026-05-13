@@ -46,6 +46,7 @@ const WIDGET_TYPES = [
   'lastShot',
   'workflowCombos',
   'navButtons',
+  'sleepButton',
   'scaleInfo',
 ]
 
@@ -55,6 +56,7 @@ const WIDGET_LABELS = {
   lastShot: 'Last Shot',
   workflowCombos: 'Recipes',
   navButtons: 'Navigation Buttons',
+  sleepButton: 'Sleep Button',
   scaleInfo: 'Scale Info',
 }
 
@@ -65,6 +67,7 @@ const WIDGET_ZONE_RULES = {
   lastShot: 'center',
   workflowCombos: 'center',
   navButtons: 'edge',
+  sleepButton: 'edge',
   scaleInfo: 'edge',
 }
 
@@ -78,7 +81,7 @@ const DEFAULT_LAYOUT = {
     centerLeft:  { widgets: ['actionButtons', 'shotPlan'] },
     centerRight: { widgets: ['workflowCombos', 'lastShot'] },
     bottomLeft:  { widgets: ['navButtons'] },
-    bottomRight: { widgets: [] },
+    bottomRight: { widgets: ['sleepButton'] },
   },
 }
 
@@ -114,6 +117,27 @@ export function useLayout() {
         .map(w => (w === 'workflowPresets' ? 'workflowCombos' : w))
         .filter(w => WIDGET_TYPES.includes(w))
       validated.zones[zoneName] = { widgets }
+    }
+
+    // Migration: `sleepButton` was extracted from the navButtons widget so
+    // the home screen's 4-button row stays evenly split. If a saved layout
+    // pre-dates the split, place the new sleep button in a sensible empty
+    // slot so the user can still send the machine to sleep from the home
+    // screen. Skip if the user has already (re)placed it somewhere.
+    const placed = ZONE_NAMES.some(z => validated.zones[z].widgets.includes('sleepButton'))
+    if (!placed) {
+      // Prefer the corner opposite the navButtons widget; fall back to any
+      // empty edge zone.
+      const navZone = ZONE_NAMES.find(z => validated.zones[z].widgets.includes('navButtons'))
+      const candidates = navZone === 'bottomLeft'
+        ? ['bottomRight', 'topRight', 'topLeft']
+        : ['bottomRight', 'bottomLeft', 'topRight', 'topLeft']
+      for (const z of candidates) {
+        if (validated.zones[z].widgets.length === 0) {
+          validated.zones[z].widgets.push('sleepButton')
+          break
+        }
+      }
     }
 
     return validated
