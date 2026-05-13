@@ -12,7 +12,7 @@ const TABS = [
   { id: 'layout', label: 'Layout' },
   { id: 'visualizer', label: 'Visualizer' },
   { id: 'history', label: 'History' },
-  { id: 'gateway', label: 'Gateway' },
+  { id: 'gateway', label: 'Bridge' },
   { id: 'screensaver', label: 'Screensaver' },
   { id: 'themes', label: 'Themes' },
   { id: 'beans', label: 'Beans' },
@@ -35,12 +35,26 @@ function syncTabFromRoute() {
 onMounted(syncTabFromRoute)
 watch(() => route.params.tab, syncTabFromRoute)
 
-function selectTab(index) {
+function selectTab(index, opts = {}) {
   currentTab.value = index
   router.replace({ params: { tab: TABS[index].id } })
+  if (opts.focus) {
+    const bar = tabBarRef.value
+    const btn = bar?.children?.[index]
+    btn?.focus?.()
+  }
 }
 
 const tabBarRef = ref(null)
+const overflowStart = ref(false)
+const overflowEnd = ref(false)
+
+function updateOverflow() {
+  const bar = tabBarRef.value
+  if (!bar) return
+  overflowStart.value = bar.scrollLeft > 1
+  overflowEnd.value = bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 1
+}
 
 // Scroll the active tab into view
 watch(currentTab, () => {
@@ -50,7 +64,37 @@ watch(currentTab, () => {
   if (btn) {
     btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }
+  // scrollIntoView is async — recompute on next frame
+  requestAnimationFrame(updateOverflow)
 })
+
+onMounted(() => {
+  updateOverflow()
+})
+
+// Arrow-key navigation per WAI-ARIA tablist pattern. Wraps at ends.
+function onTabKeydown(e) {
+  const last = TABS.length - 1
+  let next = currentTab.value
+  switch (e.key) {
+    case 'ArrowRight':
+      next = currentTab.value >= last ? 0 : currentTab.value + 1
+      break
+    case 'ArrowLeft':
+      next = currentTab.value <= 0 ? last : currentTab.value - 1
+      break
+    case 'Home':
+      next = 0
+      break
+    case 'End':
+      next = last
+      break
+    default:
+      return
+  }
+  e.preventDefault()
+  selectTab(next, { focus: true })
+}
 
 // Lazy-load tab components
 import { defineAsyncComponent } from 'vue'
@@ -78,21 +122,36 @@ const tabComponents = [
 <template>
   <div class="settings-page">
     <!-- Tab bar -->
-    <div class="settings-page__tab-bar" ref="tabBarRef" role="tablist" aria-label="Settings tabs">
-      <button
-        v-for="(tab, i) in TABS"
-        :key="tab.id"
-        class="settings-page__tab"
-        :class="{ 'settings-page__tab--active': currentTab === i }"
-        role="tab"
-        :id="`settings-tab-${tab.id}`"
-        :aria-selected="currentTab === i"
-        :aria-controls="`settings-panel-${tab.id}`"
-        :tabindex="currentTab === i ? 0 : -1"
-        @click="selectTab(i)"
+    <div
+      class="settings-page__tab-bar-wrap"
+      :class="{
+        'settings-page__tab-bar-wrap--overflow-start': overflowStart,
+        'settings-page__tab-bar-wrap--overflow-end': overflowEnd,
+      }"
+    >
+      <div
+        class="settings-page__tab-bar"
+        ref="tabBarRef"
+        role="tablist"
+        aria-label="Settings tabs"
+        @keydown="onTabKeydown"
+        @scroll.passive="updateOverflow"
       >
-        {{ tab.label }}
-      </button>
+        <button
+          v-for="(tab, i) in TABS"
+          :key="tab.id"
+          class="settings-page__tab"
+          :class="{ 'settings-page__tab--active': currentTab === i }"
+          role="tab"
+          :id="`settings-tab-${tab.id}`"
+          :aria-selected="currentTab === i"
+          :aria-controls="`settings-panel-${tab.id}`"
+          :tabindex="currentTab === i ? 0 : -1"
+          @click="selectTab(i)"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
     </div>
 
     <!-- Tab content -->
@@ -119,12 +178,47 @@ const tabComponents = [
   background: var(--color-background);
 }
 
+.settings-page__tab-bar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.settings-page__tab-bar-wrap::before,
+.settings-page__tab-bar-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 1;
+}
+
+.settings-page__tab-bar-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-background), transparent);
+}
+
+.settings-page__tab-bar-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-background), transparent);
+}
+
+.settings-page__tab-bar-wrap--overflow-start::before {
+  opacity: 1;
+}
+
+.settings-page__tab-bar-wrap--overflow-end::after {
+  opacity: 1;
+}
+
 .settings-page__tab-bar {
   display: flex;
   gap: 4px;
   padding: 8px 16px;
   overflow-x: auto;
-  flex-shrink: 0;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
