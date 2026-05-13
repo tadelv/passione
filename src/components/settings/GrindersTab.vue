@@ -19,10 +19,21 @@ const creating = ref(false)
 const BURR_TYPES = ['conical', 'flat', 'hybrid']
 const SETTING_TYPES = ['numeric', 'preset']
 
+// Build the row summary from burrSize + burrType, falling back to the
+// deprecated free-text `burrs` field for legacy records that pre-date the
+// split (T19). New grinders never write `burrs`.
+function grinderBurrSummary(g) {
+  const size = g?.burrSize
+  const type = g?.burrType
+  if (size && type) return `${size}mm ${type}`
+  if (size) return `${size}mm`
+  if (type) return type
+  return g?.burrs || null
+}
+
 function emptyGrinder() {
   return {
     model: '',
-    burrs: '',
     burrSize: null,
     burrType: 'flat',
     settingType: 'numeric',
@@ -183,15 +194,6 @@ async function toggleArchive(grinder) {
         />
       </div>
 
-      <div class="grinders-tab__field">
-        <label class="grinders-tab__label">Burrs</label>
-        <input
-          v-model="newGrinder.burrs"
-          class="grinders-tab__input"
-          placeholder="e.g. 63mm Mazzer"
-        />
-      </div>
-
       <div class="grinders-tab__row">
         <div class="grinders-tab__field">
           <label class="grinders-tab__label">Burr size (mm)</label>
@@ -319,7 +321,7 @@ async function toggleArchive(grinder) {
         <div class="grinders-tab__item-row" @click="toggleExpand(grinder.id)">
           <div class="grinders-tab__item-info">
             <span class="grinders-tab__item-model">{{ grinder.model }}</span>
-            <span v-if="grinder.burrs" class="grinders-tab__item-burrs">{{ grinder.burrs }}</span>
+            <span v-if="grinderBurrSummary(grinder)" class="grinders-tab__item-burrs">{{ grinderBurrSummary(grinder) }}</span>
           </div>
           <span class="grinders-tab__item-chevron">{{ expandedId === grinder.id ? '\u25B2' : '\u25BC' }}</span>
         </div>
@@ -329,11 +331,6 @@ async function toggleArchive(grinder) {
           <div class="grinders-tab__field">
             <label class="grinders-tab__label">Model *</label>
             <input v-model="editGrinder.model" class="grinders-tab__input" />
-          </div>
-
-          <div class="grinders-tab__field">
-            <label class="grinders-tab__label">Burrs</label>
-            <input v-model="editGrinder.burrs" class="grinders-tab__input" />
           </div>
 
           <div class="grinders-tab__row">
@@ -352,6 +349,14 @@ async function toggleArchive(grinder) {
                 <option v-for="t in BURR_TYPES" :key="t" :value="t">{{ t }}</option>
               </select>
             </div>
+          </div>
+
+          <div v-if="editGrinder.burrs" class="grinders-tab__field">
+            <label class="grinders-tab__label">Legacy burr description</label>
+            <p class="grinders-tab__hint">
+              "{{ editGrinder.burrs }}" — kept for read-only reference.
+              Burr size and type above are the source of truth going forward.
+            </p>
           </div>
 
           <div class="grinders-tab__field">

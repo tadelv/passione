@@ -296,42 +296,65 @@ function onDeleteBatch(beanId, batch) {
       </div>
     </div>
 
-    <!-- Create bean form -->
-    <div v-if="creatingBean" class="beans-tab__form beans-tab__form--create">
-      <h4 class="beans-tab__form-title">New Bean</h4>
-      <div class="beans-tab__form-grid">
-        <div class="beans-tab__field">
-          <label class="beans-tab__label">Roaster *</label>
-          <input class="beans-tab__input" v-model="newBean.roaster" placeholder="Roaster name" />
+    <!-- Create bean modal -->
+    <div
+      v-if="creatingBean"
+      class="beans-tab__modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="beans-tab-new-title"
+      @click.self="cancelCreateBean"
+      @keydown.esc="cancelCreateBean"
+    >
+      <div class="beans-tab__modal">
+        <header class="beans-tab__modal-header">
+          <h4 id="beans-tab-new-title" class="beans-tab__modal-title">New bean</h4>
+          <button
+            type="button"
+            class="beans-tab__modal-close"
+            aria-label="Close"
+            @click="cancelCreateBean"
+          >&times;</button>
+        </header>
+        <div class="beans-tab__form-grid">
+          <div class="beans-tab__field">
+            <label class="beans-tab__label">Roaster <span class="beans-tab__required" aria-label="required">*</span></label>
+            <input class="beans-tab__input" v-model="newBean.roaster" placeholder="Roaster name" />
+          </div>
+          <div class="beans-tab__field">
+            <label class="beans-tab__label">Name <span class="beans-tab__required" aria-label="required">*</span></label>
+            <input class="beans-tab__input" v-model="newBean.name" placeholder="Bean name" />
+          </div>
+          <div class="beans-tab__field">
+            <label class="beans-tab__label">Country</label>
+            <input class="beans-tab__input" v-model="newBean.country" placeholder="Origin country" />
+          </div>
+          <div class="beans-tab__field">
+            <label class="beans-tab__label">Processing</label>
+            <input class="beans-tab__input" v-model="newBean.processing" placeholder="e.g. Washed, Natural" />
+          </div>
+          <div class="beans-tab__field beans-tab__field--full">
+            <label class="beans-tab__label">Variety</label>
+            <input class="beans-tab__input" v-model="newBean.variety" placeholder="Comma-separated varieties" />
+          </div>
+          <div class="beans-tab__field">
+            <label class="beans-tab__label">Altitude min (masl)</label>
+            <input class="beans-tab__input" type="number" v-model="newBean.altitudeMin" placeholder="e.g. 1100" />
+          </div>
+          <div class="beans-tab__field">
+            <label class="beans-tab__label">Altitude max (masl)</label>
+            <input class="beans-tab__input" type="number" v-model="newBean.altitudeMax" placeholder="e.g. 1300" />
+          </div>
         </div>
-        <div class="beans-tab__field">
-          <label class="beans-tab__label">Name *</label>
-          <input class="beans-tab__input" v-model="newBean.name" placeholder="Bean name" />
-        </div>
-        <div class="beans-tab__field">
-          <label class="beans-tab__label">Country</label>
-          <input class="beans-tab__input" v-model="newBean.country" placeholder="Origin country" />
-        </div>
-        <div class="beans-tab__field">
-          <label class="beans-tab__label">Processing</label>
-          <input class="beans-tab__input" v-model="newBean.processing" placeholder="e.g. Washed, Natural" />
-        </div>
-        <div class="beans-tab__field beans-tab__field--full">
-          <label class="beans-tab__label">Variety</label>
-          <input class="beans-tab__input" v-model="newBean.variety" placeholder="Comma-separated varieties" />
-        </div>
-        <div class="beans-tab__field">
-          <label class="beans-tab__label">Altitude min (masl)</label>
-          <input class="beans-tab__input" type="number" v-model="newBean.altitudeMin" placeholder="e.g. 1100" />
-        </div>
-        <div class="beans-tab__field">
-          <label class="beans-tab__label">Altitude max (masl)</label>
-          <input class="beans-tab__input" type="number" v-model="newBean.altitudeMax" placeholder="e.g. 1300" />
-        </div>
-      </div>
-      <div class="beans-tab__form-actions">
-        <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveNewBean">Save</button>
-        <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelCreateBean">Cancel</button>
+        <footer class="beans-tab__modal-footer">
+          <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelCreateBean">Cancel</button>
+          <button
+            type="button"
+            class="beans-tab__btn beans-tab__btn--save"
+            :disabled="!newBean.roaster?.trim() || !newBean.name?.trim()"
+            @click="saveNewBean"
+          >Save bean</button>
+        </footer>
       </div>
     </div>
 
@@ -449,9 +472,15 @@ function onDeleteBatch(beanId, batch) {
             </div>
 
             <!-- Batch list -->
-            <div v-if="!batchesByBean[bean.id]?.length && addingBatchForBean !== bean.id" class="beans-tab__empty beans-tab__empty--small">
-              No batches yet.
-            </div>
+            <button
+              v-if="!batchesByBean[bean.id]?.length && addingBatchForBean !== bean.id"
+              type="button"
+              class="beans-tab__batch-empty"
+              @click="startAddBatch(bean.id)"
+            >
+              <span class="beans-tab__batch-empty-icon">+</span>
+              Add the first batch
+            </button>
             <div v-for="batch in (batchesByBean[bean.id] || []).filter(b => b && b.id)" :key="batch.id" class="beans-tab__batch">
               <template v-if="editingBatchId === batch.id">
                 <!-- Edit batch inline -->
@@ -645,11 +674,121 @@ function onDeleteBatch(beanId, batch) {
   padding-top: 12px;
 }
 
-.beans-tab__form--create {
+.beans-tab__modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+  animation: beans-tab__fade 0.15s ease-out;
+}
+
+.beans-tab__modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   background: var(--color-surface);
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid var(--color-border);
-  padding: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  animation: beans-tab__rise 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.beans-tab__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.beans-tab__modal-title {
+  margin: 0;
+  font-size: var(--font-body);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.beans-tab__modal-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.beans-tab__modal-close:hover {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.beans-tab__modal-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.beans-tab__modal .beans-tab__form-grid {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.beans-tab__required {
+  color: var(--color-error);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+@keyframes beans-tab__fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes beans-tab__rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.beans-tab__batch-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-md);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.beans-tab__batch-empty:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.beans-tab__batch-empty-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .beans-tab__form--batch {

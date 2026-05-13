@@ -10,8 +10,6 @@ const TABS = [
   { id: 'brewing', label: 'Brewing' },
   { id: 'power', label: 'Power' },
   { id: 'water', label: 'Water' },
-  { id: 'beans', label: 'Beans' },
-  { id: 'grinders', label: 'Grinders' },
   { id: 'display', label: 'Display' },
   { id: 'visualizer', label: 'Visualizer' },
   { id: 'gateway', label: 'Bridge' },
@@ -116,8 +114,6 @@ import { defineAsyncComponent } from 'vue'
 const BrewingTab = defineAsyncComponent(() => import('../components/settings/BrewingTab.vue'))
 const PowerTab = defineAsyncComponent(() => import('../components/settings/PowerTab.vue'))
 const WaterTab = defineAsyncComponent(() => import('../components/settings/WaterTab.vue'))
-const BeansTab = defineAsyncComponent(() => import('../components/settings/BeansTab.vue'))
-const GrindersTab = defineAsyncComponent(() => import('../components/settings/GrindersTab.vue'))
 const DisplayTab = defineAsyncComponent(() => import('../components/settings/DisplayTab.vue'))
 const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
 const BridgeTab = defineAsyncComponent(() => import('../components/settings/BridgeTab.vue'))
@@ -126,7 +122,6 @@ const AboutTab = defineAsyncComponent(() => import('../components/settings/About
 
 const tabComponents = [
   BrewingTab, PowerTab, WaterTab,
-  BeansTab, GrindersTab,
   DisplayTab, VisualizerTab, BridgeTab,
   AccessibilityTab, AboutTab,
 ]

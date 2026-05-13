@@ -254,6 +254,7 @@ async function repeatLastShot() {
       <div class="layout-widget__nav">
         <button class="layout-widget__nav-btn" @click="router.push('/recipe/edit')">{{ t('idle.recipes') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/history')">{{ t('idle.history') }}</button>
+        <button class="layout-widget__nav-btn" @click="router.push('/catalog')">{{ t('idle.catalog') }}</button>
         <button class="layout-widget__nav-btn" @click="router.push('/settings')">{{ t('idle.settings') }}</button>
         <button class="layout-widget__nav-btn layout-widget__nav-btn--sleep" @click="setMachineState('sleeping').catch(() => {})">{{ t('idle.sleep') }}</button>
       </div>

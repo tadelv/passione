@@ -22,6 +22,7 @@ const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 const AdvancedProfileEditorPage = () => import('../pages/AdvancedProfileEditorPage.vue')
 const SimpleProfileEditorPage = () => import('../pages/SimpleProfileEditorPage.vue')
 const AutoFavoritesPage = () => import('../pages/AutoFavoritesPage.vue')
+const CatalogPage = () => import('../pages/CatalogPage.vue')
 
 const routes = [
   { path: '/', name: 'idle', component: IdlePage },
@@ -49,6 +50,11 @@ const routes = [
   { path: '/bean-info', redirect: '/recipe/edit' },
   { path: '/simple-editor/:id?', name: 'simple-editor', component: SimpleProfileEditorPage },
   { path: '/auto-favorites', name: 'auto-favorites', component: AutoFavoritesPage },
+  { path: '/catalog/:tab?', name: 'catalog', component: CatalogPage },
+  // Legacy settings deep-links that landed on bean/grinder catalogs now belong
+  // under /catalog. Redirect so bookmarks keep working.
+  { path: '/settings/beans', redirect: '/catalog/beans' },
+  { path: '/settings/grinders', redirect: '/catalog/grinders' },
 ]
 
 const router = createRouter({
