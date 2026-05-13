@@ -11,6 +11,9 @@ const beansApi = inject('beansApi', null)
 const toast = inject('toast', null)
 
 const showArchived = ref(false)
+// Per-bean "show archived batches" toggles. Default false; user can flip per
+// bean from inside the expanded batch list.
+const showArchivedBatchesByBean = reactive({})
 const expandedBeanId = ref(null)
 const creatingBean = ref(false)
 const batchesByBean = reactive({})
@@ -105,10 +108,11 @@ async function toggleBean(bean) {
     altitudeMin: bean.altitude?.[0] ?? '',
     altitudeMax: bean.altitude?.[1] ?? '',
   })
-  // Load batches
+  // Load batches — request archived too so the per-bean "show archived"
+  // toggle has data to reveal without a second round-trip.
   if (!batchesByBean[bean.id]) {
     try {
-      const batches = await beansApi.getBatches(bean.id)
+      const batches = await beansApi.getBatches(bean.id, { includeArchived: true })
       batchesByBean[bean.id] = batches
     } catch {
       batchesByBean[bean.id] = []
@@ -139,6 +143,40 @@ async function saveEditBean(bean) {
   } catch (e) {
     toast?.error(`Failed to update bean: ${e.message}`)
   }
+}
+
+async function toggleArchiveBean(bean) {
+  try {
+    await beansApi.update(bean.id, { ...bean, archived: !bean.archived })
+    toast?.success(bean.archived ? 'Bean unarchived' : 'Bean archived')
+  } catch (e) {
+    toast?.error(`Failed to update bean: ${e.message}`)
+  }
+}
+
+async function toggleArchiveBatch(beanId, batch) {
+  try {
+    const next = { ...batch, archived: !batch.archived }
+    const updated = await beansApi.updateBatch(batch.id, next)
+    const list = batchesByBean[beanId]
+    if (list) {
+      const idx = list.findIndex(b => b && b.id === batch.id)
+      if (idx !== -1) list[idx] = (updated && updated.id) ? updated : next
+    }
+    toast?.success(next.archived ? 'Batch archived' : 'Batch unarchived')
+  } catch (e) {
+    toast?.error(`Failed to update batch: ${e.message}`)
+  }
+}
+
+function visibleBatches(beanId) {
+  const all = (batchesByBean[beanId] || []).filter(b => b && b.id)
+  if (showArchivedBatchesByBean[beanId]) return all
+  return all.filter(b => !b.archived)
+}
+
+function archivedBatchCount(beanId) {
+  return (batchesByBean[beanId] || []).filter(b => b && b.id && b.archived).length
 }
 
 function onDeleteBean(bean) {
@@ -417,6 +455,13 @@ function onDeleteBatch(beanId, batch) {
               <button type="button" class="beans-tab__btn beans-tab__btn--save" @click="saveEditBean(bean)">Save</button>
               <button
                 type="button"
+                class="beans-tab__btn beans-tab__btn--secondary"
+                @click="toggleArchiveBean(bean)"
+              >
+                {{ bean.archived ? 'Unarchive' : 'Archive' }}
+              </button>
+              <button
+                type="button"
                 class="beans-tab__btn beans-tab__btn--danger"
                 :class="{ 'beans-tab__btn--armed': deleteBeanConfirm.isArmed(bean.id) }"
                 @click="onDeleteBean(bean)"
@@ -481,7 +526,7 @@ function onDeleteBatch(beanId, batch) {
               <span class="beans-tab__batch-empty-icon">+</span>
               Add the first batch
             </button>
-            <div v-for="batch in (batchesByBean[bean.id] || []).filter(b => b && b.id)" :key="batch.id" class="beans-tab__batch">
+            <div v-for="batch in visibleBatches(bean.id)" :key="batch.id" class="beans-tab__batch" :class="{ 'beans-tab__batch--archived': batch.archived }">
               <template v-if="editingBatchId === batch.id">
                 <!-- Edit batch inline -->
                 <div class="beans-tab__form beans-tab__form--batch-edit">
@@ -520,6 +565,13 @@ function onDeleteBatch(beanId, batch) {
                     <button type="button" class="beans-tab__btn beans-tab__btn--cancel" @click="cancelEditBatch">Cancel</button>
                     <button
                       type="button"
+                      class="beans-tab__btn beans-tab__btn--secondary"
+                      @click="toggleArchiveBatch(bean.id, batch)"
+                    >
+                      {{ batch.archived ? 'Unarchive' : 'Archive' }}
+                    </button>
+                    <button
+                      type="button"
                       class="beans-tab__btn beans-tab__btn--danger"
                       :class="{ 'beans-tab__btn--armed': deleteBatchConfirm.isArmed(batch.id) }"
                       @click="onDeleteBatch(bean.id, batch)"
@@ -551,6 +603,18 @@ function onDeleteBatch(beanId, batch) {
                 </div>
               </template>
             </div>
+
+            <!-- Archived-batches toggle, only when relevant -->
+            <button
+              v-if="archivedBatchCount(bean.id) > 0"
+              type="button"
+              class="beans-tab__archived-toggle"
+              @click="showArchivedBatchesByBean[bean.id] = !showArchivedBatchesByBean[bean.id]"
+            >
+              {{ showArchivedBatchesByBean[bean.id]
+                ? 'Hide archived'
+                : `Show ${archivedBatchCount(bean.id)} archived` }}
+            </button>
           </div>
         </div>
       </div>
@@ -870,6 +934,35 @@ function onDeleteBatch(beanId, batch) {
 .beans-tab__btn--cancel {
   background: var(--color-surface);
   color: var(--color-text-secondary);
+}
+
+.beans-tab__btn--secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.beans-tab__batch--archived {
+  opacity: 0.55;
+}
+
+.beans-tab__archived-toggle {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 6px 12px;
+  margin-top: 4px;
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.beans-tab__archived-toggle:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
 }
 
 .beans-tab__btn--danger {
