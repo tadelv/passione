@@ -31,7 +31,10 @@
     "saveAsNew": "Save as New Recipe",
     "toastSaved": "Saved to {name}",
     "toastCreated": "Created {name}",
-    "newRecipeName": "New Recipe"
+    "newRecipeName": "New Recipe",
+    "newRecipe": "+ New",
+    "editRecipe": "Edit recipe",
+    "unsavedChanges": "unsaved changes"
   },
   "idle": {
     "espresso": "Espresso",

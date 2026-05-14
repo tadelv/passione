@@ -2,7 +2,7 @@
 import { ref, computed, inject, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import PresetPillRow from '../components/PresetPillRow.vue'
+import RecipePillRail from '../components/RecipePillRail.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
@@ -769,15 +769,14 @@ watch(() => workflow?.profile, (newProfile) => {
          name. Exit (Home) is always free — see onSaveClick comment. -->
     <div class="recipe-editor__header">
       <div class="recipe-editor__presets">
-        <PresetPillRow
+        <RecipePillRail
           :presets="workflowCombos"
           :selected-index="selectedIndex"
-          :edit-enabled="true"
-          :confirm-activate="false"
           :modified="dirty && selectedIndex >= 0"
           :aria-label="t('recipe.recipes')"
           @select="onPresetSelect"
           @edit="onComboEdit"
+          @new="onSaveAsNewClick"
         />
       </div>
       <div class="recipe-editor__actions">
