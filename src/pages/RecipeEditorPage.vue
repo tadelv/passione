@@ -1053,7 +1053,7 @@ watch(() => workflow?.profile, (newProfile) => {
                 :max="100"
                 :step="0.5"
                 :decimals="1"
-                suffix="\u00b0C"
+                suffix="°C"
                 data-testid="recipe-brew-temperature"
               />
             </div>
@@ -1193,7 +1193,9 @@ watch(() => workflow?.profile, (newProfile) => {
 
 /*
  * Quadrant area: a slim header strip (Save buttons, right-aligned) on top
- * of the 2×2 quadrant grid.
+ * of the 2×2 quadrant grid. The header is pinned; the grid below it is the
+ * single scroll region — so the rail and BottomBar always stay put while
+ * the quadrants themselves render at full height (no per-quadrant clipping).
  */
 .recipe-editor__area {
   flex: 1;
@@ -1219,25 +1221,26 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 /*
- * 2×2 quadrant grid. Fills the remaining height of the area; each
- * quadrant is a fixed-height cell that scrolls internally if its
- * content overflows (power-user fields, batch lists, etc.) — the page
- * itself never scrolls.
+ * 2×2 quadrant grid. Rows are content-height (`auto`), not stretched to
+ * fill — quadrants render whole, never clipped. The grid is the single
+ * scroll region: on a tall-enough screen everything fits with no scroll;
+ * on a short screen (1024×600 target with both power-user toggles on) the
+ * grid scrolls as one unit while the rail, header and BottomBar stay put.
  */
 .recipe-editor__grid {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: 12px;
+  align-content: start;
 }
 
 .recipe-editor__quadrant {
   min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 10px;
