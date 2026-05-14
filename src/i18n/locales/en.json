@@ -34,7 +34,19 @@
     "newRecipeName": "New Recipe",
     "newRecipe": "+ New",
     "editRecipe": "Edit recipe",
-    "unsavedChanges": "unsaved changes"
+    "unsavedChanges": "unsaved changes",
+    "operations": "Operations",
+    "steamSettings": "Steam Settings",
+    "flushSettings": "Flush Settings",
+    "hotWaterSettings": "Hot Water Settings",
+    "includeInRecipe": "Include in this recipe",
+    "done": "Done",
+    "duration": "Duration",
+    "flow": "Flow",
+    "flowRate": "Flow Rate",
+    "temperature": "Temperature",
+    "volume": "Volume",
+    "opNotIncluded": "—"
   },
   "idle": {
     "espresso": "Espresso",

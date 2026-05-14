@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import RecipePillRail from '../components/RecipePillRail.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
+import OperationSettingsPopup from '../components/OperationSettingsPopup.vue'
 import SuggestionField from '../components/SuggestionField.vue'
 import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
+import SettingsToggle from '../components/settings/SettingsToggle.vue'
 import BottomBar from '../components/BottomBar.vue'
 import { useBeanLink } from '../composables/useBeanLink'
 import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
@@ -162,6 +164,30 @@ const flushFlowRate = ref(6.0)
 const includeHotWater = ref(false)
 const hotWaterVolume = ref(200)
 const hotWaterTemperature = ref(80)
+
+// ---- Operation settings popup ----
+// Which operation's popup is open ('steam' | 'flush' | 'hotwater' | null).
+// The popup edits the operation refs above by v-model; the existing
+// live-apply watcher pushes those changes to the workflow.
+const activeOperation = ref(null)
+
+// Concise one-line summaries for the operations list rows. Show an em-dash
+// when the operation is off; otherwise the active field values.
+const steamSummary = computed(() =>
+  includeSteam.value
+    ? `${steamTemperature.value} °C · ${steamDuration.value} s`
+    : t('recipe.opNotIncluded'),
+)
+const flushSummary = computed(() =>
+  includeFlush.value
+    ? `${flushDuration.value} s · ${flushFlowRate.value.toFixed(1)} mL/s`
+    : t('recipe.opNotIncluded'),
+)
+const hotWaterSummary = computed(() =>
+  includeHotWater.value
+    ? `${hotWaterVolume.value} g · ${hotWaterTemperature.value} °C`
+    : t('recipe.opNotIncluded'),
+)
 
 // ---- Bean/batch selection ----
 async function onBeanSelect(beanId) {
@@ -1029,64 +1055,52 @@ watch(() => workflow?.profile, (newProfile) => {
       </div>
     </div>
 
-    <!-- Optional operation settings -->
+    <!-- Optional operation settings \u2014 calm 3-row summary list. The toggle
+         flips the include flag; tapping the row body / chevron opens the
+         per-operation popup. -->
     <div class="recipe-editor__operations">
+      <h4 class="recipe-editor__section-title">{{ t('recipe.operations') }}</h4>
+
       <!-- Steam -->
-      <div class="recipe-editor__op-section">
-        <button class="recipe-editor__op-toggle" @click="includeSteam = !includeSteam">
-          <span>{{ includeSteam ? '\u25BE' : '\u25B8' }} Steam Settings</span>
-          <span class="recipe-editor__op-badge" v-if="includeSteam">included</span>
+      <div class="recipe-editor__op-row">
+        <SettingsToggle v-model="includeSteam" :aria-label="t('recipe.steamSettings')" />
+        <button
+          class="recipe-editor__op-open"
+          data-testid="recipe-op-steam"
+          @click="activeOperation = 'steam'"
+        >
+          <span class="recipe-editor__op-name">{{ t('recipe.steamSettings') }}</span>
+          <span class="recipe-editor__op-summary">{{ steamSummary }}</span>
+          <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
         </button>
-        <div v-if="includeSteam" class="recipe-editor__op-fields">
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Duration</label>
-            <ValueInput v-model="steamDuration" :min="1" :max="120" :step="1" :decimals="0" suffix=" s" />
-          </div>
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Flow</label>
-            <ValueInput v-model="steamFlow" :min="0.4" :max="2.5" :step="0.05" :decimals="2" suffix=" mL/s" />
-          </div>
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Temperature</label>
-            <ValueInput v-model="steamTemperature" :min="100" :max="170" :step="1" :decimals="0" suffix=" &deg;C" />
-          </div>
-        </div>
       </div>
 
       <!-- Flush -->
-      <div class="recipe-editor__op-section">
-        <button class="recipe-editor__op-toggle" @click="includeFlush = !includeFlush">
-          <span>{{ includeFlush ? '\u25BE' : '\u25B8' }} Flush Settings</span>
-          <span class="recipe-editor__op-badge" v-if="includeFlush">included</span>
+      <div class="recipe-editor__op-row">
+        <SettingsToggle v-model="includeFlush" :aria-label="t('recipe.flushSettings')" />
+        <button
+          class="recipe-editor__op-open"
+          data-testid="recipe-op-flush"
+          @click="activeOperation = 'flush'"
+        >
+          <span class="recipe-editor__op-name">{{ t('recipe.flushSettings') }}</span>
+          <span class="recipe-editor__op-summary">{{ flushSummary }}</span>
+          <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
         </button>
-        <div v-if="includeFlush" class="recipe-editor__op-fields">
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Duration</label>
-            <ValueInput v-model="flushDuration" :min="1" :max="30" :step="0.5" :decimals="1" suffix=" s" />
-          </div>
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Flow Rate</label>
-            <ValueInput v-model="flushFlowRate" :min="2" :max="10" :step="0.5" :decimals="1" suffix=" mL/s" />
-          </div>
-        </div>
       </div>
 
       <!-- Hot Water -->
-      <div class="recipe-editor__op-section">
-        <button class="recipe-editor__op-toggle" @click="includeHotWater = !includeHotWater">
-          <span>{{ includeHotWater ? '\u25BE' : '\u25B8' }} Hot Water Settings</span>
-          <span class="recipe-editor__op-badge" v-if="includeHotWater">included</span>
+      <div class="recipe-editor__op-row">
+        <SettingsToggle v-model="includeHotWater" :aria-label="t('recipe.hotWaterSettings')" />
+        <button
+          class="recipe-editor__op-open"
+          data-testid="recipe-op-hotwater"
+          @click="activeOperation = 'hotwater'"
+        >
+          <span class="recipe-editor__op-name">{{ t('recipe.hotWaterSettings') }}</span>
+          <span class="recipe-editor__op-summary">{{ hotWaterSummary }}</span>
+          <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
         </button>
-        <div v-if="includeHotWater" class="recipe-editor__op-fields">
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Volume</label>
-            <ValueInput v-model="hotWaterVolume" :min="50" :max="500" :step="10" :decimals="0" suffix=" g" />
-          </div>
-          <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Temperature</label>
-            <ValueInput v-model="hotWaterTemperature" :min="40" :max="100" :step="1" :decimals="0" suffix=" &deg;C" />
-          </div>
-        </div>
       </div>
     </div>
 
@@ -1107,6 +1121,35 @@ watch(() => workflow?.profile, (newProfile) => {
       @save="onComboEditSave"
       @delete="onComboEditDelete"
       @cancel="onComboEditCancel"
+    />
+
+    <!-- One popup per operation, each v-model-bound to its own refs. The
+         popup mutates these refs directly; the live-apply watcher picks
+         the change up and pushes it to the workflow. -->
+    <OperationSettingsPopup
+      operation-type="steam"
+      :visible="activeOperation === 'steam'"
+      v-model:include="includeSteam"
+      v-model:duration="steamDuration"
+      v-model:flow="steamFlow"
+      v-model:temperature="steamTemperature"
+      @close="activeOperation = null"
+    />
+    <OperationSettingsPopup
+      operation-type="flush"
+      :visible="activeOperation === 'flush'"
+      v-model:include="includeFlush"
+      v-model:duration="flushDuration"
+      v-model:flow="flushFlowRate"
+      @close="activeOperation = null"
+    />
+    <OperationSettingsPopup
+      operation-type="hotwater"
+      :visible="activeOperation === 'hotwater'"
+      v-model:include="includeHotWater"
+      v-model:volume="hotWaterVolume"
+      v-model:temperature="hotWaterTemperature"
+      @close="activeOperation = null"
     />
   </div>
 </template>
@@ -1290,66 +1333,66 @@ watch(() => workflow?.profile, (newProfile) => {
   gap: 8px;
 }
 
-.recipe-editor__op-section {
+/*
+ * Operations summary list. Each row: an iOS-knob include toggle on the
+ * left, then a tappable body (label + summary text + chevron) that opens
+ * the per-operation popup. The toggle just flips the include flag; the
+ * row body opens the editor.
+ */
+.recipe-editor__op-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
+  background: var(--color-surface);
+  padding-left: 4px;
   overflow: hidden;
 }
 
-.recipe-editor__op-toggle {
+.recipe-editor__op-open {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px 12px;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 12px;
   border: none;
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text);
-  font-size: var(--font-md);
-  font-weight: 600;
   cursor: pointer;
+  text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
 
-.recipe-editor__op-badge {
+.recipe-editor__op-open:active {
+  background: var(--color-surface-hover);
+}
+
+.recipe-editor__op-name {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.recipe-editor__op-summary {
+  flex: 1;
+  min-width: 0;
   font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--color-success);
-  text-transform: uppercase;
-}
-
-.recipe-editor__op-fields {
-  padding: 8px 12px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid var(--color-border);
-}
-
-.recipe-editor__op-divider {
-  height: 1px;
-  background: var(--color-border);
-  margin: 4px 0;
-}
-
-.recipe-editor__toggle {
-  width: 80px;
-  height: 36px;
-  border-radius: 18px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: var(--font-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.recipe-editor__toggle--on {
-  background: var(--color-success);
-  color: var(--color-text);
-  border-color: var(--color-success);
+.recipe-editor__op-chevron {
+  font-size: var(--font-title);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .recipe-editor__save-btn {
