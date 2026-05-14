@@ -235,7 +235,6 @@ onUnmounted(() => {
       type="button"
       class="screensaver__wake-btn"
       @click.stop="wake"
-      @touchstart.stop.passive="wake"
       aria-label="Wake machine"
     >Tap to wake</button>
 
@@ -629,6 +628,7 @@ onUnmounted(() => {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   transition: background 0.15s ease, border-color 0.15s ease;
+  touch-action: manipulation;
 }
 
 .screensaver__wake-btn:hover,
