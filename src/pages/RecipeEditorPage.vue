@@ -287,10 +287,34 @@ async function loadFromPreset(index) {
 // the live workflow's scalar context + operation settings. The saved
 // combo stays untouched; only the editor's form refs mirror what the
 // workflow actually has right now.
-function overlayFromWorkflow() {
+async function overlayFromWorkflow() {
   if (!workflow) return
   _updating = true
   const ctx = workflow.context ?? {}
+  // Reconcile the entity links FIRST. loadFromPreset restored the SAVED
+  // combo's bean/grinder, but the live workflow may carry different ones
+  // the user picked since (the combo is only mutated on explicit Save).
+  // Entity links aren't scalars, so the overlay block below can't touch
+  // them — without this the editor silently reverts the link on re-entry.
+  const liveBatchId = ctx.beanBatchId ? String(ctx.beanBatchId) : null
+  const formBatchId = selectedBatchId.value ? String(selectedBatchId.value) : null
+  if (liveBatchId !== formBatchId) {
+    if (liveBatchId) {
+      await hydrateFromContext(ctx)
+      if (selectedBeanId.value && beansApi) {
+        batchesForBean.value = await beansApi.getBatches(selectedBeanId.value).catch(() => []) ?? []
+      }
+    } else {
+      clearLink()
+      batchesForBean.value = []
+    }
+  }
+  const liveGrinderId = ctx.grinderId ? String(ctx.grinderId) : null
+  const formGrinderId = selectedGrinderId.value ? String(selectedGrinderId.value) : null
+  if (liveGrinderId !== formGrinderId) {
+    if (liveGrinderId) onGrinderSelect(liveGrinderId, { resetSetting: false })
+    else selectedGrinderId.value = null
+  }
   if (ctx.targetDoseWeight != null) doseIn.value = ctx.targetDoseWeight
   if (ctx.targetYield != null) doseOut.value = ctx.targetYield
   if (doseIn.value > 0 && doseOut.value > 0) {
