@@ -786,15 +786,14 @@ watch(() => workflow?.profile, (newProfile) => {
 
 <template>
   <div class="recipe-editor">
-    <!-- Header: recipe pill row + Save / Save as New buttons.
-         Save buttons are visible only when the form has diverged from the
-         selected saved recipe (or, when no recipe is selected, when any
-         identifiable field has a value). Tapping Save writes the form
-         state back to the currently-selected recipe; Save as New creates
-         a brand-new recipe from the current state and prompts for a
-         name. Exit (Home) is always free — see onSaveClick comment. -->
-    <div class="recipe-editor__header">
-      <div class="recipe-editor__presets">
+    <!-- Main row: recipe rail on the left, quadrant area on the right.
+         Fills the viewport between the top and the BottomBar; neither the
+         row nor the page scrolls — overflow is pushed down into the rail's
+         recipe list and into individual quadrants. -->
+    <div class="recipe-editor__main">
+      <!-- Left rail: vertical recipe list + baked-in "+ New" button.
+           The recipe list scrolls internally so "+ New" stays pinned. -->
+      <div class="recipe-editor__rail">
         <RecipePillRail
           :presets="workflowCombos"
           :selected-index="selectedIndex"
@@ -805,57 +804,44 @@ watch(() => workflow?.profile, (newProfile) => {
           @new="onSaveAsNewClick"
         />
       </div>
-      <div class="recipe-editor__actions">
-        <button
-          v-if="selectedIndex >= 0 && dirty"
-          class="recipe-editor__save-btn"
-          data-testid="wfe-save"
-          @click="onSaveClick"
-        >
-          {{ t('recipe.save') }}
-        </button>
-        <button
-          v-if="dirty"
-          class="recipe-editor__save-btn recipe-editor__save-btn--secondary"
-          data-testid="wfe-save-as-new"
-          @click="onSaveAsNewClick"
-        >
-          {{ t('recipe.saveAsNew') }}
-        </button>
-      </div>
-    </div>
 
-    <!-- Scrollable content area -->
-    <div class="recipe-editor__scroll">
-
-    <!-- Profile section -->
-    <div class="recipe-editor__profile-section">
-      <h4 class="recipe-editor__section-title">Profile</h4>
-      <div class="recipe-editor__profile-pair">
-        <div class="recipe-editor__profile-row">
-          <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
-          <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
+      <!-- Quadrant area: a slim header strip (Save / Save as New, top-right)
+           above a 2×2 grid of fixed-height quadrants.
+           Save buttons are visible only when the form has diverged from the
+           selected saved recipe (or, when no recipe is selected, when any
+           identifiable field has a value). Tapping Save writes the form
+           state back to the currently-selected recipe; Save as New creates
+           a brand-new recipe from the current state and prompts for a
+           name. Exit (Home) is always free — see onSaveClick comment. -->
+      <div class="recipe-editor__area">
+        <div class="recipe-editor__area-header">
+          <div class="recipe-editor__actions">
+            <button
+              v-if="selectedIndex >= 0 && dirty"
+              class="recipe-editor__save-btn"
+              data-testid="wfe-save"
+              @click="onSaveClick"
+            >
+              {{ t('recipe.save') }}
+            </button>
+            <button
+              v-if="dirty"
+              class="recipe-editor__save-btn recipe-editor__save-btn--secondary"
+              data-testid="wfe-save-as-new"
+              @click="onSaveAsNewClick"
+            >
+              {{ t('recipe.saveAsNew') }}
+            </button>
+          </div>
         </div>
-        <div class="recipe-editor__profile-temp-row">
-          <label class="recipe-editor__label">Temperature</label>
-          <ValueInput
-            v-model="brewTemperature"
-            :min="50"
-            :max="100"
-            :step="0.5"
-            :decimals="1"
-            suffix="°C"
-            data-testid="recipe-brew-temperature"
-          />
-        </div>
-      </div>
-    </div>
 
-    <!-- Field grid -->
-    <div class="recipe-editor__grid">
-      <!-- Column 1: Coffee -->
-      <div class="recipe-editor__column">
-        <h4 class="recipe-editor__section-title">Coffee</h4>
+        <div class="recipe-editor__grid">
+          <!-- Q1: Coffee.
+               Retains the legacy `recipe-editor__column` class because the
+               bean-batch-integrity e2e suite scopes its locators to it
+               (`.recipe-editor__column` first() == the Coffee column). -->
+          <div class="recipe-editor__quadrant recipe-editor__column">
+            <h4 class="recipe-editor__section-title">Coffee</h4>
 
         <div class="recipe-editor__field">
           <label class="recipe-editor__label">Bean</label>
@@ -954,12 +940,12 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
         </div>
 
-        <button class="recipe-editor__link-btn" @click="router.push('/settings/beans')">Manage...</button>
-      </div>
+            <button class="recipe-editor__link-btn" @click="router.push('/settings/beans')">Manage...</button>
+          </div>
 
-      <!-- Column 2: Grinder -->
-      <div class="recipe-editor__column">
-        <h4 class="recipe-editor__section-title">Grinder</h4>
+          <!-- Q2: Grinder -->
+          <div class="recipe-editor__quadrant">
+            <h4 class="recipe-editor__section-title">Grinder</h4>
 
         <div class="recipe-editor__field">
           <label class="recipe-editor__label">Grinder</label>
@@ -1010,101 +996,120 @@ watch(() => workflow?.profile, (newProfile) => {
           />
         </div>
 
-        <button class="recipe-editor__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
-      </div>
+            <button class="recipe-editor__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
+          </div>
 
-      <!-- Column 3: Dose -->
-      <div class="recipe-editor__column">
-        <h4 class="recipe-editor__section-title">Dose</h4>
+          <!-- Q3: Dose + Profile -->
+          <div class="recipe-editor__quadrant">
+            <h4 class="recipe-editor__section-title">Dose + Profile</h4>
 
-        <div class="recipe-editor__field">
-          <label class="recipe-editor__label">Dose In</label>
-          <ValueInput
-            v-model="doseIn"
-            :min="0"
-            :max="40"
-            :step="0.1"
-            :decimals="1"
-            suffix="g"
-            data-testid="recipe-doseIn"
-          />
-        </div>
+            <div class="recipe-editor__field">
+              <label class="recipe-editor__label">Dose In</label>
+              <ValueInput
+                v-model="doseIn"
+                :min="0"
+                :max="40"
+                :step="0.1"
+                :decimals="1"
+                suffix="g"
+                data-testid="recipe-doseIn"
+              />
+            </div>
 
-        <div class="recipe-editor__field">
-          <label class="recipe-editor__label">Dose Out</label>
-          <ValueInput
-            v-model="doseOut"
-            :min="0"
-            :max="500"
-            :step="0.1"
-            :decimals="1"
-            suffix="g"
-          />
-        </div>
+            <div class="recipe-editor__field">
+              <label class="recipe-editor__label">Dose Out</label>
+              <ValueInput
+                v-model="doseOut"
+                :min="0"
+                :max="500"
+                :step="0.1"
+                :decimals="1"
+                suffix="g"
+              />
+            </div>
 
-        <div class="recipe-editor__field">
-          <label class="recipe-editor__label">Ratio (1:X)</label>
-          <ValueInput
-            v-model="ratioValue"
-            :min="0.5"
-            :max="10"
-            :step="0.1"
-            :decimals="1"
-          />
-        </div>
-      </div>
-    </div>
+            <div class="recipe-editor__field">
+              <label class="recipe-editor__label">Ratio (1:X)</label>
+              <ValueInput
+                v-model="ratioValue"
+                :min="0.5"
+                :max="10"
+                :step="0.1"
+                :decimals="1"
+              />
+            </div>
 
-    <!-- Optional operation settings \u2014 calm 3-row summary list. The toggle
-         flips the include flag; tapping the row body / chevron opens the
-         per-operation popup. -->
-    <div class="recipe-editor__operations">
-      <h4 class="recipe-editor__section-title">{{ t('recipe.operations') }}</h4>
+            <!-- Profile: compact single-line row (name + Change inline) -->
+            <div class="recipe-editor__profile-row">
+              <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
+              <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
+            </div>
 
-      <!-- Steam -->
-      <div class="recipe-editor__op-row">
-        <SettingsToggle v-model="includeSteam" :aria-label="t('recipe.steamSettings')" />
-        <button
-          class="recipe-editor__op-open"
-          data-testid="recipe-op-steam"
-          @click="activeOperation = 'steam'"
-        >
-          <span class="recipe-editor__op-name">{{ t('recipe.steamSettings') }}</span>
-          <span class="recipe-editor__op-summary">{{ steamSummary }}</span>
-          <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
-        </button>
-      </div>
+            <div class="recipe-editor__field">
+              <label class="recipe-editor__label">Temperature</label>
+              <ValueInput
+                v-model="brewTemperature"
+                :min="50"
+                :max="100"
+                :step="0.5"
+                :decimals="1"
+                suffix="\u00b0C"
+                data-testid="recipe-brew-temperature"
+              />
+            </div>
+          </div>
 
-      <!-- Flush -->
-      <div class="recipe-editor__op-row">
-        <SettingsToggle v-model="includeFlush" :aria-label="t('recipe.flushSettings')" />
-        <button
-          class="recipe-editor__op-open"
-          data-testid="recipe-op-flush"
-          @click="activeOperation = 'flush'"
-        >
-          <span class="recipe-editor__op-name">{{ t('recipe.flushSettings') }}</span>
-          <span class="recipe-editor__op-summary">{{ flushSummary }}</span>
-          <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
-        </button>
-      </div>
+          <!-- Q4: Operations \u2014 calm 3-row summary list. The toggle flips
+               the include flag; tapping the row body / chevron opens the
+               per-operation popup. This quadrant renders its own heading. -->
+          <div class="recipe-editor__quadrant recipe-editor__operations">
+            <h4 class="recipe-editor__section-title">{{ t('recipe.operations') }}</h4>
 
-      <!-- Hot Water -->
-      <div class="recipe-editor__op-row">
-        <SettingsToggle v-model="includeHotWater" :aria-label="t('recipe.hotWaterSettings')" />
-        <button
-          class="recipe-editor__op-open"
-          data-testid="recipe-op-hotwater"
-          @click="activeOperation = 'hotwater'"
-        >
-          <span class="recipe-editor__op-name">{{ t('recipe.hotWaterSettings') }}</span>
-          <span class="recipe-editor__op-summary">{{ hotWaterSummary }}</span>
-          <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
-        </button>
-      </div>
-    </div>
+            <!-- Steam -->
+            <div class="recipe-editor__op-row">
+              <SettingsToggle v-model="includeSteam" :aria-label="t('recipe.steamSettings')" />
+              <button
+                class="recipe-editor__op-open"
+                data-testid="recipe-op-steam"
+                @click="activeOperation = 'steam'"
+              >
+                <span class="recipe-editor__op-name">{{ t('recipe.steamSettings') }}</span>
+                <span class="recipe-editor__op-summary">{{ steamSummary }}</span>
+                <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
+              </button>
+            </div>
 
-    </div><!-- end scroll -->
+            <!-- Flush -->
+            <div class="recipe-editor__op-row">
+              <SettingsToggle v-model="includeFlush" :aria-label="t('recipe.flushSettings')" />
+              <button
+                class="recipe-editor__op-open"
+                data-testid="recipe-op-flush"
+                @click="activeOperation = 'flush'"
+              >
+                <span class="recipe-editor__op-name">{{ t('recipe.flushSettings') }}</span>
+                <span class="recipe-editor__op-summary">{{ flushSummary }}</span>
+                <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
+              </button>
+            </div>
+
+            <!-- Hot Water -->
+            <div class="recipe-editor__op-row">
+              <SettingsToggle v-model="includeHotWater" :aria-label="t('recipe.hotWaterSettings')" />
+              <button
+                class="recipe-editor__op-open"
+                data-testid="recipe-op-hotwater"
+                @click="activeOperation = 'hotwater'"
+              >
+                <span class="recipe-editor__op-name">{{ t('recipe.hotWaterSettings') }}</span>
+                <span class="recipe-editor__op-summary">{{ hotWaterSummary }}</span>
+                <span class="recipe-editor__op-chevron" aria-hidden="true">&rsaquo;</span>
+              </button>
+            </div>
+          </div>
+        </div><!-- end grid -->
+      </div><!-- end area -->
+    </div><!-- end main -->
 
     <BottomBar
       :title="selectedIndex >= 0
@@ -1163,24 +1168,48 @@ watch(() => workflow?.profile, (newProfile) => {
 }
 
 /*
- * Header row: recipe pill row on the left, Save / Save as New action
- * buttons on the right. The row collapses to wrap on narrow viewports.
- * The pill row owns the dirty-dot indicator (via the :modified prop);
- * the Save buttons only render when the form has diverged from the
- * saved recipe.
+ * Main row: fixed-width recipe rail + flexible quadrant area. Fills the
+ * height between the top of the page and the BottomBar. `min-height: 0`
+ * lets the inner grid/rail own their overflow so the page never scrolls.
  */
-.recipe-editor__header {
+.recipe-editor__main {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
   gap: 12px;
-  padding: 8px 16px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
+  padding: 12px 16px;
 }
 
-.recipe-editor__presets {
-  flex: 1 1 auto;
+/*
+ * Left rail column. Fixed width — narrow enough to leave the two quadrant
+ * columns ≥ ~360px each at 1024px. The RecipePillRail inside scrolls its
+ * own recipe list (see RecipePillRail scoped CSS) so "+ New" stays pinned.
+ */
+.recipe-editor__rail {
+  flex: 0 0 180px;
+  min-height: 0;
+  display: flex;
+}
+
+/*
+ * Quadrant area: a slim header strip (Save buttons, right-aligned) on top
+ * of the 2×2 quadrant grid.
+ */
+.recipe-editor__area {
+  flex: 1;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recipe-editor__area-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
 }
 
 .recipe-editor__actions {
@@ -1189,57 +1218,57 @@ watch(() => workflow?.profile, (newProfile) => {
   flex-shrink: 0;
 }
 
-.recipe-editor__scroll {
+/*
+ * 2×2 quadrant grid. Fills the remaining height of the area; each
+ * quadrant is a fixed-height cell that scrolls internally if its
+ * content overflows (power-user fields, batch lists, etc.) — the page
+ * itself never scrolls.
+ */
+.recipe-editor__grid {
   flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   min-height: 0;
-}
-
-.recipe-editor__profile-section {
-  padding: 0 16px;
-}
-
-.recipe-editor__profile-pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
   gap: 12px;
-  margin-top: 8px;
 }
 
-@media (max-width: 600px) {
-  .recipe-editor__profile-pair {
-    grid-template-columns: 1fr;
-  }
+.recipe-editor__quadrant {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .recipe-editor__profile-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: 8px;
-  background: var(--color-surface);
+  background: var(--color-background);
   border: 1px solid var(--color-border);
 }
 
 .recipe-editor__profile-name {
   font-size: var(--font-body);
   color: var(--color-text);
-}
-
-.recipe-editor__profile-temp-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recipe-editor__change-btn {
+  flex-shrink: 0;
   padding: 6px 16px;
   border-radius: 6px;
   border: 1px solid var(--color-primary);
@@ -1253,20 +1282,6 @@ watch(() => workflow?.profile, (newProfile) => {
 
 .recipe-editor__change-btn:active {
   opacity: 0.7;
-}
-
-.recipe-editor__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
-  padding: 16px;
-  align-content: start;
-}
-
-.recipe-editor__column {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .recipe-editor__section-title {
@@ -1326,10 +1341,9 @@ watch(() => workflow?.profile, (newProfile) => {
   appearance: none;
 }
 
+/* Q4 quadrant: the operations summary list. Inherits the quadrant box;
+   the gap between rows is slightly tighter than the default field gap. */
 .recipe-editor__operations {
-  padding: 0 16px 16px;
-  display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
@@ -1478,9 +1492,35 @@ watch(() => workflow?.profile, (newProfile) => {
   opacity: 0.7;
 }
 
-@media (max-width: 600px) {
+/*
+ * Narrow fallback (off-target, e.g. dev browser windows): drop the
+ * landscape rail + quadrant layout and stack everything into a single
+ * scrolling column. Functional, not pretty — the target device is the
+ * 1024×600 tablet, this just keeps the page usable elsewhere.
+ */
+@media (max-width: 700px) {
+  .recipe-editor__main {
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .recipe-editor__rail {
+    flex: 0 0 auto;
+  }
+
+  .recipe-editor__area {
+    min-height: 0;
+  }
+
   .recipe-editor__grid {
+    flex: 0 0 auto;
     grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+
+  .recipe-editor__quadrant {
+    overflow-y: visible;
   }
 }
 

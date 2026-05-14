@@ -99,14 +99,25 @@ function onNew() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 200px;
-  max-width: 100%;
+  /* Fill the parent rail column (RecipeEditorPage sets the fixed width).
+     min-height: 0 lets the recipe list own its own scroll so "+ New"
+     stays pinned at the bottom. */
+  width: 100%;
+  min-height: 0;
 }
 
 .recipe-pill-rail__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.recipe-pill-rail__new {
+  flex-shrink: 0;
 }
 
 .recipe-pill-rail__row {
