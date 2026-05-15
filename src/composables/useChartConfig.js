@@ -70,11 +70,14 @@ export function createShotChartOpts(width, height, opts = {}) {
       show: false, // We use a custom Vue legend overlay
     },
     axes: [
-      // X axis — time in seconds
+      // X axis — time in seconds. Force integer-second tick increments so we
+      // don't get "0s, 1s, 1s, 2s, 2s..." duplicates when uPlot picks
+      // sub-second ticks for short shots.
       {
         stroke: COLORS.textSecondary,
         grid: { stroke: COLORS.grid, width: 1 },
         ticks: { stroke: COLORS.grid, width: 1 },
+        incrs: [1, 2, 5, 10, 15, 30, 60],
         values: (u, vals) => vals.map(v => v.toFixed(0) + 's'),
         font: '11px system-ui, sans-serif',
         gap: 6,
@@ -230,11 +233,12 @@ export function createProfileChartOpts(width, height) {
     select: { show: false },
     legend: { show: false },
     axes: [
-      // X — time (s)
+      // X — time (s). Force integer-second tick increments — see notes above.
       {
         stroke: COLORS.textSecondary,
         grid: { stroke: COLORS.grid, width: 1 },
         ticks: { stroke: COLORS.grid, width: 1 },
+        incrs: [1, 2, 5, 10, 15, 30, 60],
         values: (u, vals) => vals.map(v => v.toFixed(0) + 's'),
         font: '11px system-ui, sans-serif',
         gap: 6,

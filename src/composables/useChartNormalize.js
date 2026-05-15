@@ -2,7 +2,29 @@
  * Normalize shot data from any supported format into the flat arrays
  * expected by the chart: { elapsed, pressure, targetPressure, flow,
  * targetFlow, temperature, targetTemperature, weight, phaseMarkers }.
+ *
+ * Trims the record to the actual shot — i.e. preinfusion + pouring (+ a
+ * trailing pouringDone sample). The gateway includes preparingForShot
+ * samples at the head (preheat) and idle samples at the tail (post-shot
+ * weight settling); without trimming, those bloat the x axis and pull
+ * weight/flow into weird-looking ramps. Trimming uses `machine.state.substate`
+ * and silently no-ops when the field is missing (older / flat records).
  */
+const SHOT_SUBSTATES = new Set(['preinfusion', 'pouring', 'pouringDone'])
+
+function findShotRange(measurements) {
+  let start = -1, end = -1
+  for (let i = 0; i < measurements.length; i++) {
+    const sub = measurements[i]?.machine?.state?.substate
+    if (sub != null && SHOT_SUBSTATES.has(sub)) {
+      if (start === -1) start = i
+      end = i
+    }
+  }
+  if (start === -1) return null
+  return { start, end }
+}
+
 export function normalizeShotData(shot) {
   if (!shot) return null
 
@@ -13,6 +35,10 @@ export function normalizeShotData(shot) {
   const measurements = shot.measurements
   if (!Array.isArray(measurements) || measurements.length === 0) return null
 
+  const range = findShotRange(measurements)
+  const startIdx = range ? range.start : 0
+  const endIdx = range ? range.end : measurements.length - 1
+
   const elapsed = []
   const pressure = []
   const targetPressure = []
@@ -22,12 +48,16 @@ export function normalizeShotData(shot) {
   const targetTemperature = []
   const weight = []
 
-  // Determine base timestamp for elapsed time calculation
-  const first = measurements[0]
+  // Determine base timestamp for elapsed time calculation — anchored at the
+  // first shot sample (post-preheat) so t=0 lines up with the espresso timer.
+  const first = measurements[startIdx]
   let baseTime = 0
   if (first.timestamp != null) {
     const parsed = typeof first.timestamp === 'string' ? new Date(first.timestamp).getTime() : Number(first.timestamp)
     // If timestamp is in seconds (< 1e12), treat as seconds; otherwise milliseconds
+    baseTime = parsed > 1e12 ? parsed / 1000 : parsed
+  } else if (first.machine?.timestamp != null) {
+    const parsed = typeof first.machine.timestamp === 'string' ? new Date(first.machine.timestamp).getTime() : Number(first.machine.timestamp)
     baseTime = parsed > 1e12 ? parsed / 1000 : parsed
   }
 
@@ -35,20 +65,21 @@ export function normalizeShotData(shot) {
   const phaseMarkers = []
   let lastFrame = null
 
-  for (let i = 0; i < measurements.length; i++) {
+  for (let i = startIdx; i <= endIdx; i++) {
     const m = measurements[i]
 
     // Calculate elapsed time
     let t = 0
+    const tsRaw = m.timestamp ?? m.machine?.timestamp
     if (m.elapsed != null) {
       t = Number(m.elapsed)
-    } else if (m.timestamp != null) {
-      const parsed = typeof m.timestamp === 'string' ? new Date(m.timestamp).getTime() : Number(m.timestamp)
+    } else if (tsRaw != null) {
+      const parsed = typeof tsRaw === 'string' ? new Date(tsRaw).getTime() : Number(tsRaw)
       const seconds = parsed > 1e12 ? parsed / 1000 : parsed
       t = seconds - baseTime
     } else {
       // Fallback: assume ~10Hz sample rate
-      t = i * 0.1
+      t = (i - startIdx) * 0.1
     }
     elapsed.push(t)
 
