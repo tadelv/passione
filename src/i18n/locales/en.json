@@ -62,7 +62,11 @@
     "sleeping": "Sleeping",
     "machineAndScale": "Machine + Scale",
     "machine": "Machine",
-    "sleep": "Sleep"
+    "sleep": "Sleep",
+    "pickCoffee": "Pick coffee",
+    "clearCoffee": "Clear",
+    "noBeans": "No beans yet.",
+    "openCatalog": "Open catalog"
   },
   "brew": {
     "title": "Brew",

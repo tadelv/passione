@@ -43,33 +43,70 @@ const isReady = computed(() =>
   machineState.value === 'idle'
 )
 
-// Shot plan lines — from workflow data
+// Shot plan lines — from workflow data.
+// Items are { kind, text }. `kind` lets the widget render per-row affordances
+// (the coffee row opens a bean picker; operation rows are read-only).
 const shotPlanLines = computed(() => {
   if (!workflow) return []
   const lines = []
   const ctx = workflow.context
 
+  // Coffee — always emitted (even empty) so the picker affordance is reachable
+  // when no bean is selected yet.
   if (ctx) {
     const coffeeName = ctx.coffeeName
     const roaster = ctx.coffeeRoaster
-    if (roaster && coffeeName) lines.push(`${roaster} — ${coffeeName}`)
-    else if (coffeeName) lines.push(coffeeName)
-    else if (roaster) lines.push(roaster)
+    let coffeeText = ''
+    if (roaster && coffeeName) coffeeText = `${roaster} — ${coffeeName}`
+    else if (coffeeName) coffeeText = coffeeName
+    else if (roaster) coffeeText = roaster
+    lines.push({ kind: 'coffee', text: coffeeText })
 
     const doseIn = ctx.targetDoseWeight
     const doseOut = ctx.targetYield
     if (doseIn && doseOut) {
       const ratio = doseOut / doseIn
-      lines.push(`${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})`)
-    } else if (doseIn) lines.push(`${Number(doseIn).toFixed(1)}g in`)
-    else if (doseOut) lines.push(`${Number(doseOut).toFixed(1)}g out`)
+      lines.push({ kind: 'dose', text: `${Number(doseIn).toFixed(1)}g in / ${Number(doseOut).toFixed(1)}g out (1:${ratio.toFixed(1)})` })
+    } else if (doseIn) lines.push({ kind: 'dose', text: `${Number(doseIn).toFixed(1)}g in` })
+    else if (doseOut) lines.push({ kind: 'dose', text: `${Number(doseOut).toFixed(1)}g out` })
 
     const grinderName = ctx.grinderModel
     const grinderSetting = ctx.grinderSetting
-    if (grinderName && grinderSetting != null) lines.push(`${grinderName} @ ${grinderSetting}`)
-    else if (grinderSetting != null) lines.push(`Grind: ${grinderSetting}`)
-    else if (grinderName) lines.push(grinderName)
+    if (grinderName && grinderSetting != null) lines.push({ kind: 'grinder', text: `${grinderName} @ ${grinderSetting}` })
+    else if (grinderSetting != null) lines.push({ kind: 'grinder', text: `Grind: ${grinderSetting}` })
+    else if (grinderName) lines.push({ kind: 'grinder', text: grinderName })
+  } else {
+    lines.push({ kind: 'coffee', text: '' })
   }
+
+  // Operation status — show only when enabled (duration > 0). buildWorkflowUpdate
+  // in RecipeEditorPage writes duration: 0 to mean "disabled" for all three
+  // operations, so a single check covers both combo-driven and ad-hoc state.
+  // Condensed onto a single row of icon-prefixed chips.
+  const ops = []
+  const steam = workflow.steamSettings
+  if (steam && Number(steam.duration) > 0) {
+    const segs = []
+    if (steam.targetTemperature != null) segs.push(`${Math.round(steam.targetTemperature)}°`)
+    if (steam.flow != null) segs.push(`${Number(steam.flow).toFixed(1)}`)
+    segs.push(`${Math.round(steam.duration)}s`)
+    ops.push({ op: 'steam', text: segs.join(' ') })
+  }
+  const hw = workflow.hotWaterData
+  if (hw && Number(hw.duration) > 0) {
+    const segs = []
+    if (hw.flow != null) segs.push(`${Number(hw.flow).toFixed(1)}`)
+    segs.push(`${Math.round(hw.duration)}s`)
+    ops.push({ op: 'hotwater', text: segs.join(' ') })
+  }
+  const rinse = workflow.rinseData
+  if (rinse && Number(rinse.duration) > 0) {
+    const segs = []
+    if (rinse.flow != null) segs.push(`${Number(rinse.flow).toFixed(1)}`)
+    segs.push(`${Math.round(rinse.duration)}s`)
+    ops.push({ op: 'flush', text: segs.join(' ') })
+  }
+  if (ops.length) lines.push({ kind: 'ops', entries: ops })
 
   return lines
 })

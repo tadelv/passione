@@ -23,16 +23,19 @@ watch(() => props.visible, (val) => {
     requestAnimationFrame(() => { animating.value = true })
     clearTimeout(dismissTimer)
     clearTimeout(fadeTimer)
-    // Start fade after 1s, dismiss at 3s
+    // Start fade after 3s, dismiss at 5s. Linger was bumped from 3s → 5s to
+    // give the gateway extra time to persist the just-finished shot — the
+    // /shots/latest poll on dismiss otherwise frequently came back with the
+    // *previous* shot, leaving the home-screen last-shot card stale.
     fadeTimer = setTimeout(() => {
       fading.value = true
-    }, 1000)
+    }, 3000)
     dismissTimer = setTimeout(() => {
       showing.value = false
       fading.value = false
       animating.value = false
       emit('dismiss')
-    }, 3000)
+    }, 5000)
   } else {
     clearTimeout(dismissTimer)
     clearTimeout(fadeTimer)

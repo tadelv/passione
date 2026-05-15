@@ -27,6 +27,7 @@ import { useConnectionError } from './composables/useConnectionError.js'
 import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
+import { useShotCache } from './composables/useShotCache'
 import { setMachineState, getLatestShot } from './api/rest.js'
 
 const router = useRouter()
@@ -45,6 +46,7 @@ const shotData = useShotData()
 
 const beansComposable = useBeans()
 const grindersComposable = useGrinders()
+const shotCache = useShotCache()
 
 // Settings, theme, and cross-cutting composables
 const settings = useSettings()
@@ -380,6 +382,14 @@ watch(machine.state, (newState, oldState) => {
     if (oldState === 'espresso') {
       lastShotStartMs = shotData.shotStartTime.value ?? 0
       shotData.stop()
+      // Refresh the cached "latest shot" once the gateway has actually
+      // committed the new record. Lives at App level (not in LayoutWidget)
+      // because the widget is unmounted during espresso. A naive setTimeout
+      // is unsafe — if the gateway is slow, the refetch lands on the same
+      // (previous) id and re-caches the stale shot, masking the new one. We
+      // poll against `priorLatestShotId` (snapshotted at espresso start) and
+      // only push into the cache once the id changes.
+      pollAndRefreshLatest()
       // P0-6: Determine stop reason
       const currentWeight = scale.weight.value ?? 0
       if (userRequestedStop) {
@@ -428,6 +438,37 @@ watch(() => route.path, () => {
   stopReasonVisible.value = false
   completionVisible.value = false
 })
+
+// Poll /shots/latest after espresso ends until the gateway has committed
+// the new record (id differs from `priorLatestShotId`, captured at espresso
+// start), then invalidate the shotCache so the home-screen last-shot widget
+// repaints. Runs regardless of route / linger settings / overlay state —
+// the cache must stay coherent even when the user navigates around mid-poll.
+const LATEST_CACHE_POLL_INTERVAL_MS = 500
+const LATEST_CACHE_POLL_TIMEOUT_MS = 15000
+function pollAndRefreshLatest() {
+  const baselineId = priorLatestShotId
+  const deadline = Date.now() + LATEST_CACHE_POLL_TIMEOUT_MS
+  const tick = () => {
+    getLatestShot().then(shot => {
+      const id = shot?.id
+      if (id && (baselineId == null || id !== baselineId)) {
+        shotCache.refreshLatest()
+        return
+      }
+      if (Date.now() >= deadline) {
+        // Gateway never produced a different id — push a refresh anyway so
+        // we don't get stuck on an even-older cache entry.
+        shotCache.refreshLatest()
+        return
+      }
+      setTimeout(tick, LATEST_CACHE_POLL_INTERVAL_MS)
+    }).catch(() => {
+      if (Date.now() < deadline) setTimeout(tick, LATEST_CACHE_POLL_INTERVAL_MS)
+    })
+  }
+  tick()
+}
 
 // How long we keep polling /shots/latest for a record that belongs to the
 // current session before giving up and going home. The gateway persists

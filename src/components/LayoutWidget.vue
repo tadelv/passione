@@ -5,16 +5,19 @@
  * Used by IdlePage to render each widget in the layout grid.
  * All machine/scale/settings data is injected from App.vue provides.
  */
-import { ref, computed, inject, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
+import { ref, computed, inject, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
+import BeanPickerPopup from './BeanPickerPopup.vue'
 import { setMachineState } from '../api/rest.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useShotCache } from '../composables/useShotCache'
 import { bootReady } from '../composables/useBootReady'
 import { espressoIcon, steamIcon, hotWaterIcon, flushIcon } from '../assets/icons/operations.js'
+
+const OP_ICONS = { steam: steamIcon, hotwater: hotWaterIcon, flush: flushIcon }
 
 const HistoryShotGraph = defineAsyncComponent(() => import('./HistoryShotGraph.vue'))
 
@@ -23,7 +26,13 @@ const props = defineProps({
   type: { type: String, required: true },
   /** Whether machine is ready for operations */
   isReady: { type: Boolean, default: false },
-  /** Shot plan lines (structured multi-line) */
+  /**
+   * Shot plan lines. Items are `{ kind, text }`:
+   *   - `coffee`  — clickable, opens the BeanPickerPopup.
+   *   - `dose`, `grinder` — non-interactive; the outer container handles
+   *     navigation to the recipe editor.
+   *   - `steam`, `hotwater`, `flush` — status-only.
+   */
   shotPlanLines: { type: Array, default: () => [] },
   /** Workflow combos */
   workflowCombos: { type: Array, default: () => [] },
@@ -63,6 +72,18 @@ const scaleWeight = inject('weight', ref(0))
 const devices = inject('devices', null)
 const updateWorkflow = inject('updateWorkflow', null)
 const toast = inject('toast', null)
+const workflow = inject('workflow', null)
+
+// Bean picker popup state — opened from the coffee row of the shotPlan widget.
+const beanPickerOpen = ref(false)
+const currentBatchId = computed(() => {
+  const id = workflow?.context?.beanBatchId
+  return id != null ? String(id) : null
+})
+
+function onCoffeeRowClick() {
+  beanPickerOpen.value = true
+}
 
 // ---- Last Shot ----
 //
@@ -76,26 +97,17 @@ const toast = inject('toast', null)
 const shotCache = useShotCache()
 const lastShot = shotCache.latest
 const machineState = inject('machineState', ref(''))
-let lastShotRefreshTimer = null
 
 // Defer the initial fetch until the machine WS is up — see useBootReady.
+// The espresso→idle invalidation lives in App.vue (the widget is unmounted
+// during a shot, so a watcher here would miss the transition); after App
+// calls shotCache.refreshLatest(), `latest.value` flips to null and the
+// next ensureLatest() — fired by either this widget or App's poll — pulls
+// the fresh record.
 onMounted(async () => {
   if (props.type !== 'lastShot') return
   await bootReady()
   shotCache.ensureLatest()
-})
-
-// After an espresso ends, give ReaPrime ~3 s to commit the record then
-// pick up the newly-saved shot through the cache (refreshLatest invalidates
-// only the latest entry — slim/ids stay intact).
-watch(machineState, (newState, oldState) => {
-  if (props.type !== 'lastShot') return
-  if (oldState === 'espresso' && newState === 'idle') {
-    clearTimeout(lastShotRefreshTimer)
-    lastShotRefreshTimer = setTimeout(() => {
-      shotCache.refreshLatest()
-    }, 3000)
-  }
 })
 
 // Re-attempt only on the connect *edge*, not on mount (the bootReady gate
@@ -108,9 +120,6 @@ watch(machineConnected, (connected, prevConnected) => {
   }
 })
 
-onUnmounted(() => {
-  clearTimeout(lastShotRefreshTimer)
-})
 
 const lastShotInfo = computed(() => {
   const raw = lastShot.value
@@ -188,10 +197,51 @@ async function repeatLastShot() {
         <div v-if="profileName" class="layout-widget__profile" @click.stop="router.push('/profiles')">
           {{ profileName }}
         </div>
-        <div v-for="(line, i) in shotPlanLines" :key="i" class="layout-widget__plan-text">
-          {{ line }}
-        </div>
+        <template v-for="(line, i) in shotPlanLines" :key="i">
+          <!-- Coffee row: tappable, opens bean picker. Always rendered so the
+               affordance is reachable even when no coffee is selected yet. -->
+          <div
+            v-if="line.kind === 'coffee'"
+            class="layout-widget__plan-text layout-widget__plan-text--coffee"
+            role="button"
+            tabindex="0"
+            :aria-label="t('idle.pickCoffee') || 'Pick coffee'"
+            @click.stop="onCoffeeRowClick"
+            @keydown.enter.stop.prevent="onCoffeeRowClick"
+            @keydown.space.stop.prevent="onCoffeeRowClick"
+          >
+            <span>{{ line.text || (t('idle.pickCoffee') || 'Pick coffee') }}</span>
+            <svg class="layout-widget__plan-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+          <!-- Operations row: condensed icon-prefixed chips for steam/hotwater/flush. -->
+          <div
+            v-else-if="line.kind === 'ops'"
+            class="layout-widget__plan-ops"
+          >
+            <span
+              v-for="entry in line.entries"
+              :key="entry.op"
+              :class="['layout-widget__plan-op', `layout-widget__plan-op--${entry.op}`]"
+            >
+              <span class="layout-widget__plan-op-icon" v-html="OP_ICONS[entry.op]" aria-hidden="true" />
+              <span class="layout-widget__plan-op-text">{{ entry.text }}</span>
+            </span>
+          </div>
+          <div
+            v-else
+            :class="['layout-widget__plan-text', `layout-widget__plan-text--${line.kind}`]"
+          >
+            {{ line.text }}
+          </div>
+        </template>
       </div>
+      <BeanPickerPopup
+        :visible="beanPickerOpen"
+        :current-batch-id="currentBatchId"
+        @close="beanPickerOpen = false"
+      />
     </template>
 
     <!-- Last Shot -->
@@ -322,6 +372,62 @@ async function repeatLastShot() {
 
 .layout-widget__plan-text:active {
   opacity: 0.7;
+}
+
+/* Coffee row — bean picker affordance with chevron. */
+.layout-widget__plan-text--coffee {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-surface-pressed, rgba(255, 255, 255, 0.05));
+  color: var(--color-text);
+}
+
+.layout-widget__plan-chevron {
+  color: var(--color-text-secondary);
+}
+
+/* Operation status row — condensed chips with icons. */
+.layout-widget__plan-ops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+  cursor: pointer; /* parent click goes to recipe editor */
+}
+
+.layout-widget__plan-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.layout-widget__plan-op-icon {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  line-height: 0;
+}
+
+.layout-widget__plan-op-icon :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.layout-widget__plan-op--steam { color: var(--color-accent); }
+.layout-widget__plan-op--hotwater { color: var(--color-flow); }
+.layout-widget__plan-op--flush { color: var(--color-success); }
+
+.layout-widget__plan-op-text {
+  color: var(--color-text-secondary);
 }
 
 /* ---- Last shot ---- */
