@@ -162,6 +162,8 @@ Core brewing flow, profile management (browse/search/favorites/visual editor/rec
 
 ## Build & Development
 
+Contributor-facing conventions (commit format, PR workflow, code rules) live in `CONTRIBUTING.md`. Project licensed GPL-3.0-or-later (`LICENSE`).
+
 ### Commands
 
 ```bash

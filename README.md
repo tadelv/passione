@@ -221,6 +221,10 @@ npm run test:e2e     # Playwright end-to-end tests (against mock server)
 - **uPlot** for real-time shot graphs
 - **Playwright** for end-to-end testing
 
+## Contributing
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup, conventions, and the PR workflow.
+
 ## License
 
-MIT
+GPL-3.0-or-later — see [LICENSE](LICENSE).
