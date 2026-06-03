@@ -8,6 +8,7 @@ import ProfileGraph from '../components/ProfileGraph.vue'
 import { createProfile } from '../api/rest.js'
 import { useProfilesCache } from '../composables/useProfilesCache'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
+import { buildReaProfile } from '../composables/useProfileSerialize'
 
 const toast = inject('toast')
 
@@ -170,7 +171,7 @@ async function importSingle(index) {
   item.status = 'importing'
   item.error = ''
   try {
-    await createProfile(item.profile)
+    await createProfile(buildReaProfile(item.profile))
     invalidateProfileCaches()
     item.status = 'imported'
     if (toast) toast.success(`Imported "${item.title}"`)
@@ -206,7 +207,7 @@ async function importAll() {
     item.status = 'importing'
     item.error = ''
     try {
-      await createProfile(item.profile)
+      await createProfile(buildReaProfile(item.profile))
       invalidateProfileCaches()
       item.status = 'imported'
       successCount++

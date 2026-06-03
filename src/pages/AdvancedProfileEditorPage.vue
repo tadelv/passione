@@ -4,13 +4,10 @@ import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import ValueInput from '../components/ValueInput.vue'
-import {
-  getProfile,
-  createProfile,
-  updateProfile,
-  uploadProfileToMachine,
-} from '../api/rest.js'
+import { getProfile, uploadProfileToMachine } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
+import { buildReaProfile, reaProfileToInternal } from '../composables/useProfileSerialize'
+import { persistProfile } from '../composables/useProfilePersist'
 
 const router = useRouter()
 const route = useRoute()
@@ -96,13 +93,9 @@ async function loadProfile() {
   try {
     const data = await getProfile(id)
     record.value = data
-    // Deep clone so we work on a mutable copy
-    const p = JSON.parse(JSON.stringify(data.profile || data))
-    // Normalise: some profiles use `steps`, some use `frames`
-    if (p.steps && !p.frames) {
-      p.frames = p.steps
-      delete p.steps
-    }
+    // Convert the REA `steps` profile into the editor's flat `frames` shape,
+    // surfacing nested exit/limiter into the flat fields the editor binds to.
+    const p = reaProfileToInternal(data.profile || data)
     profile.value = p
     originalSnapshot = JSON.stringify(p)
     if (p.frames && p.frames.length > 0) {
@@ -307,21 +300,15 @@ async function saveProfile() {
   if (!profile.value) return
   saving.value = true
   try {
-    // Normalise: ensure frames key
-    const payload = { ...profile.value }
-    if (payload.steps && !payload.frames) {
-      payload.frames = payload.steps
-      delete payload.steps
-    }
-    const existingId = record.value?.id || profile.value?.id
-    const result = existingId
-      ? await updateProfile(existingId, payload)
-      : await createProfile(payload)
+    const payload = buildReaProfile(profile.value)
+    // persistProfile forks a child when editing a default, and adopts the
+    // server's possibly-new content-hash id otherwise.
+    const result = await persistProfile(payload, record.value)
     invalidateProfileCaches()
     if (result?.id) {
       record.value = result
     }
-    originalSnapshot = JSON.stringify(result || profile.value)
+    originalSnapshot = JSON.stringify(profile.value)
     if (toast) toast.success('Profile saved')
   } catch (e) {
     console.warn('[ProfileEditorPage] Save failed:', e.message)
@@ -335,12 +322,7 @@ async function uploadToMachine() {
   if (!profile.value) return
   saving.value = true
   try {
-    const payload = { ...profile.value }
-    if (payload.steps && !payload.frames) {
-      payload.frames = payload.steps
-      delete payload.steps
-    }
-    await uploadProfileToMachine(payload)
+    await uploadProfileToMachine(buildReaProfile(profile.value))
     if (toast) toast.success('Profile uploaded to machine')
   } catch (e) {
     console.warn('[ProfileEditorPage] Upload failed:', e.message)

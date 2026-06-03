@@ -7,6 +7,7 @@ const router = useRouter()
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { createProfile } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
+import { buildReaProfile } from '../composables/useProfileSerialize'
 
 const toast = inject('toast')
 
@@ -96,7 +97,10 @@ async function importProfile() {
 async function saveProfile(profile, overwrite = false) {
   saveStatus.value = 'saving'
   try {
-    await createProfile(profile)
+    // Normalize to the REA `steps` shape and guarantee required top-level
+    // fields (tank_temperature / target_volume_count_start) — Profile.fromJson
+    // throws on their absence. frameToStep passes already-REA steps through.
+    await createProfile(buildReaProfile(profile))
     invalidateProfileCaches()
     saveStatus.value = 'saved'
     shareCode.value = ''

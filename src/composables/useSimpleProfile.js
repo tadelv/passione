@@ -194,5 +194,10 @@ export function buildProfileFromParams(params, isFlow, meta = {}) {
     number_of_preinfuse_frames: params.preinfusion_time > 0 ? 1 : 0,
     ...params,
     steps,
+    // Required by REA Profile.fromJson — parseDouble/parseInt throw on null,
+    // so these must always be present. Decent profiles drive temperature
+    // per-step, so tank_temperature 0 means "no tank override".
+    tank_temperature: 0,
+    target_volume_count_start: 0,
   }
 }

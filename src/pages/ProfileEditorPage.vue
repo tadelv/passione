@@ -4,13 +4,10 @@ import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import ValueInput from '../components/ValueInput.vue'
-import {
-  getProfile,
-  createProfile,
-  updateProfile,
-  uploadProfileToMachine,
-} from '../api/rest.js'
+import { getProfile, uploadProfileToMachine } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
+import { buildReaProfile, stepToFrame } from '../composables/useProfileSerialize'
+import { persistProfile } from '../composables/useProfilePersist'
 
 const router = useRouter()
 const route = useRoute()
@@ -325,7 +322,9 @@ function buildRecipeState() {
  * Uses heuristics: frame name matching, pressure/flow ranges, position.
  */
 function framesToPhases(profile) {
-  const steps = profile.frames || profile.steps || []
+  // Normalize REA `steps` (nested exit/limiter) into the flat frame shape the
+  // heuristic + getExitValueFromFrame below expect; pass flat frames through.
+  const steps = (profile.frames || profile.steps || []).map(stepToFrame)
   if (!steps.length) return null
 
   // If the profile already has recipe metadata, use it directly
@@ -454,10 +453,10 @@ async function loadProfile() {
     targetVolume.value = profile.target_volume || 0
     stopAtType.value = profile.stop_at_type || (profile.target_weight > 0 ? 'weight' : 'volume')
 
-    // Try to derive temperature from frames
+    // Try to derive temperature from frames (REA values may be strings)
     const steps = profile.frames || profile.steps || []
     if (steps.length > 0) {
-      globalTemperature.value = steps[0].temperature || 93
+      globalTemperature.value = parseFloat(steps[0].temperature) || 93
     }
 
     // Attempt to map frames to recipe phases
@@ -562,11 +561,10 @@ async function saveProfile() {
 
   saving.value = true
   try {
-    const profile = buildProfile()
-    const existingId = record.value?.id || profile?.id
-    const result = existingId
-      ? await updateProfile(existingId, profile)
-      : await createProfile(profile)
+    const payload = buildReaProfile(buildProfile())
+    // persistProfile forks a child when editing a default, and adopts the
+    // server's possibly-new content-hash id otherwise.
+    const result = await persistProfile(payload, record.value)
     invalidateProfileCaches()
     if (result?.id) {
       record.value = result
@@ -589,8 +587,7 @@ async function uploadToMachine() {
 
   saving.value = true
   try {
-    const profile = buildProfile()
-    await uploadProfileToMachine(profile)
+    await uploadProfileToMachine(buildReaProfile(buildProfile()))
     if (toast) toast.success('Recipe uploaded to machine')
   } catch (e) {
     console.warn('[RecipeEditorPage] Upload failed:', e.message)

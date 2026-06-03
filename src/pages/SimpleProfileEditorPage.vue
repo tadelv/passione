@@ -4,8 +4,9 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import ValueInput from '../components/ValueInput.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import BottomBar from '../components/BottomBar.vue'
-import { getProfile, updateProfile, createProfile } from '../api/rest.js'
+import { getProfile } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
+import { persistProfile } from '../composables/useProfilePersist'
 import {
   extractSimpleParams,
   generateSimpleFrames,
@@ -119,14 +120,15 @@ async function saveProfile() {
   saving.value = true
   try {
     const payload = buildProfileFromParams(params.value, isFlow.value, meta.value)
-    if (profileId.value) {
-      await updateProfile(profileId.value, payload)
-      invalidateProfileCaches()
-    } else {
-      const created = await createProfile(payload)
-      invalidateProfileCaches()
-      if (created?.id) {
-        router.replace(`/simple-editor/${encodeURIComponent(created.id)}`)
+    // persistProfile forks a child when editing a default; otherwise updates in
+    // place. Changing execution fields makes the server return a NEW hash id —
+    // adopt it and re-route so the next save doesn't target a deleted record.
+    const result = await persistProfile(payload, record.value)
+    invalidateProfileCaches()
+    if (result?.id) {
+      record.value = result
+      if (result.id !== profileId.value) {
+        router.replace(`/simple-editor/${encodeURIComponent(result.id)}`)
       }
     }
     originalSnapshot = JSON.stringify({ params: params.value, meta: meta.value })
