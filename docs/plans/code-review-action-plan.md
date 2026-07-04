@@ -26,7 +26,7 @@
 
 ### Remaining
 
-- [ ] **Handle out-of-range values on load** — display actual value even if > max, don't silently clamp (e.g. `baseline_hc.json` flow=12)
+- [x] **Handle out-of-range values on load** — one-sided clamp in ValueInput preserves authored values above/below editor limits; visual indicator (warm accent border + text) signals out-of-range state. verify: `npm run build` ✅
 
 ## Phase 2: Recipe Editor Refactor
 
