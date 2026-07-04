@@ -15,6 +15,7 @@ import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
 import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
 import { useRecipeForm } from '../composables/useRecipeForm'
 import { useRecipeLiveApply } from '../composables/useRecipeLiveApply'
+import { useRecipeOverlay } from '../composables/useRecipeOverlay'
 import { LIMITS } from '../constants/limits'
 
 const { suggestions: historySuggestions, load: loadHistorySuggestions } = useShotHistorySuggestions()
@@ -92,66 +93,35 @@ const dirty = computed(() => {
   return isComboModifiedVsForm(saved, comboValues())
 })
 
-// ---- "Awaiting profile from picker" flag ----
-// Must survive the /recipe/edit → /profiles → /recipe/edit round-trip.
-// Pages unmount between route changes, so this can't live in a ref — we
-// use sessionStorage as a minimal cross-mount signal.
-//
-// We store the baseline profile id at the moment the user clicks "Change"
-// so that a subsequent mount only honors the flag if workflow.profile has
-// ACTUALLY changed since then. Without the baseline check, an abandoned
-// round-trip (user clicked Change, then navigated away via Settings/Home
-// instead of completing Use Profile) would leave the flag set and silently
-// overwrite the profile row the next time the editor was opened.
-const AWAITING_PROFILE_KEY = 'wfe:awaitingProfileFromPicker'
-const AWAITING_PROFILE_BASELINE_KEY = 'wfe:awaitingProfileBaseline'
-function isAwaitingProfileFromPicker() {
-  try { return sessionStorage.getItem(AWAITING_PROFILE_KEY) === '1' } catch { return false }
-}
-function getAwaitingProfileBaselineId() {
-  try { return sessionStorage.getItem(AWAITING_PROFILE_BASELINE_KEY) } catch { return null }
-}
-function setAwaitingProfileFromPicker(v, baselineId = null) {
-  try {
-    if (v) {
-      sessionStorage.setItem(AWAITING_PROFILE_KEY, '1')
-      if (baselineId != null) {
-        sessionStorage.setItem(AWAITING_PROFILE_BASELINE_KEY, String(baselineId))
-      } else {
-        sessionStorage.removeItem(AWAITING_PROFILE_BASELINE_KEY)
-      }
-    } else {
-      sessionStorage.removeItem(AWAITING_PROFILE_KEY)
-      sessionStorage.removeItem(AWAITING_PROFILE_BASELINE_KEY)
-    }
-  } catch { /* no-op */ }
-}
+// ---- Overlay composable ----
+const {
+  loadFromPreset,
+  overlayFromWorkflow,
+  hydrateFromWorkflowContext,
+  onChangeProfile,
+  onGrinderSelect: _onGrinderSelect,
+  isAwaitingProfileFromPicker,
+  getAwaitingProfileBaselineId,
+  setAwaitingProfileFromPicker,
+} = useRecipeOverlay(form, {
+  workflow, grinders, beansApi,
+  enterLinked, clearLink, hydrateFromContext,
+  selectedBeanId, selectedBatchId, batchesForBean,
+  pickBrewTempFromProfile, round1, workflowCombos, selectedIndex,
+})
+
+// Grinder select wrapper — also used by the template's @change handler
+function onGrinderSelect(grinderId) { _onGrinderSelect(grinderId) }
 
 onMounted(() => {
   loadHistorySuggestions()
-  // Honor a pending profile pick from ProfileSelectorPage — pages unmount
-  // between navigations, so loadFromPreset() ran first and overwrote the
-  // form's profileTitle with the combo's saved value. Re-sync from workflow
-  // if the user came back from the picker.
-  //
-  // Wrap the assignments in the form.updating guard so the live-apply watcher
-  // doesn't re-fire buildWorkflowUpdate() from stale form values set by
-  // loadFromPreset — that would silently clobber any user-side diverged
-  // context fields (grinderSetting, coffeeName, etc.) back to the combo's
-  // saved defaults.
   if (isAwaitingProfileFromPicker() && workflow?.profile) {
     const baselineId = getAwaitingProfileBaselineId()
     const currentKey = workflow.profile.id ?? workflow.profile.title ?? ''
-    // Only honor the flag if workflow.profile has actually changed since
-    // the user clicked "Change" — otherwise this is an abandoned round-trip
-    // (user bailed out without picking) and we'd wrongly stomp the form.
     if (baselineId !== String(currentKey)) {
       form.updating = true
       profileTitle.value = workflow.profile.title ?? ''
       profileId.value = workflow.profile.id ?? null
-      // Newly-picked profile: reset the temperature override to the new
-      // profile's baseline so the user isn't carrying over a 94 °C knob
-      // onto a 90 °C profile they just chose.
       const t = pickBrewTempFromProfile(workflow.profile)
       if (t != null) brewTemperature.value = t
       nextTick(() => { form.updating = false })
@@ -206,21 +176,6 @@ async function onBatchSelect(batchId) {
   await enterLinked(selectedBeanId.value, batchId)
 }
 
-// ---- Grinder selection ----
-function onGrinderSelect(grinderId, { resetSetting = true } = {}) {
-  selectedGrinderId.value = grinderId || null
-  if (!grinderId) {
-    grinder.value = ''
-    grinderSetting.value = ''
-    return
-  }
-  const g = grinders.value.find(g => g.id === grinderId)
-  if (g) {
-    grinder.value = g.model ?? ''
-    if (resetSetting) grinderSetting.value = ''
-  }
-}
-
 // ---- Batch info helper ----
 function daysSinceRoast(batch) {
   if (!batch?.roastDate) return null
@@ -228,206 +183,14 @@ function daysSinceRoast(batch) {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-// ---- Populate from selected preset ----
-async function loadFromPreset(index) {
-  const preset = workflowCombos.value[index]
-  if (!preset) return
-  form.updating = true
-  // Coffee: support legacy beanBrand/beanType combos
-  coffeeName.value = preset.coffeeName ?? ([preset.beanBrand, preset.beanType].filter(Boolean).join(' ') || '')
-  roaster.value = preset.roaster ?? ''
-  grinder.value = preset.grinder ?? ''
-  grinderSetting.value = preset.grinderSetting ?? ''
-  doseIn.value = preset.doseIn ?? 18.0
-  doseOut.value = preset.doseOut ?? 36.0
-  ratioValue.value = doseIn.value > 0 ? +(doseOut.value / doseIn.value).toFixed(1) : 2.0
-  profileId.value = preset.profileId ?? null
-  profileTitle.value = preset.profileTitle ?? ''
-  if (preset.brewTemperature != null) {
-    brewTemperature.value = preset.brewTemperature
-  } else {
-    brewTemperature.value = pickBrewTempFromProfile(workflow?.profile) ?? 93
-  }
-  grinderRpm.value = preset.grinderRpm ?? 1200
-  basketSize.value = preset.basketSize ?? 18
-  basketType.value = preset.basketType ?? ''
-  // Operation settings — always restore sub-field values so they survive
-  // a toggle-off/toggle-on cycle (user disables steam, re-enables later)
-  includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
-  if (preset.steamSettings) {
-    steamDuration.value = preset.steamSettings.duration ?? 30
-    steamFlow.value = preset.steamSettings.flow ?? 1.5
-    steamTemperature.value = preset.steamSettings.temperature ?? 160
-  }
-  includeFlush.value = preset.includeFlush ?? (preset.flushSettings?.duration > 0)
-  if (preset.flushSettings) {
-    flushDuration.value = preset.flushSettings.duration ?? 5
-    flushFlowRate.value = preset.flushSettings.flow ?? 6.0
-  }
-  includeHotWater.value = preset.includeHotWater ?? (preset.hotWaterSettings?.volume > 0)
-  if (preset.hotWaterSettings) {
-    hotWaterVolume.value = preset.hotWaterSettings.volume ?? 200
-    hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
-  }
-  // Restore entity selections — keep form.updating true through async work
-  // so the auto-save watcher doesn't fire with partially-loaded data
-  if (preset.selectedBeanId) {
-    if (preset.selectedBatchId) {
-      await enterLinked(preset.selectedBeanId, preset.selectedBatchId)
-    } else {
-      await enterLinked(preset.selectedBeanId)
-    }
-    if (beansApi) {
-      batchesForBean.value = await beansApi.getBatches(preset.selectedBeanId).catch(() => []) ?? []
-    }
-  } else {
-    clearLink()
-    batchesForBean.value = []
-  }
-  if (preset.selectedGrinderId) {
-    onGrinderSelect(preset.selectedGrinderId, { resetSetting: false })
-  } else {
-    selectedGrinderId.value = null
-  }
-  form.updating = false
-}
-
-// ---- Mount-time hydration: overlay live-workflow divergence on top ----
-//
-// When the user edits a field, the live-apply watcher pushes the change to
-// the workflow but never touches the saved combo. If the user then leaves
-// the editor (Home) and comes back, a naive `loadFromPreset` would reset
-// every form ref to the saved combo's values — the form would read as
-// un-dirty even though the live workflow has diverged, and the Save /
-// Save as New buttons would vanish. It would also silently clobber the
-// user's in-flight edits the next time the live-apply watcher fires,
-// because the watcher would see the form snap back to saved values.
-//
-// Fix: after loading the preset baseline (needed for combo-only metadata
-// like selectedBeanId / operation sub-field defaults when off), overlay
-// the live workflow's scalar context + operation settings. The saved
-// combo stays untouched; only the editor's form refs mirror what the
-// workflow actually has right now.
-async function overlayFromWorkflow() {
-  if (!workflow) return
-  form.updating = true
-  const ctx = workflow.context ?? {}
-  // Reconcile the entity links FIRST. loadFromPreset restored the SAVED
-  // combo's bean/grinder, but the live workflow may carry different ones
-  // the user picked since (the combo is only mutated on explicit Save).
-  // Entity links aren't scalars, so the overlay block below can't touch
-  // them — without this the editor silently reverts the link on re-entry.
-  const liveBatchId = ctx.beanBatchId ? String(ctx.beanBatchId) : null
-  const formBatchId = selectedBatchId.value ? String(selectedBatchId.value) : null
-  if (liveBatchId !== formBatchId) {
-    if (liveBatchId) {
-      await hydrateFromContext(ctx)
-      if (selectedBeanId.value && beansApi) {
-        batchesForBean.value = await beansApi.getBatches(selectedBeanId.value).catch(() => []) ?? []
-      }
-    } else {
-      clearLink()
-      batchesForBean.value = []
-    }
-  }
-  const liveGrinderId = ctx.grinderId ? String(ctx.grinderId) : null
-  const formGrinderId = selectedGrinderId.value ? String(selectedGrinderId.value) : null
-  if (liveGrinderId !== formGrinderId) {
-    if (liveGrinderId) onGrinderSelect(liveGrinderId, { resetSetting: false })
-    else selectedGrinderId.value = null
-  }
-  if (ctx.targetDoseWeight != null) doseIn.value = ctx.targetDoseWeight
-  if (ctx.targetYield != null) doseOut.value = ctx.targetYield
-  if (doseIn.value > 0 && doseOut.value > 0) {
-    ratioValue.value = round1(doseOut.value / doseIn.value)
-  }
-  // Skip coffeeName/coffeeRoaster while a bean is linked — the refs are
-  // intentionally blank in that case so the saved combo doesn't carry
-  // redundant text. The live ctx text is denormalized from the bean record
-  // and would just re-dirty the refs.
-  if (!selectedBeanId.value) {
-    if (ctx.coffeeName != null) coffeeName.value = ctx.coffeeName
-    if (ctx.coffeeRoaster != null) roaster.value = ctx.coffeeRoaster
-  }
-  if (ctx.grinderModel != null) grinder.value = ctx.grinderModel
-  if (ctx.grinderSetting != null) grinderSetting.value = String(ctx.grinderSetting)
-  if (workflow.profile) {
-    profileId.value = workflow.profile.id ?? profileId.value
-    profileTitle.value = workflow.profile.title ?? profileTitle.value
-    const t = pickBrewTempFromProfile(workflow.profile)
-    if (t != null) brewTemperature.value = t
-  }
-  const extras = ctx.extras ?? {}
-  if (extras.grinderRpm != null) grinderRpm.value = extras.grinderRpm
-  if (extras.basketSize != null) basketSize.value = extras.basketSize
-  if (extras.basketType != null) basketType.value = extras.basketType
-  // Operation settings — align include flag and sub-field values with
-  // whatever the live workflow currently has.
-  const ss = workflow.steamSettings
-  if (ss) {
-    const on = (ss.duration ?? 0) > 0
-    includeSteam.value = on
-    if (on) {
-      steamDuration.value = ss.duration
-      if (ss.flow != null) steamFlow.value = ss.flow
-      if (ss.targetTemperature != null) steamTemperature.value = ss.targetTemperature
-    }
-  }
-  const rd = workflow.rinseData
-  if (rd) {
-    const on = (rd.duration ?? 0) > 0
-    includeFlush.value = on
-    if (on) {
-      flushDuration.value = rd.duration
-      if (rd.flow != null) flushFlowRate.value = rd.flow
-    }
-  }
-  const hw = workflow.hotWaterData
-  if (hw) {
-    const on = (hw.volume ?? 0) > 0
-    includeHotWater.value = on
-    if (on) {
-      hotWaterVolume.value = hw.volume
-      if (hw.targetTemperature != null) hotWaterTemperature.value = hw.targetTemperature
-    }
-  }
-  form.updating = false
-}
-
-async function hydrateFromWorkflowContext() {
-  const ctx = workflow?.context
-  if (!ctx) return
-  doseIn.value = ctx.targetDoseWeight ?? 18.0
-  doseOut.value = ctx.targetYield ?? 36.0
-  if (doseIn.value > 0) ratioValue.value = +(doseOut.value / doseIn.value).toFixed(1)
-  grinder.value = ctx.grinderModel ?? ''
-  grinderSetting.value = ctx.grinderSetting ?? ''
-  coffeeName.value = ctx.coffeeName ?? ''
-  roaster.value = ctx.coffeeRoaster ?? ''
-  if (ctx.grinderId) selectedGrinderId.value = ctx.grinderId
-  if (ctx.beanBatchId) {
-    await hydrateFromContext(ctx)
-    if (selectedBeanId.value && beansApi) {
-      batchesForBean.value = await beansApi.getBatches(selectedBeanId.value).catch(() => []) ?? []
-    }
-  }
-  const extras = ctx.extras ?? {}
-  if (extras.grinderRpm != null) grinderRpm.value = extras.grinderRpm
-  if (extras.basketSize != null) basketSize.value = extras.basketSize
-  if (extras.basketType != null) basketType.value = extras.basketType
-}
-
+// ---- Mount-time load coordination ----
 // Load on mount if a preset is selected
 if (selectedIndex.value >= 0) {
-  // loadFromPreset is async — chain the overlay so the live workflow
-  // values land AFTER the preset baseline (bean batches may still be
-  // resolving but they only populate entity IDs, not scalar fields).
   loadFromPreset(selectedIndex.value).then(overlayFromWorkflow)
 } else {
   hydrateFromWorkflowContext()
 }
-// Sync profile from workflow only when no preset is loaded — presets carry their own
-// profileId/profileTitle and must not be overwritten by the machine's current workflow.
+// Sync profile from workflow only when no preset is loaded
 if (selectedIndex.value < 0 && workflow?.profile) {
   profileTitle.value = workflow.profile.title ?? ''
   profileId.value = workflow.profile.id ?? null
@@ -531,15 +294,6 @@ const basketTypeSuggestions = computed(() => mergeSorted(
   workflowCombos.value.map(p => p.basketType),
   historySuggestions.value.basketType,
 ))
-
-// ---- Profile change navigation ----
-function onChangeProfile() {
-  // Snapshot the current workflow profile id so onMounted can verify that
-  // an ACTUAL profile pick occurred before honoring the flag.
-  const baselineId = workflow?.profile?.id ?? workflow?.profile?.title ?? ''
-  setAwaitingProfileFromPicker(true, baselineId)
-  router.push('/profiles?from=workflow')
-}
 
 // ---- Save action handlers ----
 //
