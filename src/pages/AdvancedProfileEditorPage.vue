@@ -8,6 +8,7 @@ import { getProfile, uploadProfileToMachine } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 import { buildReaProfile, reaProfileToInternal } from '../composables/useProfileSerialize'
 import { persistProfile } from '../composables/useProfilePersist'
+import { LIMITS } from '../constants/limits'
 
 const router = useRouter()
 const route = useRoute()
@@ -361,12 +362,12 @@ const EXIT_TYPES = [
 
 function exitValueMax() {
   const f = currentFrame.value
-  if (!f) return 12
+  if (!f) return LIMITS.pressure.max
   switch (f.exit_type) {
     case 'flow_over':
-    case 'flow_under': return 8
-    case 'weight': return 100
-    default: return 12
+    case 'flow_under': return LIMITS.flow.exitMax
+    case 'weight': return LIMITS.weight.exitMax
+    default: return LIMITS.pressure.exitMax
   }
 }
 
@@ -552,8 +553,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="profile.stop_at_type === 'volume' ? (profile.target_volume || 36) : (profile.target_weight || 36)"
                   @update:model-value="v => { if (profile.stop_at_type === 'volume') { profile.target_volume = v } else { profile.target_weight = v }; triggerUpdate() }"
-                  :min="0"
-                  :max="500"
+                  :min="LIMITS.weight.targetMin"
+                  :max="LIMITS.weight.targetMax"
                   :step="1"
                   :decimals="0"
                   :suffix="profile.stop_at_type === 'volume' ? ' mL' : ' g'"
@@ -567,8 +568,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="frames[0]?.temperature || 93"
                   @update:model-value="updateGlobalTemp"
-                  :min="70"
-                  :max="100"
+                  :min="LIMITS.temp.brewMin"
+                  :max="LIMITS.temp.brewMax"
                   :step="0.5"
                   :decimals="1"
                   suffix=" &deg;C"
@@ -612,8 +613,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="currentFrame.pump === 'flow' ? (currentFrame.flow ?? 0) : (currentFrame.pressure ?? 0)"
                   @update:model-value="v => updateFrameField(currentFrame.pump === 'flow' ? 'flow' : 'pressure', v)"
-                  :min="0"
-                  :max="currentFrame.pump === 'flow' ? 8 : 12"
+                  :min="LIMITS.flow.min"
+                  :max="currentFrame.pump === 'flow' ? LIMITS.flow.max : LIMITS.pressure.max"
                   :step="0.1"
                   :decimals="1"
                   :suffix="currentFrame.pump === 'flow' ? ' mL/s' : ' bar'"
@@ -627,8 +628,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="currentFrame.temperature ?? 93"
                   @update:model-value="v => updateFrameField('temperature', v)"
-                  :min="70"
-                  :max="100"
+                  :min="LIMITS.temp.brewMin"
+                  :max="LIMITS.temp.brewMax"
                   :step="0.5"
                   :decimals="1"
                   suffix="&deg;C"
@@ -642,12 +643,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="currentFrame.seconds ?? 30"
                   @update:model-value="v => updateFrameField('seconds', v)"
-                  :min="0"
-                  :max="120"
-                  :step="1"
-                  :decimals="0"
-                  suffix="s"
-                  aria-label="Frame duration"
+                  :min="LIMITS.duration.stepMin"
+                  :max="LIMITS.duration.stepMax"
                 />
               </div>
 
@@ -725,8 +722,8 @@ onMounted(loadProfile)
                   <ValueInput
                     :model-value="currentFrame.max_flow_or_pressure ?? 0"
                     @update:model-value="v => updateFrameField('max_flow_or_pressure', v)"
-                    :min="0"
-                    :max="currentFrame.pump === 'flow' ? 12 : 8"
+                    :min="LIMITS.pressure.limiterMin"
+                    :max="currentFrame.pump === 'flow' ? LIMITS.pressure.limiterMax : LIMITS.flow.limiterMax"
                     :step="0.1"
                     :decimals="1"
                     :suffix="currentFrame.pump === 'flow' ? ' bar' : ' mL/s'"
@@ -738,8 +735,8 @@ onMounted(loadProfile)
                   <ValueInput
                     :model-value="currentFrame.max_flow_or_pressure_range ?? 0.6"
                     @update:model-value="v => updateFrameField('max_flow_or_pressure_range', v)"
-                    :min="0.1"
-                    :max="2.0"
+                    :min="LIMITS.limiterRange.min"
+                    :max="LIMITS.limiterRange.max"
                     :step="0.1"
                     :decimals="1"
                     :suffix="currentFrame.pump === 'flow' ? ' bar' : ' mL/s'"
@@ -754,12 +751,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="currentFrame.volume ?? 0"
                   @update:model-value="v => updateFrameField('volume', v)"
-                  :min="0"
-                  :max="500"
-                  :step="1"
-                  :decimals="0"
-                  suffix=" mL"
-                  aria-label="Frame volume limit"
+                  :min="LIMITS.volume.min"
+                  :max="LIMITS.volume.max"
                 />
               </div>
 
@@ -769,12 +762,8 @@ onMounted(loadProfile)
                 <ValueInput
                   :model-value="currentFrame.exit_weight ?? 0"
                   @update:model-value="v => { updateFrameField('exit_weight', v); currentFrame.weight = v }"
-                  :min="0"
-                  :max="100"
-                  :step="0.5"
-                  :decimals="1"
-                  suffix=" g"
-                  aria-label="Weight exit"
+                  :min="LIMITS.weight.exitMin"
+                  :max="LIMITS.weight.exitMax"
                 />
               </div>
 

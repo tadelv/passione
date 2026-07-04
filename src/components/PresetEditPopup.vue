@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import ValueInput from './ValueInput.vue'
+import { LIMITS } from '../constants/limits'
 
 const props = defineProps({
   /** Whether the popup is visible */
@@ -149,7 +150,7 @@ function onCancel() {
               <label class="preset-edit-popup__label">Duration</label>
               <ValueInput
                 :model-value="steamDuration"
-                :min="1" :max="120" :step="1" :decimals="0"
+                :min="LIMITS.duration.steamMin" :max="LIMITS.duration.steamMax" :step="1" :decimals="0"
                 suffix=" s"
                 value-color="var(--color-primary)"
                 @update:model-value="steamDuration = $event"
@@ -159,7 +160,7 @@ function onCancel() {
               <label class="preset-edit-popup__label">Steam Flow</label>
               <ValueInput
                 :model-value="steamFlow"
-                :min="0.4" :max="2.5" :step="0.05" :decimals="2"
+                :min="LIMITS.flow.steamMin" :max="LIMITS.flow.steamMax" :step="0.05" :decimals="2"
                 suffix=" mL/s"
                 value-color="var(--color-primary)"
                 @update:model-value="steamFlow = $event"
@@ -173,7 +174,7 @@ function onCancel() {
               <label class="preset-edit-popup__label">Volume / Weight</label>
               <ValueInput
                 :model-value="hotWaterVolume"
-                :min="50" :max="500" :step="10" :decimals="0"
+                :min="LIMITS.weight.hotWaterMin" :max="LIMITS.weight.hotWaterMax" :step="10" :decimals="0"
                 suffix=" g"
                 value-color="var(--color-primary)"
                 @update:model-value="hotWaterVolume = $event"
@@ -183,7 +184,7 @@ function onCancel() {
               <label class="preset-edit-popup__label">Temperature</label>
               <ValueInput
                 :model-value="hotWaterTemperature"
-                :min="40" :max="100" :step="1" :decimals="0"
+                :min="LIMITS.temp.hotWaterMin" :max="LIMITS.temp.hotWaterMax" :step="1" :decimals="0"
                 suffix="&deg;C"
                 value-color="var(--color-temperature)"
                 @update:model-value="hotWaterTemperature = $event"
@@ -197,7 +198,7 @@ function onCancel() {
               <label class="preset-edit-popup__label">Duration</label>
               <ValueInput
                 :model-value="flushDuration"
-                :min="1" :max="30" :step="0.5" :decimals="1"
+                :min="LIMITS.duration.flushMin" :max="LIMITS.duration.flushMax" :step="0.5" :decimals="1"
                 suffix=" s"
                 value-color="var(--color-primary)"
                 @update:model-value="flushDuration = $event"
@@ -207,7 +208,7 @@ function onCancel() {
               <label class="preset-edit-popup__label">Flow Rate</label>
               <ValueInput
                 :model-value="flushFlow"
-                :min="2" :max="10" :step="0.5" :decimals="1"
+                :min="LIMITS.flow.flushMin" :max="LIMITS.flow.flushMax" :step="0.5" :decimals="1"
                 suffix=" mL/s"
                 value-color="var(--color-flow)"
                 @update:model-value="flushFlow = $event"

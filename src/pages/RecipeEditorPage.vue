@@ -13,6 +13,7 @@ import BottomBar from '../components/BottomBar.vue'
 import { useBeanLink } from '../composables/useBeanLink'
 import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
 import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
+import { LIMITS } from '../constants/limits'
 
 const { suggestions: historySuggestions, load: loadHistorySuggestions } = useShotHistorySuggestions()
 
@@ -923,8 +924,8 @@ watch(() => workflow?.profile, (newProfile) => {
             <label class="recipe-editor__label">Size (g)</label>
             <ValueInput
               v-model="basketSize"
-              :min="7"
-              :max="22"
+              :min="LIMITS.weight.basketMin"
+              :max="LIMITS.weight.basketMax"
               :step="0.5"
               placeholder="—"
             />
@@ -989,8 +990,8 @@ watch(() => workflow?.profile, (newProfile) => {
           <label class="recipe-editor__label">RPM</label>
           <ValueInput
             v-model="grinderRpm"
-            :min="selectedGrinder?.extras?.rpmMin ?? 50"
-            :max="selectedGrinder?.extras?.rpmMax ?? 3000"
+            :min="selectedGrinder?.extras?.rpmMin ?? LIMITS.rpm.min"
+            :max="selectedGrinder?.extras?.rpmMax ?? LIMITS.rpm.max"
             :step="50"
             placeholder="—"
           />
@@ -1007,8 +1008,8 @@ watch(() => workflow?.profile, (newProfile) => {
               <label class="recipe-editor__label">Dose In</label>
               <ValueInput
                 v-model="doseIn"
-                :min="0"
-                :max="40"
+                :min="LIMITS.weight.doseMin"
+                :max="LIMITS.weight.doseMax"
                 :step="0.1"
                 :decimals="1"
                 suffix="g"
@@ -1020,8 +1021,8 @@ watch(() => workflow?.profile, (newProfile) => {
               <label class="recipe-editor__label">Dose Out</label>
               <ValueInput
                 v-model="doseOut"
-                :min="0"
-                :max="500"
+                :min="LIMITS.weight.yieldMin"
+                :max="LIMITS.weight.yieldMax"
                 :step="0.1"
                 :decimals="1"
                 suffix="g"
@@ -1032,8 +1033,8 @@ watch(() => workflow?.profile, (newProfile) => {
               <label class="recipe-editor__label">Ratio (1:X)</label>
               <ValueInput
                 v-model="ratioValue"
-                :min="0.5"
-                :max="10"
+                :min="LIMITS.ratio.min"
+                :max="LIMITS.ratio.max"
                 :step="0.1"
                 :decimals="1"
               />
@@ -1049,8 +1050,8 @@ watch(() => workflow?.profile, (newProfile) => {
               <label class="recipe-editor__label">Temperature</label>
               <ValueInput
                 v-model="brewTemperature"
-                :min="50"
-                :max="100"
+                :min="LIMITS.temp.brewMin"
+                :max="LIMITS.temp.brewMax"
                 :step="0.5"
                 :decimals="1"
                 suffix="°C"

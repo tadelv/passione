@@ -13,6 +13,7 @@ import { normalizeShot } from '../composables/useShotNormalize'
 import { useBeanLink } from '../composables/useBeanLink'
 import { useShotCache } from '../composables/useShotCache'
 import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
+import { LIMITS } from '../constants/limits'
 
 const { suggestions: historySuggestions, load: loadSuggestions, invalidate: invalidateSuggestions } = useShotHistorySuggestions()
 const shotCache = useShotCache()
@@ -537,8 +538,8 @@ function goBack() {
               <label class="review-page__label">RPM</label>
               <ValueInput
                 :model-value="grinderRpm"
-                :min="enrichedGrinder?.extras?.rpmMin ?? 50"
-                :max="enrichedGrinder?.extras?.rpmMax ?? 3000"
+                :min="enrichedGrinder?.extras?.rpmMin ?? LIMITS.rpm.min"
+                :max="enrichedGrinder?.extras?.rpmMax ?? LIMITS.rpm.max"
                 :step="50" :decimals="0"
                 @update:model-value="grinderRpm = $event; markDirty()"
               />
@@ -558,7 +559,7 @@ function goBack() {
               <label class="review-page__label">Dose In</label>
               <ValueInput
                 :model-value="doseIn"
-                :min="0" :max="50" :step="0.1" :decimals="1"
+                :min="LIMITS.weight.doseMin" :max="LIMITS.weight.doseMax" :step="0.1" :decimals="1"
                 suffix=" g"
                 @update:model-value="doseIn = $event; markDirty()"
               />
@@ -568,7 +569,7 @@ function goBack() {
               <label class="review-page__label">Dose Out</label>
               <ValueInput
                 :model-value="doseOut"
-                :min="0" :max="150" :step="0.5" :decimals="1"
+                :min="LIMITS.weight.yieldMin" :max="LIMITS.weight.yieldMax" :step="0.5" :decimals="1"
                 suffix=" g"
                 @update:model-value="doseOut = $event; markDirty()"
               />
@@ -599,7 +600,7 @@ function goBack() {
                 <label class="review-page__label">Basket Size</label>
                 <ValueInput
                   :model-value="basketSize"
-                  :min="7" :max="22" :step="0.5" :decimals="1"
+                  :min="LIMITS.weight.basketMin" :max="LIMITS.weight.basketMax" :step="0.5" :decimals="1"
                   suffix=" g"
                   @update:model-value="basketSize = $event; markDirty()"
                 />

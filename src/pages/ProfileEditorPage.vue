@@ -8,6 +8,7 @@ import { getProfile, uploadProfileToMachine } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 import { buildReaProfile, stepToFrame } from '../composables/useProfileSerialize'
 import { persistProfile } from '../composables/useProfilePersist'
+import { LIMITS } from '../constants/limits'
 
 const router = useRouter()
 const route = useRoute()
@@ -638,9 +639,9 @@ const EXIT_TYPES = [
 function exitMax(exitType) {
   switch (exitType) {
     case 'flow_over':
-    case 'flow_under': return 8
-    case 'weight': return 100
-    default: return 12
+    case 'flow_under': return LIMITS.flow.exitMax
+    case 'weight': return LIMITS.weight.exitMax
+    default: return LIMITS.pressure.exitMax
   }
 }
 
@@ -708,8 +709,8 @@ onMounted(loadProfile)
               <ValueInput
                 :model-value="globalTemperature"
                 @update:model-value="updateGlobalTemp"
-                :min="70"
-                :max="100"
+                :min="LIMITS.temp.brewMin"
+                :max="LIMITS.temp.brewMax"
                 :step="0.5"
                 :decimals="1"
                 suffix=" &deg;C"
@@ -721,8 +722,8 @@ onMounted(loadProfile)
               <ValueInput
                 :model-value="stopAtType === 'volume' ? targetVolume : targetWeight"
                 @update:model-value="v => { if (stopAtType === 'volume') { targetVolume = v } else { targetWeight = v } }"
-                :min="0"
-                :max="500"
+                :min="LIMITS.weight.targetMin"
+                :max="LIMITS.weight.targetMax"
                 :step="1"
                 :decimals="0"
                 :suffix="stopAtType === 'volume' ? ' mL' : ' g'"
@@ -810,8 +811,8 @@ onMounted(loadProfile)
                   <ValueInput
                     :model-value="phases[def.key]?.target || 0"
                     @update:model-value="v => updatePhaseField(def.key, 'target', v)"
-                    :min="0"
-                    :max="phases[def.key]?.pump === 'flow' ? 8 : 12"
+                    :min="LIMITS.flow.min"
+                    :max="phases[def.key]?.pump === 'flow' ? LIMITS.flow.max : LIMITS.pressure.max"
                     :step="0.1"
                     :decimals="1"
                     :suffix="phases[def.key]?.pump === 'flow' ? ' mL/s' : ' bar'"
@@ -825,12 +826,12 @@ onMounted(loadProfile)
                   <ValueInput
                     :model-value="phases[def.key]?.seconds || 0"
                     @update:model-value="v => updatePhaseField(def.key, 'seconds', v)"
-                    :min="0"
-                    :max="120"
+                    :min="LIMITS.duration.stepMin"
+                    :max="LIMITS.duration.stepMax"
                     :step="1"
                     :decimals="0"
                     suffix="s"
-                    :aria-label="def.label + ' duration'"
+                    :aria-label="def.label + ' duration'""
                   />
                 </div>
 
@@ -840,8 +841,8 @@ onMounted(loadProfile)
                   <ValueInput
                     :model-value="phases[def.key]?.temperature || 93"
                     @update:model-value="v => updatePhaseField(def.key, 'temperature', v)"
-                    :min="70"
-                    :max="100"
+                    :min="LIMITS.temp.brewMin"
+                    :max="LIMITS.temp.brewMax"
                     :step="0.5"
                     :decimals="1"
                     suffix="&deg;C"
@@ -908,8 +909,8 @@ onMounted(loadProfile)
                     <ValueInput
                       :model-value="phases[def.key]?.limiterValue || 0"
                       @update:model-value="v => updatePhaseField(def.key, 'limiterValue', v)"
-                      :min="0"
-                      :max="phases[def.key]?.pump === 'flow' ? 12 : 8"
+                      :min="LIMITS.pressure.limiterMin"
+                      :max="phases[def.key]?.pump === 'flow' ? LIMITS.pressure.limiterMax : LIMITS.flow.limiterMax"
                       :step="0.1"
                       :decimals="1"
                       :suffix="phases[def.key]?.pump === 'flow' ? ' bar' : ' mL/s'"

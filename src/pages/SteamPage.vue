@@ -1,6 +1,7 @@
 <script setup>
 import { computed, inject, onMounted } from 'vue'
 import ValueInput from '../components/ValueInput.vue'
+import { LIMITS } from '../constants/limits'
 import { setMachineState } from '../api/rest.js'
 
 const machineState = inject('machineState')
@@ -80,7 +81,7 @@ function startSteam() {
           <span class="steam-page__flow-label">Steam Flow</span>
           <ValueInput
             :model-value="steamFlow"
-            :min="0.4" :max="2.5" :step="0.05" :decimals="2"
+            :min="LIMITS.flow.steamMin" :max="LIMITS.flow.steamMax" :step="0.05" :decimals="2"
             suffix=" mL/s"
             value-color="var(--color-primary)"
             aria-label="Steam flow rate"

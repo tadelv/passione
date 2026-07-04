@@ -14,6 +14,7 @@ import {
   isSimpleFlow,
   isSimpleProfile,
 } from '../composables/useSimpleProfile'
+import { LIMITS } from '../constants/limits'
 
 const route = useRoute()
 const router = useRouter()
@@ -186,7 +187,7 @@ const holdValueKey = computed(() => isFlow.value ? 'flow_profile_hold' : 'espres
 const declineTimeKey = computed(() => isFlow.value ? 'flow_profile_decline_time' : 'espresso_decline_time')
 const declineValueKey = computed(() => isFlow.value ? 'flow_profile_decline' : 'pressure_end')
 const holdValueLabel = computed(() => isFlow.value ? 'Flow' : 'Pressure')
-const holdValueMax = computed(() => isFlow.value ? 8 : 12)
+const holdValueMax = computed(() => isFlow.value ? LIMITS.flow.max : LIMITS.pressure.max)
 const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
 </script>
 
@@ -224,7 +225,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
           <div class="simple-editor__field">
             <ValueInput
               :model-value="params.espresso_temperature"
-              :min="70" :max="100" :step="0.1" :decimals="1"
+              :min="LIMITS.temp.brewMin" :max="LIMITS.temp.brewMax" :step="0.1" :decimals="1"
               suffix=" °C"
               aria-label="Profile temperature"
               @update:model-value="updateAllTemps($event)"
@@ -234,7 +235,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
             <label class="simple-editor__label">Dose</label>
             <ValueInput
               :model-value="params.recommended_dose"
-              :min="3" :max="40" :step="0.1" :decimals="1"
+              :min="LIMITS.weight.recommendedDoseMin" :max="LIMITS.weight.recommendedDoseMax" :step="0.1" :decimals="1"
               suffix=" g"
               aria-label="Dose weight"
               @update:model-value="updateParam('recommended_dose', $event)"
@@ -252,7 +253,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
             <label class="simple-editor__label">{{ label }}</label>
             <ValueInput
               :model-value="params.temperature_presets[i]"
-              :min="70" :max="100" :step="0.1" :decimals="1"
+              :min="LIMITS.temp.brewMin" :max="LIMITS.temp.brewMax" :step="0.1" :decimals="1"
               suffix=" °C"
               :aria-label="`${label} temperature`"
               @update:model-value="updateTempPreset(i, $event)"
@@ -270,7 +271,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
             <label class="simple-editor__label">Max duration</label>
             <ValueInput
               :model-value="params.preinfusion_time"
-              :min="0" :max="60" :step="1" :decimals="0"
+              :min="LIMITS.duration.stepMin" :max="LIMITS.duration.stepMax" :step="1" :decimals="0"
               suffix=" s"
               :display-text="params.preinfusion_time === 0 ? 'off' : null"
               aria-label="Preinfusion duration"
@@ -282,7 +283,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
               <label class="simple-editor__label">Flow rate</label>
               <ValueInput
                 :model-value="params.preinfusion_flow_rate"
-                :min="1" :max="10" :step="0.1" :decimals="1"
+                :min="LIMITS.flow.preinfusionMin" :max="LIMITS.flow.preinfusionMax" :step="0.1" :decimals="1"
                 suffix=" mL/s"
                 aria-label="Preinfusion flow rate"
                 @update:model-value="updateParam('preinfusion_flow_rate', $event)"
@@ -292,7 +293,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
               <label class="simple-editor__label">Exit pressure</label>
               <ValueInput
                 :model-value="params.preinfusion_stop_pressure"
-                :min="0.5" :max="8" :step="0.1" :decimals="1"
+                :min="LIMITS.pressure.preinfusionExitMin" :max="LIMITS.pressure.preinfusionExitMax" :step="0.1" :decimals="1"
                 suffix=" bar"
                 aria-label="Preinfusion exit pressure"
                 @update:model-value="updateParam('preinfusion_stop_pressure', $event)"
@@ -322,7 +323,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
             <label class="simple-editor__label">Time</label>
             <ValueInput
               :model-value="params[holdTimeKey]"
-              :min="0" :max="60" :step="1" :decimals="0"
+              :min="LIMITS.duration.stepMin" :max="LIMITS.duration.stepMax" :step="1" :decimals="0"
               suffix=" s"
               :display-text="params[holdTimeKey] === 0 ? 'off' : null"
               aria-label="Hold time"
@@ -333,7 +334,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
             <label class="simple-editor__label">{{ isFlow ? 'Pressure limit' : 'Flow limit' }}</label>
             <ValueInput
               :model-value="isFlow ? params.maximum_pressure : params.maximum_flow"
-              :min="0" :max="isFlow ? 12 : 8" :step="0.1" :decimals="1"
+              :min="LIMITS.flow.min" :max="isFlow ? LIMITS.flow.max : LIMITS.pressure.max" :step="0.1" :decimals="1"
               :suffix="isFlow ? ' bar' : ' mL/s'"
               :display-text="(isFlow ? params.maximum_pressure : params.maximum_flow) === 0 ? 'off' : null"
               :aria-label="isFlow ? 'Pressure limit' : 'Flow limit'"
@@ -352,7 +353,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
             <label class="simple-editor__label">Time</label>
             <ValueInput
               :model-value="params[declineTimeKey]"
-              :min="0" :max="60" :step="1" :decimals="0"
+              :min="LIMITS.duration.stepMin" :max="LIMITS.duration.stepMax" :step="1" :decimals="0"
               suffix=" s"
               :display-text="params[declineTimeKey] === 0 ? 'off' : null"
               aria-label="Decline time"
@@ -383,7 +384,7 @@ const holdValueSuffix = computed(() => isFlow.value ? ' mL/s' : ' bar')
           <div class="simple-editor__field">
             <ValueInput
               :model-value="params.target_weight"
-              :min="0" :max="500" :step="0.1" :decimals="1"
+              :min="LIMITS.weight.targetMin" :max="LIMITS.weight.targetMax" :step="0.1" :decimals="1"
               suffix=" g"
               :display-text="params.target_weight === 0 ? 'off' : null"
               aria-label="Target weight"
