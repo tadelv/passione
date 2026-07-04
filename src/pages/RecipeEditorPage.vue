@@ -16,6 +16,7 @@ import { useShotHistorySuggestions } from '../composables/useShotHistorySuggesti
 import { useRecipeForm } from '../composables/useRecipeForm'
 import { useRecipeLiveApply } from '../composables/useRecipeLiveApply'
 import { useRecipeOverlay } from '../composables/useRecipeOverlay'
+import { useRecipePersist } from '../composables/useRecipePersist'
 import { LIMITS } from '../constants/limits'
 
 const { suggestions: historySuggestions, load: loadHistorySuggestions } = useShotHistorySuggestions()
@@ -238,39 +239,15 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-// ---- Persist current form state to the selected combo ----
-// Toast is fired by the caller so it can include the recipe name in the
-// user-visible message without this function re-reading the combo list.
-function saveToSelectedCombo() {
-  if (!settings || selectedIndex.value < 0) return
-  const combos = [...workflowCombos.value]
-  const existing = combos[selectedIndex.value]
-  combos[selectedIndex.value] = { ...existing, ...comboValues() }
-  settings.settings.workflowCombos = combos
-}
-
-// ---- Save as new recipe ----
-// Creates a combo from the current form state, selects it, and returns
-// the new index so the caller can open the rename popup on it. Fires a
-// "Created …" toast with the auto-generated name. Returns -1 on failure.
-function saveAsNew() {
-  if (!settings) return -1
-  // Prefer the linked bean's name (coffeeName is blank while linked) so a
-  // recipe created from a bean record still gets a meaningful default name.
-  const autoName = linkedBean.value?.name || coffeeName.value || profileTitle.value || t('recipe.newRecipeName')
-  const vals = {
-    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name: autoName,
-    emoji: '',
-    ...comboValues(),
-  }
-  const combos = [...workflowCombos.value, vals]
-  settings.settings.workflowCombos = combos
-  const newIndex = combos.length - 1
-  settings.settings.selectedWorkflowCombo = newIndex
-  toast?.success(t('recipe.toastCreated', { name: autoName }))
-  return newIndex
-}
+// ---- Persist composable ----
+const {
+  saveToSelectedCombo,
+  saveAsNew,
+} = useRecipePersist(form, {
+  settings, toast, t,
+  comboValues, linkedBean,
+  selectedIndex, workflowCombos,
+})
 
 // ---- Suggestion lists: merge saved combos with shot-history mining ----
 function mergeSorted(...lists) {
