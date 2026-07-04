@@ -27,13 +27,26 @@ const formattedText = computed(() =>
     : internalValue.value.toFixed(props.decimals) + props.suffix
 )
 
-function clamp(val) {
+const isOutOfRange = computed(() =>
+  internalValue.value < props.min || internalValue.value > props.max
+)
+
+/**
+ * One-sided clamp: allows out-of-range values to move toward the valid
+ * range without snapping. When decreasing, only floor at min (don't
+ * ceiling at max). When increasing, only ceiling at max (don't floor at
+ * min). This preserves authored profile values that exceed editor limits
+ * (e.g. baseline_hc.json has flow=12) — the user can decrement naturally
+ * until the value enters range, instead of jumping to max on first touch.
+ */
+function clampOneSided(val, direction) {
   const stepped = Math.round(val / props.step) * props.step
-  return Math.max(props.min, Math.min(props.max, stepped))
+  if (direction < 0) return Math.max(props.min, stepped)
+  return Math.min(props.max, stepped)
 }
 
 function adjust(steps) {
-  const v = clamp(internalValue.value + steps * props.step)
+  const v = clampOneSided(internalValue.value + steps * props.step, steps)
   if (v !== internalValue.value) {
     internalValue.value = v
     emit('update:modelValue', v)
@@ -74,7 +87,11 @@ function onDisplayPointerMove(e) {
   if (!isDragging.value) return
   const dx = e.clientX - dragStartX
   const stepsDelta = Math.round(dx / DRAG_PX_PER_STEP)
-  const v = clamp(dragStartValue + stepsDelta * props.step)
+  const target = dragStartValue + stepsDelta * props.step
+  // Direction relative to drag start — one-sided clamp lets out-of-range
+  // values drag toward range without snapping.
+  const dir = target < dragStartValue ? -1 : 1
+  const v = clampOneSided(target, dir)
   if (v !== internalValue.value) {
     internalValue.value = v
     emit('update:modelValue', v)
@@ -129,6 +146,7 @@ onUnmounted(stopHold)
 <template>
   <div
     class="value-input"
+    :class="{ 'value-input--out-of-range': isOutOfRange }"
     tabindex="0"
     role="spinbutton"
     :aria-valuenow="internalValue"
@@ -155,7 +173,7 @@ onUnmounted(stopHold)
     <div
       class="value-input__display"
       :class="{ 'value-input__display--dragging': isDragging }"
-      :style="{ color: valueColor }"
+      :style="{ color: isOutOfRange ? 'var(--color-accent, #e94560)' : valueColor }"
       @pointerdown.prevent="onDisplayPointerDown"
       @pointermove="onDisplayPointerMove"
       @pointerup="onDisplayPointerUp"
@@ -189,6 +207,10 @@ onUnmounted(stopHold)
   border-radius: 12px;
   overflow: hidden;
   height: 56px;
+}
+
+.value-input--out-of-range {
+  border-color: var(--color-accent, #e94560);
 }
 
 .value-input__btn {
