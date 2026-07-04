@@ -13,6 +13,7 @@ import BottomBar from '../components/BottomBar.vue'
 import { useBeanLink } from '../composables/useBeanLink'
 import { isComboModifiedVsForm } from '../composables/useComboDirty.js'
 import { useShotHistorySuggestions } from '../composables/useShotHistorySuggestions'
+import { useRecipeForm } from '../composables/useRecipeForm'
 import { LIMITS } from '../constants/limits'
 
 const { suggestions: historySuggestions, load: loadHistorySuggestions } = useShotHistorySuggestions()
@@ -29,22 +30,24 @@ const beansApi = inject('beansApi', null)
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
 
-// ---- Workflow combos ----
-const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
-const selectedIndex = computed(() => settings?.settings?.selectedWorkflowCombo ?? -1)
+// ---- Workflow combos (from form composable) ----
+const form = useRecipeForm({ settings })
+const {
+  coffeeName, roaster, grinder, grinderSetting,
+  doseIn, doseOut, ratioValue,
+  selectedGrinderId,
+  profileId, profileTitle, brewTemperature,
+  grinderRpm, basketSize, basketType,
+  includeSteam, steamDuration, steamFlow, steamTemperature,
+  includeFlush, flushDuration, flushFlowRate,
+  includeHotWater, hotWaterVolume, hotWaterTemperature,
+  comboValues: _comboValues,
+  pickBrewTempFromProfile,
+  round1,
+  selectedIndex,
+  workflowCombos,
+} = useRecipeForm({ settings })
 
-// ---- Editable fields ----
-const coffeeName = ref('')
-const roaster = ref('')
-const grinder = ref('')
-const grinderSetting = ref('')
-const doseIn = ref(18.0)
-const doseOut = ref(36.0)
-const ratioValue = ref(2.0)
-let _updating = false
-
-// ---- Entity selection state ----
-const selectedGrinderId = ref(null)
 const selectedGrinder = computed(() => grinders.value.find(g => g.id === selectedGrinderId.value) ?? null)
 const batchesForBean = ref([])
 const showBatchList = ref(false)
@@ -59,24 +62,23 @@ const {
   hydrateFromContext,
 } = useBeanLink({ beans, beansApi, coffeeName, roaster })
 
-// ---- Profile state ----
-const profileTitle = ref('')
-const profileId = ref(null)
-// Recipe-level brew temperature override. Expressed in °C absolute; when
-// present, the live-apply path clones workflow.profile and overwrites every
-// step's `temperature` so the machine targets this value regardless of the
-// profile's own per-step variation. Stored on the combo (not on the saved
-// profile) so the shared gateway profile library is never mutated.
-const brewTemperature = ref(93)
+// Wire comboValues to include bean link refs (owned by useBeanLink, not useRecipeForm)
+const comboValues = () => _comboValues({ selectedBeanId, selectedBatchId })
 
-// ---- Power-user fields (gated by Settings → Preferences toggles) ----
-// ValueInput requires a Number — initialize to common-default values that
-// the user can adjust. The toggles in PreferencesTab gate visibility; if a
-// user never opens the field, the default still flows to the workflow on
-// live-apply, but it only becomes user-visible when they enable the toggle.
-const grinderRpm = ref(1200)
-const basketSize = ref(18)
-const basketType = ref('')
+// ---- Dirty tracking ----
+// Stays in SFC because it needs selectedBeanId from useBeanLink.
+const dirty = computed(() => {
+  if (selectedIndex.value < 0) {
+    return !!(
+      coffeeName.value || roaster.value || grinder.value || grinderSetting.value ||
+      profileTitle.value || profileId.value ||
+      selectedBeanId.value || selectedBatchId.value || selectedGrinderId.value ||
+      includeSteam.value || includeFlush.value || includeHotWater.value
+    )
+  }
+  const saved = workflowCombos.value[selectedIndex.value]
+  return isComboModifiedVsForm(saved, comboValues())
+})
 
 // ---- "Awaiting profile from picker" flag ----
 // Must survive the /recipe/edit → /profiles → /recipe/edit round-trip.
@@ -120,7 +122,7 @@ onMounted(() => {
   // form's profileTitle with the combo's saved value. Re-sync from workflow
   // if the user came back from the picker.
   //
-  // Wrap the assignments in the _updating guard so the live-apply watcher
+  // Wrap the assignments in the form.updating guard so the live-apply watcher
   // doesn't re-fire buildWorkflowUpdate() from stale form values set by
   // loadFromPreset — that would silently clobber any user-side diverged
   // context fields (grinderSetting, coffeeName, etc.) back to the combo's
@@ -132,7 +134,7 @@ onMounted(() => {
     // the user clicked "Change" — otherwise this is an abandoned round-trip
     // (user bailed out without picking) and we'd wrongly stomp the form.
     if (baselineId !== String(currentKey)) {
-      _updating = true
+      form.updating = true
       profileTitle.value = workflow.profile.title ?? ''
       profileId.value = workflow.profile.id ?? null
       // Newly-picked profile: reset the temperature override to the new
@@ -140,7 +142,7 @@ onMounted(() => {
       // onto a 90 °C profile they just chose.
       const t = pickBrewTempFromProfile(workflow.profile)
       if (t != null) brewTemperature.value = t
-      nextTick(() => { _updating = false })
+      nextTick(() => { form.updating = false })
     }
     setAwaitingProfileFromPicker(false)
   }
@@ -151,20 +153,6 @@ onBeforeUnmount(() => {
   clearTimeout(liveApplyTimer)
   liveApplyTimer = null
 })
-
-// ---- Optional operation settings (for combo) ----
-const includeSteam = ref(false)
-const steamDuration = ref(30)
-const steamFlow = ref(1.5)
-const steamTemperature = ref(160)
-
-const includeFlush = ref(false)
-const flushDuration = ref(5)
-const flushFlowRate = ref(6.0)
-
-const includeHotWater = ref(false)
-const hotWaterVolume = ref(200)
-const hotWaterTemperature = ref(80)
 
 // ---- Operation settings popup ----
 // Which operation's popup is open ('steam' | 'flush' | 'hotwater' | null).
@@ -238,7 +226,7 @@ function daysSinceRoast(batch) {
 async function loadFromPreset(index) {
   const preset = workflowCombos.value[index]
   if (!preset) return
-  _updating = true
+  form.updating = true
   // Coffee: support legacy beanBrand/beanType combos
   coffeeName.value = preset.coffeeName ?? ([preset.beanBrand, preset.beanType].filter(Boolean).join(' ') || '')
   roaster.value = preset.roaster ?? ''
@@ -275,7 +263,7 @@ async function loadFromPreset(index) {
     hotWaterVolume.value = preset.hotWaterSettings.volume ?? 200
     hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
   }
-  // Restore entity selections — keep _updating true through async work
+  // Restore entity selections — keep form.updating true through async work
   // so the auto-save watcher doesn't fire with partially-loaded data
   if (preset.selectedBeanId) {
     if (preset.selectedBatchId) {
@@ -295,7 +283,7 @@ async function loadFromPreset(index) {
   } else {
     selectedGrinderId.value = null
   }
-  _updating = false
+  form.updating = false
 }
 
 // ---- Mount-time hydration: overlay live-workflow divergence on top ----
@@ -316,7 +304,7 @@ async function loadFromPreset(index) {
 // workflow actually has right now.
 async function overlayFromWorkflow() {
   if (!workflow) return
-  _updating = true
+  form.updating = true
   const ctx = workflow.context ?? {}
   // Reconcile the entity links FIRST. loadFromPreset restored the SAVED
   // combo's bean/grinder, but the live workflow may carry different ones
@@ -397,7 +385,7 @@ async function overlayFromWorkflow() {
       if (hw.targetTemperature != null) hotWaterTemperature.value = hw.targetTemperature
     }
   }
-  _updating = false
+  form.updating = false
 }
 
 async function hydrateFromWorkflowContext() {
@@ -481,48 +469,6 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-// ---- Combo values snapshot ----
-function comboValues() {
-  const vals = {
-    profileId: profileId.value,
-    profileTitle: profileTitle.value,
-    coffeeName: coffeeName.value,
-    roaster: roaster.value,
-    doseIn: doseIn.value,
-    doseOut: doseOut.value,
-    grinder: grinder.value,
-    grinderSetting: grinderSetting.value,
-    selectedBeanId: selectedBeanId.value || null,
-    selectedBatchId: selectedBatchId.value || null,
-    selectedGrinderId: selectedGrinderId.value || null,
-    brewTemperature: brewTemperature.value,
-    grinderRpm: grinderRpm.value ?? null,
-    basketSize: basketSize.value ?? null,
-    basketType: basketType.value || null,
-    includeSteam: includeSteam.value,
-    steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : { duration: 0 },
-    includeFlush: includeFlush.value,
-    flushSettings: includeFlush.value ? { duration: flushDuration.value, flow: flushFlowRate.value } : { duration: 0 },
-    includeHotWater: includeHotWater.value,
-    hotWaterSettings: includeHotWater.value ? { volume: hotWaterVolume.value, temperature: hotWaterTemperature.value } : { volume: 0 },
-  }
-  return vals
-}
-
-// Pick the best-guess "brew temperature" to display as the initial value
-// for a loaded profile. Profiles store per-step temperatures (not a single
-// global value) — we take the first step's temperature, falling back to
-// tank_temperature or a 93 °C default.
-function pickBrewTempFromProfile(p) {
-  if (!p) return null
-  const steps = p.steps ?? p.frames ?? []
-  if (steps.length > 0 && typeof steps[0].temperature === 'number') {
-    return round1(steps[0].temperature)
-  }
-  if (typeof p.tank_temperature === 'number') return round1(p.tank_temperature)
-  return null
-}
-
 // Build a modified profile payload with every step's temperature set to
 // the recipe's brewTemperature. Returns null when no profile is available
 // or brewTemperature is unset (no override to apply).
@@ -537,24 +483,6 @@ function buildTemperatureOverrideProfile() {
   for (const s of cloneSteps) s.temperature = t
   return clone
 }
-
-// ---- Dirty tracking ----
-// Form-state comparison is strict (every pinned field and every include
-// flag must match the saved combo). The IdlePage pill-dot uses a lenient
-// variant — see useComboDirty.js for the split.
-const dirty = computed(() => {
-  if (selectedIndex.value < 0) {
-    // No combo selected — dirty if any identifiable field has a non-initial value
-    return !!(
-      coffeeName.value || roaster.value || grinder.value || grinderSetting.value ||
-      profileTitle.value || profileId.value ||
-      selectedBeanId.value || selectedBatchId.value || selectedGrinderId.value ||
-      includeSteam.value || includeFlush.value || includeHotWater.value
-    )
-  }
-  const saved = workflowCombos.value[selectedIndex.value]
-  return isComboModifiedVsForm(saved, comboValues())
-})
 
 // ---- Build workflow update payload from current form state ----
 function buildWorkflowUpdate() {
@@ -666,7 +594,7 @@ watch([coffeeName, roaster, grinder, grinderSetting, doseIn, doseOut,
        includeSteam, steamDuration, steamFlow, steamTemperature,
        includeFlush, flushDuration, flushFlowRate,
        includeHotWater, hotWaterVolume, hotWaterTemperature], () => {
-  if (_updating) return
+  if (form.updating) return
   clearTimeout(liveApplyTimer)
   liveApplyTimer = setTimeout(applyToLiveWorkflow, 300)
 })
@@ -693,41 +621,6 @@ const basketTypeSuggestions = computed(() => mergeSorted(
   workflowCombos.value.map(p => p.basketType),
   historySuggestions.value.basketType,
 ))
-
-// Round to one decimal without going through `+(...).toFixed(1)`, which
-// re-parses the string and can leave residual float noise (e.g. 32.0000001
-// vs a literal 32). Math.round on the *10 scaled value is exact.
-function round1(n) {
-  return Math.round(n * 10) / 10
-}
-
-// ---- Linked ratio: changing any of doseIn/doseOut/ratio updates the others ----
-watch(doseIn, (val) => {
-  if (_updating) return
-  _updating = true
-  if (val > 0 && ratioValue.value > 0) {
-    doseOut.value = round1(val * ratioValue.value)
-  }
-  _updating = false
-})
-
-watch(doseOut, (val) => {
-  if (_updating) return
-  _updating = true
-  if (doseIn.value > 0 && val > 0) {
-    ratioValue.value = round1(val / doseIn.value)
-  }
-  _updating = false
-})
-
-watch(ratioValue, (val) => {
-  if (_updating) return
-  _updating = true
-  if (doseIn.value > 0 && val > 0) {
-    doseOut.value = round1(doseIn.value * val)
-  }
-  _updating = false
-})
 
 // ---- Profile change navigation ----
 function onChangeProfile() {
@@ -770,7 +663,7 @@ function onSaveAsNewClick() {
 //   1. No combo selected — ambient safety default
 //   2. User explicitly picked a profile via the Change button (sessionStorage flag)
 watch(() => workflow?.profile, (newProfile) => {
-  if (!newProfile || _updating) return
+  if (!newProfile || form.updating) return
   const explicitlyPicked = isAwaitingProfileFromPicker()
   const noComboSelected = selectedIndex.value < 0
   if (explicitlyPicked || noComboSelected) {
