@@ -2,6 +2,29 @@
 
 **Date:** 2026-06-23
 **Source:** Full code review of Passione v0.9.3
+**Status:** Phase 1 ✅ — Phase 2 ✅ — Phase 3 pending
+
+## Skills Loaded
+
+The following skills were loaded during this review session. Reload them
+when picking up Phase 3.
+
+| Skill | Path | Purpose |
+|-------|------|---------|
+| **decent-playbook** | `~/.agents/skills/decent-playbook/SKILL.md` + Obsidian vault | ACE-style evolving playbook — domain patterns, failure modes |
+| **karpathy-guidelines** | `~/.agents/skills/karpathy-guidelines/SKILL.md` | Behavioral guidelines — simplicity first, surgical changes, suggest don't just obey |
+| **grill-me** | `~/.agents/skills/grill-me/SKILL.md` | Relentless interview to sharpen a plan or design |
+| **tdd** | `~/.agents/skills/tdd/SKILL.md` | Test-driven development — vertical slices, test through public interfaces |
+| **prototype** | `~/.agents/skills/prototype/SKILL.md` | Throwaway prototypes for design questions (available, not used) |
+| **improve-codebase-architecture** | `~/.agents/skills/improve-codebase-architecture/SKILL.md` | Scan for deepening opportunities (available, not used) |
+| **decent-app** | `vendor/reaprime/.claude/skills/decent-app/SKILL.md` | REST/WS/profile/shots reference for Streamline-Bridge |
+| **tdd-workflow** | `vendor/reaprime/.claude/skills/tdd-workflow/SKILL.md` | Project-specific test tier selection (reaprime-side, not directly used) |
+
+The decent-playbook lives in the Obsidian vault at
+`<vault>/Professional/Decent/Playbook.md` — resolve vault path with `obsidian vault`.
+Relevant playbook entries: `sb-018` (workflow context SoT), `sb-040`/`sb-041`
+(canonical profile sources), `sb-048` (settings_profile_type semantics),
+`gen-030` (DE1 firmware never does volume stop).
 
 ## Phase 1: Central Limits File + Data Integrity Fixes ✅
 
@@ -23,47 +46,166 @@
     - `SimpleProfileEditorPage.vue`, `OperationSettingsPopup.vue`, `PresetEditPopup.vue`
     - `SteamPage.vue`, `PostShotReviewPage.vue`
     - verify: `npm run build` succeeds ✅
+11. ✅ **Out-of-range value handling** — one-sided `clampOneSided()` in `ValueInput.vue`
+    preserves authored profile values that exceed editor limits (e.g. `baseline_hc.json`
+    flow=12). Visual indicator: warm accent border + text color when value is outside [min, max].
+    verify: `npm run build` ✅
 
-### Remaining
+### Limits decided during grilling
 
-- [x] **Handle out-of-range values on load** — one-sided clamp in ValueInput preserves authored values above/below editor limits; visual indicator (warm accent border + text) signals out-of-range state. verify: `npm run build` ✅
+| Category | Parameter | min | max | Changed? |
+|----------|-----------|-----|-----|----------|
+| Temp | Brew | 0 | 100 | ✅ min 70/50→0 |
+| | Steam | 135 | 170 | ✅ min 100→135 |
+| | Hot water | 40 | 100 | — |
+| Pressure | Target | 0 | 12 | — |
+| | Limiter (flow steps) | 0 | 12 | — |
+| | Exit | 0 | 12 | — |
+| | Preinfusion exit | 0.5 | 8 | — |
+| Flow | Target | 0 | 25 | ✅ max 8→25 |
+| | Limiter (pressure steps) | 0 | 25 | ✅ max 8→25 |
+| | Exit | 0 | 25 | ✅ max 8→25 |
+| | Preinfusion | 1 | 25 | ✅ max 10→25 |
+| | Steam | 0.4 | 2.5 | — |
+| | Flush | 2 | 10 | — |
+| Weight | Dose in | 0 | 100 | ✅ max 40→100 |
+| | Yield | 0 | 500 | — |
+| | Target weight | 0 | 500 | — |
+| | Weight exit | 0 | 500 | ✅ max 100→500 |
+| | Recommended dose | 0 | 100 | ✅ min 3→0, max 40→100 |
+| | Hot water volume | 20 | 500 | ✅ min 50→20 |
+| | Basket size | 7 | 22 | — |
+| Volume | Target | 0 | 500 | — |
+| Duration | Step/frame | 0 | 120 | ✅ SimpleEditor 60→120 |
+| | Steam | 1 | 120 | — |
+| | Flush | 1 | 30 | — |
+| Other | Ratio | 0.5 | 10 | — |
+| | Limiter range | 0.1 | 2.0 | — |
+| | Grinder RPM | 50 | 3000 | — |
 
 ## Phase 2: Recipe Editor Refactor ✅
 
 **Goal:** Break the 1,530-line monolith into composables, i18n all strings, improve UX.
 
+### Design decisions (grilled)
+
+- **Architecture first** — fix the reactive foundation before UI changes
+- **Option B** — extract refs into composables, keep the `_updating` guard pattern but encapsulate it inside `useRecipeForm`
+- **4 composable files** — `useRecipeForm`, `useRecipeLiveApply`, `useRecipeOverlay`, `useRecipePersist`
+- **Testing** — e2e as primary safety net (existing 3 spec files) + one unit test for ratio cascade logic
+- **`_updating` guard sharing** — getter/setter on the form object returned by `useRecipeForm`; internal ratio watchers use the closure variable directly
+- **Extraction order** — Form → LiveApply → Overlay → Persist
+
 ### Completed
 
-10. ✅ **Extracted `useRecipeForm` composable**
-11. ✅ **Extracted `useRecipeLiveApply` composable**
-12. ✅ **Extracted `useRecipeOverlay` composable**
-13. ✅ **Extracted `useRecipePersist` composable**
-14. ✅ **i18n all hardcoded English strings** (24 new recipe.* keys)
-15. ✅ **Inline profile picker** (ProfilePickerModal component)
-16. ✅ **Inline operation settings** (expandable rows instead of popups)
-17. ✅ **Ratio cascade unit test** (10 tests, Node built-in test runner)
+10. ✅ **Extracted `useRecipeForm` composable** (175 lines) — 21 form refs, `_updating` guard (getter/setter), ratio cascade watchers, `comboValues()`, `pickBrewTempFromProfile()`, `round1()`
+11. ✅ **Extracted `useRecipeLiveApply` composable** (131 lines) — 23-ref watcher (300ms debounce), `buildWorkflowUpdate()`, `applyToLiveWorkflow()`, `buildTemperatureOverrideProfile()`, timer cleanup
+12. ✅ **Extracted `useRecipeOverlay` composable** (255 lines) — `loadFromPreset()`, `overlayFromWorkflow()`, `hydrateFromWorkflowContext()`, `onChangeProfile()`, `onGrinderSelect()`, sessionStorage profile-pick protocol
+13. ✅ **Extracted `useRecipePersist` composable** (58 lines) — `saveToSelectedCombo()`, `saveAsNew()`
+14. ✅ **i18n all hardcoded English strings** (24 new `recipe.*` keys in `en.json`)
+15. ✅ **Inline profile picker** — new `ProfilePickerModal.vue` with search + mini `ProfileGraph` preview, replaces page navigation round-trip + sessionStorage protocol
+16. ✅ **Inline operation settings** — expandable rows with inline `ValueInput` fields, replaces `OperationSettingsPopup` modals
+17. ✅ **Ratio cascade unit test** — 10 tests using Node built-in test runner (`node:test`), covers doseIn→doseOut→ratioValue cascade, `_updating` guard, zero-dose edge case, `comboValues()`, `pickBrewTempFromProfile()`
 
 ### Results
 
-- RecipeEditorPage: 1,530 → 1,065 lines (script setup: ~600 → ~320)
+- RecipeEditorPage.vue: 1,530 → 1,065 lines (script setup: ~600 → ~320)
 - 4 composables: 619 lines total
-- 1 new component: ProfilePickerModal
-- 10 unit tests: all passing
-- E2e baseline: 7 pass / 6 fail (pre-existing) — zero regressions throughout
+- 1 new component: `ProfilePickerModal.vue`
+- 1 new test file: `tests/unit/useRecipeForm.test.js` (10 tests, `npm run test:unit`)
+- 1 new script: `test:unit` in package.json
+- E2e baseline: 7 pass / 6 fail (pre-existing) — zero regressions throughout all 13 commits
 
-## Phase 3: Consistency & Cleanup
+### Composable API
+
+```
+useRecipeForm({ settings })
+  → { 21 form refs, get updating(), set updating(v),
+      comboValues({ selectedBeanId, selectedBatchId }),
+      pickBrewTempFromProfile(p), round1(n),
+      selectedIndex, workflowCombos }
+
+useRecipeLiveApply(form, { settings, workflow, updateWorkflow,
+    selectedBeanId, selectedBatchId, selectedGrinder, linkedBean,
+    pickBrewTempFromProfile })
+  → { buildWorkflowUpdate(), applyToLiveWorkflow(),
+      buildTemperatureOverrideProfile() }
+  (internally: watch([...form refs], () => { if (form.updating) return; ... }))
+
+useRecipeOverlay(form, { workflow, grinders, beansApi,
+    enterLinked, clearLink, hydrateFromContext,
+    selectedBeanId, selectedBatchId, batchesForBean,
+    pickBrewTempFromProfile, round1, workflowCombos, selectedIndex })
+  → { loadFromPreset(index), overlayFromWorkflow(),
+      hydrateFromWorkflowContext(), onChangeProfile(),
+      onGrinderSelect(grinderId, opts),
+      isAwaitingProfileFromPicker(), getAwaitingProfileBaselineId(),
+      setAwaitingProfileFromPicker(v, baselineId) }
+
+useRecipePersist(form, { settings, toast, t,
+    comboValues, linkedBean, selectedIndex, workflowCombos })
+  → { saveToSelectedCombo(), saveAsNew() }
+```
+
+### Note on `useBeanLink` coupling
+
+`comboValues()` and `dirty` couldn't live entirely inside `useRecipeForm` because
+`selectedBeanId` and `selectedBatchId` are owned by `useBeanLink`, which runs
+after `useRecipeForm` (it needs `coffeeName`/`roaster` refs). The composable's
+`comboValues()` takes `{ selectedBeanId, selectedBatchId }` as parameters, and
+the SFC wraps it into a no-arg closure after `useBeanLink` is wired up. `dirty`
+stays in the SFC as coordination code. This avoids modifying `useBeanLink`
+(shared with `PostShotReviewPage.vue`).
+
+## Phase 3: Consistency & Cleanup (pending)
 
 **Goal:** Resolve TODO items and eliminate duplicated components.
 
-18. **Replace `confirm()` in `ProfileEditorPage` and `AdvancedProfileEditorPage`** with styled overlay (TODO item)
-19. **Delete `BrewDialog.vue`** if unused (CLAUDE.md says it was removed)
+18. **Replace `confirm()` in `ProfileEditorPage` and `AdvancedProfileEditorPage`** with styled overlay (TODO item from `TODO.md`)
+    - `ProfileEditorPage.vue:606` and `AdvancedProfileEditorPage.vue:341` use browser `confirm()`
+    - `SimpleProfileEditorPage` already has a styled confirm overlay — use the same pattern
+    - `useConfirmAction.js` composable exists but isn't used in these files
+
+19. **Delete `BrewDialog.vue`** if unused (CLAUDE.md says "Remove BrewDialog" is done)
+    - Check for any remaining imports/references before deleting
+
 20. **Merge `PresetEditPopup` and `OperationSettingsPopup`** field definitions
-21. **Add e2e tests for limit boundaries** (pour-over weight exit, large dose, long duration)
+    - Both components define the same operation fields (steam/flush/hotwater) with the same limits independently
+    - Note: `OperationSettingsPopup` is no longer used by `RecipeEditorPage` (replaced by inline expandable rows in Phase 2), but may still be used elsewhere — check before merging or deleting
 
-## Notes
+21. **Add e2e tests for limit boundaries**
+    - Pour-over weight exit > 100g (was clamped, now 500)
+    - Large dose (up to 100g)
+    - Long duration (up to 120s in simple editor)
+    - Out-of-range value display (load `baseline_hc.json` with flow=12, verify it displays correctly)
 
-- Phase 1 is the highest impact — data integrity bugs (silent clamping of valid profile values) affect users now
-- Phase 2 is a large refactor — should be done incrementally, one composable at a time, with tests between each extraction
-- Phase 3 items are lower risk and can be done independently
-- Per Karpathy guidelines: surgical changes only, match existing style, no speculative abstraction
-- Per decent-playbook: `sb-018` — workflow context fields are the source of truth; `gen-030` — DE1 firmware never does volume stop
+22. **Investigate the 6 pre-existing e2e test failures**
+    - `recipe-editor.spec.js`: 4 failures (edit+Home, edit+Save, Save as New, profile change round-trip)
+    - `recipe-power-fields.spec.js`: 2 failures (basket toggle ON, basket type live-apply)
+    - These were failing before this review started — root cause unknown
+
+## Commit History (this session)
+
+```
+bc458c6 docs: mark Phase 2 recipe editor refactor as complete
+2558678 feat(recipe-editor): inline profile picker modal replaces page navigation
+fbbc17b refactor(recipe-editor): inline operation settings instead of popups
+7c6f8a8 i18n(recipe-editor): replace hardcoded English strings with t() calls
+8fd9d8b test(recipe-form): add ratio cascade unit tests
+d2b9f40 refactor(recipe-editor): extract useRecipePersist composable
+d5c816b refactor(recipe-editor): extract useRecipeOverlay composable
+d9fcf63 refactor(recipe-editor): extract useRecipeLiveApply composable
+7d16810 refactor(recipe-editor): extract useRecipeForm composable
+1bffcf5 docs: mark Phase 1 out-of-range handling as complete
+43f2f13 fix(value-input): preserve out-of-range values instead of silently clamping
+a0611ab refactor(limits): centralize hardcoded min/max values into constants file
+```
+
+## Conventions Used
+
+- Per **Karpathy guidelines**: surgical changes only, match existing style, no speculative abstraction, surface assumptions, suggest don't just obey
+- Per **CONTRIBUTING.md**: Conventional Commits with scope (`refactor(recipe-editor):`, `fix(value-input):`, etc.)
+- Per **decent-playbook** `sb-018`: workflow context fields are the source of truth
+- Per **decent-playbook** `gen-030`: DE1 firmware never does volume stop
+- Per **TDD skill**: test through public interfaces, vertical slices (one test → one implementation → repeat), e2e as primary safety net for refactors
+- Per **CLAUDE.md**: no native-dialog-backed inputs, no timers as guards, boot-quiet on cold start, profiles are REA v2 `steps` not de1app `frames`
