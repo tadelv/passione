@@ -376,12 +376,12 @@ watch(() => workflow?.profile, (newProfile) => {
                bean-batch-integrity e2e suite scopes its locators to it
                (`.recipe-editor__column` first() == the Coffee column). -->
           <div class="recipe-editor__quadrant recipe-editor__column">
-            <h4 class="recipe-editor__section-title">Coffee</h4>
+            <h4 class="recipe-editor__section-title">{{ t('recipe.coffee') }}</h4>
 
         <div class="recipe-editor__field">
-          <label class="recipe-editor__label">Bean</label>
+          <label class="recipe-editor__label">{{ t('recipe.bean') }}</label>
           <select class="recipe-editor__input" :value="selectedBeanId" @change="onBeanSelect($event.target.value)">
-            <option value="">Manual entry...</option>
+            <option value="">{{ t('recipe.manualEntry') }}</option>
             <option v-for="b in beans" :key="b.id" :value="b.id">{{ b.roaster }} — {{ b.name }}</option>
           </select>
         </div>
@@ -389,7 +389,7 @@ watch(() => workflow?.profile, (newProfile) => {
         <!-- Manual mode: free-text fields -->
         <template v-if="!selectedBeanId">
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Name</label>
+            <label class="recipe-editor__label">{{ t('recipe.name') }}</label>
             <SuggestionField
               v-model="coffeeName"
               placeholder="Coffee name"
@@ -398,7 +398,7 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
 
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Roaster</label>
+            <label class="recipe-editor__label">{{ t('recipe.roaster') }}</label>
             <SuggestionField
               v-model="roaster"
               placeholder="Roaster name"
@@ -412,30 +412,30 @@ watch(() => workflow?.profile, (newProfile) => {
              the case where the upstream bean was deleted). -->
         <template v-else>
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Name</label>
+            <label class="recipe-editor__label">{{ t('recipe.name') }}</label>
             <span class="recipe-editor__readonly">{{ linkedBean?.name || coffeeName }}</span>
           </div>
 
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Roaster</label>
+            <label class="recipe-editor__label">{{ t('recipe.roaster') }}</label>
             <span class="recipe-editor__readonly">{{ linkedBean?.roaster || roaster }}</span>
           </div>
 
           <div v-if="selectedBatch" class="recipe-editor__batch-info">
             <span v-if="selectedBatch.roastDate" class="recipe-editor__batch-detail">
-              Roasted: {{ selectedBatch.roastDate }}
+              {{ t('recipe.roasted') }} {{ selectedBatch.roastDate }}
               <template v-if="daysSinceRoast(selectedBatch) !== null">
                 ({{ daysSinceRoast(selectedBatch) }}d ago)
               </template>
             </span>
             <span v-if="selectedBatch.weightRemaining != null" class="recipe-editor__batch-detail">
-              Remaining: {{ selectedBatch.weightRemaining }}g
+              {{ t('recipe.remaining') }} {{ selectedBatch.weightRemaining }}g
             </span>
           </div>
 
           <div v-if="batchesForBean.length > 1" class="recipe-editor__field">
             <button class="recipe-editor__link-btn" @click="showBatchList = !showBatchList">
-              {{ showBatchList ? 'Hide batches' : 'Switch batch' }} ({{ batchesForBean.length }})
+              {{ showBatchList ? t('recipe.hideBatches') : t('recipe.switchBatch') }} ({{ batchesForBean.length }})
             </button>
             <div v-if="showBatchList" class="recipe-editor__batch-list">
               <button
@@ -453,9 +453,9 @@ watch(() => workflow?.profile, (newProfile) => {
         </template>
 
         <div v-if="settings?.settings?.showBasketData" class="recipe-editor__basket" data-testid="recipe-basket-section">
-          <h5 class="recipe-editor__subsection-title">Basket</h5>
+          <h5 class="recipe-editor__subsection-title">{{ t('recipe.basket') }}</h5>
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Size (g)</label>
+            <label class="recipe-editor__label">{{ t('recipe.basketSize') }}</label>
             <ValueInput
               v-model="basketSize"
               :min="LIMITS.weight.basketMin"
@@ -465,7 +465,7 @@ watch(() => workflow?.profile, (newProfile) => {
             />
           </div>
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Type</label>
+            <label class="recipe-editor__label">{{ t('recipe.basketType') }}</label>
             <SuggestionField
               v-model="basketType"
               placeholder="e.g. IMS Competition"
@@ -475,17 +475,17 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
         </div>
 
-            <button class="recipe-editor__link-btn" @click="router.push('/settings/beans')">Manage...</button>
+            <button class="recipe-editor__link-btn" @click="router.push('/settings/beans')">{{ t('recipe.manage') }}</button>
           </div>
 
           <!-- Q2: Grinder -->
           <div class="recipe-editor__quadrant">
-            <h4 class="recipe-editor__section-title">Grinder</h4>
+            <h4 class="recipe-editor__section-title">{{ t('recipe.grinder') }}</h4>
 
         <div class="recipe-editor__field">
-          <label class="recipe-editor__label">Grinder</label>
+          <label class="recipe-editor__label">{{ t('recipe.grinder') }}</label>
           <select class="recipe-editor__input" :value="selectedGrinderId" @change="onGrinderSelect($event.target.value)">
-            <option value="">Manual entry...</option>
+            <option value="">{{ t('recipe.manualEntry') }}</option>
             <option v-for="g in grinders" :key="g.id" :value="g.id">{{ g.model }}</option>
           </select>
         </div>
@@ -493,7 +493,7 @@ watch(() => workflow?.profile, (newProfile) => {
         <!-- Manual mode: free-text grinder -->
         <template v-if="!selectedGrinderId">
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Model</label>
+            <label class="recipe-editor__label">{{ t('recipe.grinderModel') }}</label>
             <SuggestionField
               v-model="grinder"
               placeholder="Grinder model"
@@ -502,7 +502,7 @@ watch(() => workflow?.profile, (newProfile) => {
           </div>
 
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Setting</label>
+            <label class="recipe-editor__label">{{ t('recipe.grinderSetting') }}</label>
             <input
               class="recipe-editor__input"
               type="text"
@@ -515,13 +515,13 @@ watch(() => workflow?.profile, (newProfile) => {
         <!-- Entity mode: GrinderSettingInput -->
         <template v-else>
           <div class="recipe-editor__field">
-            <label class="recipe-editor__label">Setting</label>
+            <label class="recipe-editor__label">{{ t('recipe.grinderSetting') }}</label>
             <GrinderSettingInput v-model="grinderSetting" :grinder="selectedGrinder" />
           </div>
         </template>
 
         <div v-if="settings?.settings?.showGrinderRpm" class="recipe-editor__field" data-testid="recipe-grinderRpm-field">
-          <label class="recipe-editor__label">RPM</label>
+          <label class="recipe-editor__label">{{ t('recipe.rpm') }}</label>
           <ValueInput
             v-model="grinderRpm"
             :min="selectedGrinder?.extras?.rpmMin ?? LIMITS.rpm.min"
@@ -531,15 +531,15 @@ watch(() => workflow?.profile, (newProfile) => {
           />
         </div>
 
-            <button class="recipe-editor__link-btn" @click="router.push('/settings/grinders')">Manage...</button>
+            <button class="recipe-editor__link-btn" @click="router.push('/settings/grinders')">{{ t('recipe.manage') }}</button>
           </div>
 
           <!-- Q3: Dose + Profile -->
           <div class="recipe-editor__quadrant">
-            <h4 class="recipe-editor__section-title">Dose + Profile</h4>
+            <h4 class="recipe-editor__section-title">{{ t('recipe.doseAndProfile') }}</h4>
 
             <div class="recipe-editor__field">
-              <label class="recipe-editor__label">Dose In</label>
+              <label class="recipe-editor__label">{{ t('recipe.doseIn') }}</label>
               <ValueInput
                 v-model="doseIn"
                 :min="LIMITS.weight.doseMin"
@@ -552,7 +552,7 @@ watch(() => workflow?.profile, (newProfile) => {
             </div>
 
             <div class="recipe-editor__field">
-              <label class="recipe-editor__label">Dose Out</label>
+              <label class="recipe-editor__label">{{ t('recipe.doseOut') }}</label>
               <ValueInput
                 v-model="doseOut"
                 :min="LIMITS.weight.yieldMin"
@@ -564,7 +564,7 @@ watch(() => workflow?.profile, (newProfile) => {
             </div>
 
             <div class="recipe-editor__field">
-              <label class="recipe-editor__label">Ratio (1:X)</label>
+              <label class="recipe-editor__label">{{ t('recipe.ratio') }}</label>
               <ValueInput
                 v-model="ratioValue"
                 :min="LIMITS.ratio.min"
@@ -576,12 +576,12 @@ watch(() => workflow?.profile, (newProfile) => {
 
             <!-- Profile: compact single-line row (name + Change inline) -->
             <div class="recipe-editor__profile-row">
-              <span class="recipe-editor__profile-name">{{ profileTitle || 'No profile selected' }}</span>
-              <button class="recipe-editor__change-btn" @click="onChangeProfile">Change</button>
+              <span class="recipe-editor__profile-name">{{ profileTitle || t('recipe.noProfileSelected') }}</span>
+              <button class="recipe-editor__change-btn" @click="onChangeProfile">{{ t('recipe.change') }}</button>
             </div>
 
             <div class="recipe-editor__field">
-              <label class="recipe-editor__label">Temperature</label>
+              <label class="recipe-editor__label">{{ t('recipe.temperature') }}</label>
               <ValueInput
                 v-model="brewTemperature"
                 :min="LIMITS.temp.brewMin"
