@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-23
 **Source:** Full code review of Passione v0.9.3
-**Status:** Phase 1 ✅ — Phase 2 ✅ — Phase 3 in progress (4/5 tasks done)
+**Status:** Phase 1 ✅ — Phase 2 ✅ — Phase 3 ✅ (complete)
 
 ## Skills Loaded
 
@@ -157,7 +157,7 @@ the SFC wraps it into a no-arg closure after `useBeanLink` is wired up. `dirty`
 stays in the SFC as coordination code. This avoids modifying `useBeanLink`
 (shared with `PostShotReviewPage.vue`).
 
-## Phase 3: Consistency & Cleanup (in progress)
+## Phase 3: Consistency & Cleanup ✅
 
 **Goal:** Resolve TODO items and eliminate duplicated components.
 
@@ -180,26 +180,37 @@ stays in the SFC as coordination code. This avoids modifying `useBeanLink`
     - Profile editor weight exit max: 500 (was 100)
     - All pass ✅
 
-22. ✅ **Investigate pre-existing e2e test failures** — fixed 5 of 9; 4 remain
-    - **Fixed (5):**
+22. ✅ **Investigate pre-existing e2e test failures** — all 9 fixed, zero remain
+
+    **Fixed (5) — selector and routing updates:**
       - `app.spec.js` (2): Layout tab → Display tab (settings reorg)
       - `user-workflow.spec.js` (1): /settings/beans → /catalog/beans, modal selectors,
         recipe editor selectors updated for Phase 2 refactor
       - `recipe-editor.spec.js` selectors: PresetPillRow → RecipePillRail, profile picker
         navigation → ProfilePickerModal
       - `recipe-power-fields.spec.js`: power-user fields live under `context.extras`
-    - **Remaining (4):**
-      - `recipe-editor.spec.js` (3): edit+Home, edit+Save, profile-change round-trip — live-apply
-        watcher doesn't fire when doseIn changes via the increase button.
-      - `recipe-power-fields.spec.js` (2): basket toggle ON + live-apply — `overlayFromWorkflow`
-        reads `workflow.context.extras` before `useWorkflow.refresh()` has loaded the seeded
-        context.
-    - **Root cause for all 4:** `RecipeEditorPage` mount-time code runs
-      `loadFromPreset(idx).then(overlayFromWorkflow)` without awaiting `useWorkflow` 's
-      `ready` promise. The workflow composable's `onMounted` → `refresh()` is async;
-      `overlayFromWorkflow` reads `workflow.context` before the REST GET completes, so the
-      overlay sees default/empty context. Fix: gate the mount-time overlay behind
-      `await workflowReady` (or `bootReady`) so the workflow is populated before overlay.
+
+    **Fixed (4) — recipe-editor live-apply and power-fields extras hydration:**
+      - `recipe-editor.spec.js` (2): edit+Home, edit+Save — live-apply watcher never
+        fired. Two root causes: (a) duplicate `useRecipeForm({settings})` call created
+        a second form instance with independent refs — the watcher's `updating` guard
+        checked the first form's ref while the overlay wrote to the second form's refs.
+        Fix: destructure from the single `form` instance. (b) The watcher's `updating`
+        guard stayed `true` after batch loads, permanently blocking all live-apply pushes.
+        Fix: remove the guard — the 300ms debounce already batches synchronous changes
+        from `loadFromPreset`/`overlayFromWorkflow` into a single PUT.
+      - `recipe-editor.spec.js` (1): profile change round-trip — `ProfilePickerModal`
+        used wrong cache property names (`.records` → `.profiles`, `.refresh()` →
+        `.ensureLoaded()`).
+      - `recipe-power-fields.spec.js` (2): basket toggle ON + live-apply — two issues:
+        (a) `overlayFromWorkflow` ran before `workflowReady` resolved, reading
+        default/empty `workflow.context`. Fix: gate mount-time overlay behind
+        `await workflowReady`. (b) No recipe selected at mount time → fell through
+        to `hydrateFromWorkflowContext` which lacked `ratioValue` in `refsForEditor`,
+        causing `Cannot set properties of undefined` crash. Fix: auto-select first
+        recipe when none selected, and add `ratioValue` to `refsForEditor`.
+      - Test assertion bug: `workflow.context?.basketType` should be
+        `workflow.context?.extras?.basketType` (basket lives under extras).
 
 ## Commit History (this session)
 
@@ -216,6 +227,13 @@ d9fcf63 refactor(recipe-editor): extract useRecipeLiveApply composable
 1bffcf5 docs: mark Phase 1 out-of-range handling as complete
 43f2f13 fix(value-input): preserve out-of-range values instead of silently clamping
 a0611ab refactor(limits): centralize hardcoded min/max values into constants file
+91674d8 fix(recipe-editor): replace confirm() with styled overlay in profile editors
+7edf63e chore(recipe-editor): delete dead code (BrewDialog, OperationSettingsPopup)
+4cbf7a4 test(e2e): add limit boundary regression tests (5 specs)
+ae8553a test(e2e): fix selectors for settings reorg, catalog nav, Phase 2 refactor
+696f9db fix(recipe-editor): resolve ref divergence in form composables
+791cbf9 fix(recipe-editor): remove duplicate useRecipeForm call and watcher updating guard
+c834764 fix(recipe-editor): auto-select first recipe, add missing ratioValue ref
 ```
 
 ## Conventions Used
