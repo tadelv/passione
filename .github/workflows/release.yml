@@ -32,13 +32,17 @@ jobs:
       - name: Create manifest.json
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          ID=$(node -p "require('./manifest.json').id")
+          NAME=$(node -p "require('./manifest.json').name")
+          DESC=$(node -p "require('./manifest.json').description")
+          AUTHOR=$(node -p "require('./manifest.json').author")
           cat > dist/manifest.json << EOF
           {
-            "id": "passione",
-            "name": "Passione",
-            "description": "A work of passion — a modern web interface for the DE1 espresso machine via Streamline-Bridge",
+            "id": "${ID}",
+            "name": "${NAME}",
+            "description": "${DESC}",
             "version": "${VERSION}",
-            "author": "Vid Tadel",
+            "author": "${AUTHOR}",
             "repository": "https://github.com/${{ github.repository }}"
           }
           EOF

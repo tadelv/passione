@@ -1,0 +1,67 @@
+name: Build and Push dist Branch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-dist:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare dist branch contents
+        id: prep
+        run: |
+          # Read base version from source manifest
+          BASE_VERSION=$(node -p "require('./manifest.json').version")
+          ID=$(node -p "require('./manifest.json').id")
+          NAME=$(node -p "require('./manifest.json').name")
+          DESC=$(node -p "require('./manifest.json').description")
+          AUTHOR=$(node -p "require('./manifest.json').author")
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          DEV_VERSION="${BASE_VERSION}-dev.${SHORT_SHA}.${{ github.run_number }}"
+
+          # Write dev manifest inside dist/
+          cat > dist/manifest.json << EOF
+          {
+            "id": "${ID}",
+            "name": "${NAME}",
+            "description": "${DESC}",
+            "version": "${DEV_VERSION}",
+            "author": "${AUTHOR}",
+            "repository": "https://github.com/${{ github.repository }}"
+          }
+          EOF
+
+          echo "Dev version: ${DEV_VERSION}"
+          echo "dev_version=${DEV_VERSION}" >> $GITHUB_OUTPUT
+          echo "commit_msg=build: ${DEV_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to dist branch
+        env:
+          DEV_VERSION: ${{ steps.prep.outputs.dev_version }}
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: dist
+          force_orphan: true
+          commit_message: ${{ steps.prep.outputs.commit_msg }}
