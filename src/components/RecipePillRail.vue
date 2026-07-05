@@ -130,10 +130,10 @@ function onNew() {
 
 .recipe-pill-rail__pill {
   flex: 1;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 14px;
   border-radius: 10px;
-  border: none;
+  border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
   font-family: var(--font-body);
@@ -144,7 +144,7 @@ function onNew() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  transition: background-color 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   touch-action: manipulation;
@@ -157,6 +157,8 @@ function onNew() {
 .recipe-pill-rail__row--selected .recipe-pill-rail__pill {
   background: var(--color-primary);
   color: var(--color-text);
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 /*
@@ -181,12 +183,12 @@ function onNew() {
 .recipe-pill-rail__edit {
   flex-shrink: 0;
   width: 44px;
-  min-height: 44px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  border: none;
+  border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
