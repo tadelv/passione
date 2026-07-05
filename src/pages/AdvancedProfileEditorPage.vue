@@ -337,10 +337,29 @@ async function uploadToMachine() {
 // Navigation
 // ---------------------------------------------------------------------------
 
+// Styled confirm overlay for unsaved changes (replaces browser confirm)
+const confirmLeave = ref(false)
+
 function goBack() {
   if (isDirty.value) {
-    if (!confirm('You have unsaved changes. Discard them?')) return
+    confirmLeave.value = true
+    return
   }
+  router.back()
+}
+
+function discardAndLeave() {
+  confirmLeave.value = false
+  router.back()
+}
+
+function cancelLeave() {
+  confirmLeave.value = false
+}
+
+async function saveAndLeave() {
+  await saveProfile()
+  confirmLeave.value = false
   router.back()
 }
 
@@ -819,6 +838,20 @@ onMounted(loadProfile)
         >Save</button>
       </template>
     </BottomBar>
+
+    <!-- Unsaved changes confirm -->
+    <Transition name="confirm-fade">
+      <div v-if="confirmLeave" class="profile-editor__confirm" @click.self="cancelLeave">
+        <div class="profile-editor__confirm-card">
+          <span class="profile-editor__confirm-text">You have unsaved changes.</span>
+          <div class="profile-editor__confirm-actions">
+            <button class="profile-editor__confirm-btn profile-editor__confirm-btn--discard" @click="discardAndLeave">Discard</button>
+            <button class="profile-editor__confirm-btn profile-editor__confirm-btn--cancel" @click="cancelLeave">Stay</button>
+            <button class="profile-editor__confirm-btn profile-editor__confirm-btn--save" @click="saveAndLeave" :disabled="saving">Save & Leave</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -1293,4 +1326,55 @@ onMounted(loadProfile)
     min-height: 160px;
   }
 }
+/* Confirm dialog */
+.profile-editor__confirm {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: var(--z-overlay);
+  background: var(--color-overlay-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-editor__confirm-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  width: 90%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.profile-editor__confirm-text {
+  font-size: var(--font-body);
+  color: var(--color-text);
+  text-align: center;
+}
+
+.profile-editor__confirm-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.profile-editor__confirm-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  font-size: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-editor__confirm-btn--discard { background: var(--color-error); color: var(--color-text); }
+.profile-editor__confirm-btn--cancel { background: transparent; color: var(--color-text-secondary); border: 1px solid var(--color-border); }
+.profile-editor__confirm-btn--save { background: var(--color-primary); color: var(--color-text); }
+
+.confirm-fade-enter-active, .confirm-fade-leave-active { transition: opacity 0.15s ease; }
+.confirm-fade-enter-from, .confirm-fade-leave-to { opacity: 0; }
 </style>
