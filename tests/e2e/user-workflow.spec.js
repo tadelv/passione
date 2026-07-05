@@ -121,15 +121,15 @@ test.describe('Complete user session', () => {
     await expect(page.locator('.status-bar__state')).toHaveText('idle')
 
     // ------------------------------------------------------------------
-    // Step 4: Navigate to Settings > Beans tab, add a new bean
+    // Step 4: Navigate to Catalog > Beans tab, add a new bean
     // ------------------------------------------------------------------
-    await navigateTo(page, '/settings/beans')
+    await navigateTo(page, '/catalog/beans')
     await page.waitForTimeout(1500)
 
-    // Verify we are on the settings page with the Beans tab active
-    await expect(page.locator('.settings-page')).toBeVisible()
+    // Verify we are on the catalog page with the Beans tab active
+    await expect(page.locator('.catalog-page')).toBeVisible()
     // The Beans tab should be selected (navigated via deep link)
-    await expect(page.locator('#settings-tab-beans[aria-selected="true"]')).toBeVisible()
+    await expect(page.locator('#catalog-tab-beans[aria-selected="true"]')).toBeVisible()
 
     // Click "Add Bean" button
     const addBeanBtn = page.locator('.beans-tab__add-btn')
@@ -137,30 +137,29 @@ test.describe('Complete user session', () => {
     await addBeanBtn.click()
     await page.waitForTimeout(300)
 
-    // The create form should appear
-    await expect(page.locator('.beans-tab__form--create')).toBeVisible()
+    // The create form modal should appear
+    await expect(page.locator('.beans-tab__modal-backdrop')).toBeVisible()
 
     // Fill in roaster and name (required fields)
-    await page.locator('.beans-tab__form--create .beans-tab__input').first().fill('Test Roastery')
-    await page.locator('.beans-tab__form--create .beans-tab__input').nth(1).fill('Ethiopia Yirgacheffe')
+    await page.locator('.beans-tab__modal-backdrop .beans-tab__input').first().fill('Test Roastery')
+    await page.locator('.beans-tab__modal-backdrop .beans-tab__input').nth(1).fill('Ethiopia Yirgacheffe')
 
     // Save the bean
-    await page.locator('.beans-tab__form--create .beans-tab__btn--save').click()
+    await page.locator('.beans-tab__modal-backdrop .beans-tab__btn--save').click()
     await page.waitForTimeout(1000)
 
     // The create form should close (bean was created successfully)
     // If the API fails the form stays open, but we verify the UI is navigable
-    const createFormStillVisible = await page.locator('.beans-tab__form--create').isVisible()
+    const createFormStillVisible = await page.locator('.beans-tab__modal-backdrop').isVisible()
     if (!createFormStillVisible) {
       // Bean was created - verify it shows in the list
       await expect(page.locator('.beans-tab__bean-roaster', { hasText: 'Test Roastery' })).toBeVisible({ timeout: 3000 })
     }
 
     // ------------------------------------------------------------------
-    // Step 5: Navigate to Settings > Grinders tab, add a grinder
+    // Step 5: Navigate to Catalog > Grinders tab, add a grinder
     // ------------------------------------------------------------------
-    // Click the Grinders tab button
-    await page.locator('#settings-tab-grinders').click()
+    await navigateTo(page, '/catalog/grinders')
     await page.waitForTimeout(1000)
 
     await expect(page.locator('.grinders-tab')).toBeVisible()
@@ -220,15 +219,15 @@ test.describe('Complete user session', () => {
     }
 
     // Enable steam for the latte combo
-    const steamToggle = page.locator('.recipe-editor__op-toggle', { hasText: 'Steam' })
-    if (await steamToggle.isVisible()) {
+    const steamToggle = page.locator('[data-testid="recipe-op-steam"] [role="switch"]')
+    if (await steamToggle.isVisible().catch(() => false)) {
       await steamToggle.click()
       await page.waitForTimeout(300)
     }
 
     // Save as a new workflow combo
-    const saveAsNewBtn = page.locator('.recipe-editor__save-btn', { hasText: 'Save as New' })
-    if (await saveAsNewBtn.isVisible()) {
+    const saveAsNewBtn = page.locator('[data-testid="wfe-save-as-new"]')
+    if (await saveAsNewBtn.isVisible().catch(() => false)) {
       await saveAsNewBtn.click()
       await page.waitForTimeout(1000)
     }
@@ -242,7 +241,7 @@ test.describe('Complete user session', () => {
     await expect(page.locator('.idle-page')).toBeVisible()
 
     // If workflow combos are visible (PresetPillRow), click the first one
-    const presetPill = page.locator('.preset-pill').first()
+    const presetPill = page.locator('.preset-pill-row__pill').first()
     if (await presetPill.isVisible().catch(() => false)) {
       await presetPill.click()
       await page.waitForTimeout(500)

@@ -399,7 +399,7 @@ test.describe('Layout Editor', () => {
     }
   })
 
-  test('Settings Layout tab shows Edit Layout button', async ({ page }) => {
+  test('Settings Display tab shows Edit Layout button', async ({ page }) => {
     await loadApp(page)
     await page.waitForTimeout(500)
 
@@ -407,13 +407,13 @@ test.describe('Layout Editor', () => {
     await page.goto('/#/settings')
     await page.waitForTimeout(1000)
 
-    // Find and click the Layout tab
-    const layoutTab = page.locator('text=Layout')
-    await expect(layoutTab).toBeVisible()
-    await layoutTab.click()
+    // Find and click the Display tab (Layout merged into Display)
+    const displayTab = page.locator('text=Display')
+    await expect(displayTab).toBeVisible()
+    await displayTab.click()
     await page.waitForTimeout(500)
 
-    // Should show Edit Layout button
+    // Should show Edit Layout button (inside the Layout section of Display)
     const editBtn = page.locator('.layout-tab__edit-btn')
     await expect(editBtn).toBeVisible()
     await expect(editBtn).toHaveText('Edit Layout')
@@ -429,8 +429,8 @@ test.describe('Layout Editor', () => {
     await page.goto('/#/settings')
     await page.waitForTimeout(1000)
 
-    // Click Layout tab
-    await page.locator('text=Layout').click()
+    // Click Display tab (Layout merged into Display)
+    await page.locator('text=Display').click()
     await page.waitForTimeout(500)
 
     // Click Edit Layout

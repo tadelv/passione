@@ -27,11 +27,26 @@ async function setWorkflowContext(request, ctxFields) {
   await request.put(`${BASE_URL}/api/v1/workflow`, { data: merged })
 }
 
+// Power-user fields (grinderRpm, basketSize, basketType) live under
+// context.extras, not at the top level of context — see CLAUDE.md:
+// "write them under context.extras.{grinderRpm,basketSize,basketType}"
+async function setWorkflowExtras(request, extras) {
+  const current = await (await request.get(`${BASE_URL}/api/v1/workflow`)).json()
+  const merged = {
+    ...current,
+    context: {
+      ...(current.context ?? {}),
+      extras: { ...(current.context?.extras ?? {}), ...extras },
+    },
+  }
+  await request.put(`${BASE_URL}/api/v1/workflow`, { data: merged })
+}
+
 test.describe('Recipe-editor power-user fields', () => {
   test.beforeEach(async ({ request }) => {
     // Reset toggles + workflow power-user fields between tests.
     await setPowerUserSettings(request, { showGrinderRpm: false, showBasketData: false })
-    await setWorkflowContext(request, { grinderRpm: null, basketSize: null, basketType: null })
+    await setWorkflowExtras(request, { grinderRpm: null, basketSize: null, basketType: null })
   })
 
   test('default OFF — RPM and basket fields are not rendered', async ({ page }) => {
@@ -45,7 +60,7 @@ test.describe('Recipe-editor power-user fields', () => {
 
   test('RPM toggle ON — RPM field renders and hydrates from workflow context', async ({ page, request }) => {
     await setPowerUserSettings(request, { showGrinderRpm: true })
-    await setWorkflowContext(request, { grinderRpm: 1200 })
+    await setWorkflowExtras(request, { grinderRpm: 1200 })
 
     await page.goto('/#/recipe/edit')
     await page.waitForSelector('.status-bar', { timeout: 10_000 })
@@ -59,7 +74,7 @@ test.describe('Recipe-editor power-user fields', () => {
 
   test('Basket toggle ON — fields render and hydrate from workflow context', async ({ page, request }) => {
     await setPowerUserSettings(request, { showBasketData: true })
-    await setWorkflowContext(request, { basketSize: 18, basketType: 'IMS Competition' })
+    await setWorkflowExtras(request, { basketSize: 18, basketType: 'IMS Competition' })
 
     await page.goto('/#/recipe/edit')
     await page.waitForSelector('.status-bar', { timeout: 10_000 })

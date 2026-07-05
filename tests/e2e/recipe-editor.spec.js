@@ -17,6 +17,11 @@
  *  - Edit + Save → saved recipe persists the tweak, toast fires.
  *  - Edit + Save as New Recipe → a new recipe is created and selected.
  *  - Profile-change round-trip still updates the profile row.
+ *
+ * UI selectors reflect the Phase 2 refactor:
+ *  - Recipe pills: PresetPillRow → RecipePillRail (.recipe-pill-rail__pill)
+ *  - Modified dot: .recipe-pill-rail__row--modified (on the row, not the pill)
+ *  - Profile change: page navigation → inline ProfilePickerModal
  */
 import { test, expect } from '@playwright/test'
 
@@ -156,23 +161,25 @@ test.describe('Recipe editor', () => {
   test('edit then Home: live workflow takes new values, saved recipe untouched', async ({ page, request }) => {
     await loadAppAt(page, '/recipe/edit')
     await page.waitForSelector('.recipe-editor', { timeout: 5000 })
+    // Wait for settings to load from KV store (selectedIndex becomes 0)
+    await page.waitForSelector('.recipe-pill-rail__pill', { timeout: 5000 })
+    await page.waitForTimeout(200)
+
+    // Select the recipe — triggers loadFromPreset(0) + overlayFromWorkflow
+    await page.locator('.recipe-pill-rail__pill').first().click()
+    // Wait for loadFromPreset + overlayFromWorkflow to complete
+    // (form.updating must be false before the increase button click)
     await page.waitForTimeout(500)
 
-    // Select the recipe pill (first — and only — recipe)
-    await page.locator('.preset-pill-row__pill').first().click()
-    await page.waitForTimeout(300)
-
-    // Bump doseIn by one step (0.1g) — makes the form dirty and triggers
-    // live-apply. Targeted via data-testid so adding ValueInputs elsewhere
-    // in the editor can't shift the selector.
+    // Bump doseIn by one step (0.1g)
     await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
     await page.waitForTimeout(600)  // wait for the 300ms live-apply debounce plus margin
 
     // The Save button should now be visible (dirty state)
     await expect(page.locator('[data-testid="wfe-save"]')).toBeVisible({ timeout: 2000 })
 
-    // The modified dot should appear on the selected pill
-    await expect(page.locator('.preset-pill-row__pill--modified')).toBeVisible({ timeout: 2000 })
+    // The modified dot should appear on the selected row
+    await expect(page.locator('.recipe-pill-rail__row--modified')).toBeVisible({ timeout: 2000 })
 
     // Leave via the Home button — no dialog, no guard, no prompt
     await page.locator('.bottom-bar__home').click()
@@ -191,11 +198,14 @@ test.describe('Recipe editor', () => {
   test('edit then explicit Save: saved recipe persists the tweak', async ({ page, request }) => {
     await loadAppAt(page, '/recipe/edit')
     await page.waitForSelector('.recipe-editor', { timeout: 5000 })
+    await page.waitForSelector('.recipe-pill-rail__pill', { timeout: 5000 })
+    await page.waitForTimeout(200)
+
+    // Select the recipe — triggers loadFromPreset(0) + overlayFromWorkflow
+    await page.locator('.recipe-pill-rail__pill').first().click()
     await page.waitForTimeout(500)
 
-    // Select + tweak doseIn via the stepper
-    await page.locator('.preset-pill-row__pill').first().click()
-    await page.waitForTimeout(300)
+    // Tweak doseIn via the stepper
     await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
     await page.waitForTimeout(600)
 
@@ -213,17 +223,20 @@ test.describe('Recipe editor', () => {
     expect(wf?.context?.targetDoseWeight).toBeGreaterThan(18)
 
     // The modified dot should clear (save succeeded → live equals saved)
-    await expect(page.locator('.preset-pill-row__pill--modified')).toHaveCount(0)
+    await expect(page.locator('.recipe-pill-rail__row--modified')).toHaveCount(0)
   })
 
   test('Save as New Recipe: creates a new recipe and selects it', async ({ page, request }) => {
     await loadAppAt(page, '/recipe/edit')
     await page.waitForSelector('.recipe-editor', { timeout: 5000 })
+    await page.waitForSelector('.recipe-pill-rail__pill', { timeout: 5000 })
+    await page.waitForTimeout(200)
+
+    // Select the recipe — triggers loadFromPreset(0)
+    await page.locator('.recipe-pill-rail__pill').first().click()
     await page.waitForTimeout(500)
 
-    // Select + tweak to enable Save as New Recipe
-    await page.locator('.preset-pill-row__pill').first().click()
-    await page.waitForTimeout(300)
+    // Tweak to enable Save as New Recipe
     await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
     await page.waitForTimeout(600)
 
@@ -250,28 +263,30 @@ test.describe('Recipe editor', () => {
   test('profile change round-trip updates the profile row', async ({ page }) => {
     await loadAppAt(page, '/recipe/edit')
     await page.waitForSelector('.recipe-editor', { timeout: 5000 })
-    await page.waitForTimeout(500)
+    await page.waitForSelector('.recipe-pill-rail__pill', { timeout: 5000 })
+    await page.waitForTimeout(200)
 
     // Select the recipe — profile row should show Classic Blooming
-    await page.locator('.preset-pill-row__pill').first().click()
-    await page.waitForTimeout(300)
+    await page.locator('.recipe-pill-rail__pill').first().click()
+    await page.waitForTimeout(500)
     await expect(page.locator('.recipe-editor__profile-name')).toContainText('Classic Blooming')
 
-    // Click the Change button → navigates to /profiles?from=workflow
+    // Click the Change button → opens inline ProfilePickerModal
     await page.locator('.recipe-editor__change-btn').click()
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(300)
 
-    // ProfileSelectorPage should show two profiles. Pick "Alternative Profile".
-    const altProfile = page.getByText('Alternative Profile', { exact: false }).first()
+    // ProfilePickerModal should appear with a list of profiles.
+    // Pick "Alternative Profile".
+    const altProfile = page.locator('.profile-picker__item').filter({ hasText: 'Alternative Profile' })
     await expect(altProfile).toBeVisible({ timeout: 5000 })
     await altProfile.click()
-    await page.waitForTimeout(400)
+    await page.waitForTimeout(200)
 
-    // Click "Use Profile" to apply and return
-    const useBtn = page.getByRole('button', { name: /Use Profile/i }).first()
+    // Click the "Save" / apply button in the modal
+    const useBtn = page.locator('.profile-picker__btn--done')
     await expect(useBtn).toBeVisible({ timeout: 3000 })
     await useBtn.click()
-    await page.waitForTimeout(800)
+    await page.waitForTimeout(500)
 
     // Back on the recipe editor, profile row should show the alternative profile
     await expect(page.locator('.recipe-editor__profile-name')).toContainText('Alternative Profile', { timeout: 5000 })
