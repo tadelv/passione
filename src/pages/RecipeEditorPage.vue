@@ -450,7 +450,82 @@ watch(() => workflow?.profile, (newProfile) => {
 
         <div class="recipe-editor__grid">
           <!-- ══════════════════════════════════════════════════════════
-               Section 1: Coffee & Grind
+               Section 1: Brew Plan
+               Dose in/out/ratio in a 3-column row, then profile + temperature.
+               The core extraction recipe — first card, most-tweaked fields.
+               ══════════════════════════════════════════════════════════ -->
+          <div class="recipe-editor__quadrant">
+            <h4 class="recipe-editor__section-title">
+              <svg class="recipe-editor__section-icon recipe-editor__section-icon--dose" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3v18M5 7h14M7 7l-4 8a4 4 0 0 0 8 0L7 7M17 7l-4 8a4 4 0 0 0 8 0l-4-8"/>
+              </svg>
+              {{ t('recipe.brewPlan') }}
+            </h4>
+
+            <!-- Dose row: 3 compact fields side by side, grouped as a
+                 visual unit — these are the core brew target numbers. -->
+            <div class="recipe-editor__field-row recipe-editor__dose-group">
+              <div class="recipe-editor__field">
+                <label class="recipe-editor__label">{{ t('recipe.doseIn') }}</label>
+                <ValueInput
+                  v-model="doseIn"
+                  :min="LIMITS.weight.doseMin"
+                  :max="LIMITS.weight.doseMax"
+                  :step="0.1"
+                  :decimals="1"
+                  suffix="g"
+                  data-testid="recipe-doseIn"
+                />
+              </div>
+              <div class="recipe-editor__field">
+                <label class="recipe-editor__label">{{ t('recipe.doseOut') }}</label>
+                <ValueInput
+                  v-model="doseOut"
+                  :min="LIMITS.weight.yieldMin"
+                  :max="LIMITS.weight.yieldMax"
+                  :step="0.1"
+                  :decimals="1"
+                  suffix="g"
+                />
+              </div>
+              <div class="recipe-editor__field">
+                <label class="recipe-editor__label">{{ t('recipe.ratio') }}</label>
+                <ValueInput
+                  v-model="ratioValue"
+                  :min="LIMITS.ratio.min"
+                  :max="LIMITS.ratio.max"
+                  :step="0.1"
+                  :decimals="1"
+                />
+              </div>
+            </div>
+
+            <!-- Profile: prominent card-like row -->
+            <div class="recipe-editor__profile-row">
+              <div class="recipe-editor__profile-info">
+                <span class="recipe-editor__profile-label">{{ t('recipe.profile') }}</span>
+                <span class="recipe-editor__profile-name">{{ profileTitle || t('recipe.noProfileSelected') }}</span>
+              </div>
+              <button class="recipe-editor__change-btn" @click="showProfilePicker = true">{{ t('recipe.change') }}</button>
+            </div>
+
+            <!-- Temperature -->
+            <div class="recipe-editor__field">
+              <label class="recipe-editor__label">{{ t('recipe.temperature') }}</label>
+              <ValueInput
+                v-model="brewTemperature"
+                :min="LIMITS.temp.brewMin"
+                :max="LIMITS.temp.brewMax"
+                :step="0.5"
+                :decimals="1"
+                suffix="°C"
+                data-testid="recipe-brew-temperature"
+              />
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════════════════════
+               Section 2: Coffee & Grind
                Merged card with a two-column internal split — coffee on the
                left, grinder on the right. The `recipe-editor__column` class
                is retained on this card for e2e locator compatibility
@@ -616,80 +691,6 @@ watch(() => workflow?.profile, (newProfile) => {
 
                 <button class="recipe-editor__link-btn recipe-editor__link-btn--manage" @click="router.push('/settings/grinders')">{{ t('recipe.manage') }}</button>
               </div>
-            </div>
-          </div>
-
-          <!-- ══════════════════════════════════════════════════════════
-               Section 2: Brew Plan
-               Dose in/out/ratio in a 3-column row, then profile + temperature.
-               ══════════════════════════════════════════════════════════ -->
-          <div class="recipe-editor__quadrant">
-            <h4 class="recipe-editor__section-title">
-              <svg class="recipe-editor__section-icon recipe-editor__section-icon--dose" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3v18M5 7h14M7 7l-4 8a4 4 0 0 0 8 0L7 7M17 7l-4 8a4 4 0 0 0 8 0l-4-8"/>
-              </svg>
-              {{ t('recipe.brewPlan') }}
-            </h4>
-
-            <!-- Dose row: 3 compact fields side by side, grouped as a
-                 visual unit — these are the core brew target numbers. -->
-            <div class="recipe-editor__field-row recipe-editor__dose-group">
-              <div class="recipe-editor__field">
-                <label class="recipe-editor__label">{{ t('recipe.doseIn') }}</label>
-                <ValueInput
-                  v-model="doseIn"
-                  :min="LIMITS.weight.doseMin"
-                  :max="LIMITS.weight.doseMax"
-                  :step="0.1"
-                  :decimals="1"
-                  suffix="g"
-                  data-testid="recipe-doseIn"
-                />
-              </div>
-              <div class="recipe-editor__field">
-                <label class="recipe-editor__label">{{ t('recipe.doseOut') }}</label>
-                <ValueInput
-                  v-model="doseOut"
-                  :min="LIMITS.weight.yieldMin"
-                  :max="LIMITS.weight.yieldMax"
-                  :step="0.1"
-                  :decimals="1"
-                  suffix="g"
-                />
-              </div>
-              <div class="recipe-editor__field">
-                <label class="recipe-editor__label">{{ t('recipe.ratio') }}</label>
-                <ValueInput
-                  v-model="ratioValue"
-                  :min="LIMITS.ratio.min"
-                  :max="LIMITS.ratio.max"
-                  :step="0.1"
-                  :decimals="1"
-                />
-              </div>
-            </div>
-
-            <!-- Profile: prominent card-like row -->
-            <div class="recipe-editor__profile-row">
-              <div class="recipe-editor__profile-info">
-                <span class="recipe-editor__profile-label">{{ t('recipe.profile') }}</span>
-                <span class="recipe-editor__profile-name">{{ profileTitle || t('recipe.noProfileSelected') }}</span>
-              </div>
-              <button class="recipe-editor__change-btn" @click="showProfilePicker = true">{{ t('recipe.change') }}</button>
-            </div>
-
-            <!-- Temperature -->
-            <div class="recipe-editor__field">
-              <label class="recipe-editor__label">{{ t('recipe.temperature') }}</label>
-              <ValueInput
-                v-model="brewTemperature"
-                :min="LIMITS.temp.brewMin"
-                :max="LIMITS.temp.brewMax"
-                :step="0.5"
-                :decimals="1"
-                suffix="°C"
-                data-testid="recipe-brew-temperature"
-              />
             </div>
           </div>
 
