@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import RecipePillRail from '../components/RecipePillRail.vue'
 import PresetEditPopup from '../components/PresetEditPopup.vue'
 import SuggestionField from '../components/SuggestionField.vue'
+import ProfilePickerModal from '../components/ProfilePickerModal.vue'
 import ValueInput from '../components/ValueInput.vue'
 import GrinderSettingInput from '../components/GrinderSettingInput.vue'
 import SettingsToggle from '../components/settings/SettingsToggle.vue'
@@ -135,6 +136,17 @@ onMounted(() => {
 // The popup edits the operation refs above by v-model; the existing
 // live-apply watcher pushes those changes to the workflow.
 const expandedOp = ref(null)
+const showProfilePicker = ref(false)
+
+function onProfilePicked(record) {
+  form.updating = true
+  profileTitle.value = record.profile?.title ?? ''
+  profileId.value = record.id ?? null
+  const t = pickBrewTempFromProfile(record.profile)
+  if (t != null) brewTemperature.value = t
+  nextTick(() => { form.updating = false })
+  showProfilePicker.value = false
+}
 
 // Concise one-line summaries for the operations list rows. Show an em-dash
 // when the operation is off; otherwise the active field values.
@@ -576,7 +588,7 @@ watch(() => workflow?.profile, (newProfile) => {
             <!-- Profile: compact single-line row (name + Change inline) -->
             <div class="recipe-editor__profile-row">
               <span class="recipe-editor__profile-name">{{ profileTitle || t('recipe.noProfileSelected') }}</span>
-              <button class="recipe-editor__change-btn" @click="onChangeProfile">{{ t('recipe.change') }}</button>
+              <button class="recipe-editor__change-btn" @click="showProfilePicker = true">{{ t('recipe.change') }}</button>
             </div>
 
             <div class="recipe-editor__field">
@@ -700,6 +712,12 @@ watch(() => workflow?.profile, (newProfile) => {
       @save="onComboEditSave"
       @delete="onComboEditDelete"
       @cancel="onComboEditCancel"
+    />
+
+    <ProfilePickerModal
+      :visible="showProfilePicker"
+      @select="onProfilePicked"
+      @close="showProfilePicker = false"
     />
   </div>
 </template>
