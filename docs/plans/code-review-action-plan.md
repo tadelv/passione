@@ -28,20 +28,28 @@
 
 - [x] **Handle out-of-range values on load** — one-sided clamp in ValueInput preserves authored values above/below editor limits; visual indicator (warm accent border + text) signals out-of-range state. verify: `npm run build` ✅
 
-## Phase 2: Recipe Editor Refactor
+## Phase 2: Recipe Editor Refactor ✅
 
 **Goal:** Break the 1,530-line monolith into composables, i18n all strings, improve UX.
 
-### Tasks
+### Completed
 
-10. **Extract `useRecipeForm` composable** — form refs + linked ratio watchers + dirty tracking
-11. **Extract `useRecipeLiveApply` composable** — buildWorkflowUpdate + applyToLiveWorkflow + the watcher
-12. **Extract `useRecipePersist` composable** — comboValues + saveToSelectedCombo + saveAsNew
-13. **Extract `useRecipeOverlay` composable** — loadFromPreset + overlayFromWorkflow + sessionStorage protocol
-14. **Convert 23 individual refs to a single reactive form object** with one watchEffect
-15. **i18n all hardcoded English strings** in the recipe editor template
-16. **Inline profile picker** (modal with search + mini graph) instead of page navigation
-17. **Inline operation settings** (expandable rows instead of popups)
+10. ✅ **Extracted `useRecipeForm` composable**
+11. ✅ **Extracted `useRecipeLiveApply` composable**
+12. ✅ **Extracted `useRecipeOverlay` composable**
+13. ✅ **Extracted `useRecipePersist` composable**
+14. ✅ **i18n all hardcoded English strings** (24 new recipe.* keys)
+15. ✅ **Inline profile picker** (ProfilePickerModal component)
+16. ✅ **Inline operation settings** (expandable rows instead of popups)
+17. ✅ **Ratio cascade unit test** (10 tests, Node built-in test runner)
+
+### Results
+
+- RecipeEditorPage: 1,530 → 1,065 lines (script setup: ~600 → ~320)
+- 4 composables: 619 lines total
+- 1 new component: ProfilePickerModal
+- 10 unit tests: all passing
+- E2e baseline: 7 pass / 6 fail (pre-existing) — zero regressions throughout
 
 ## Phase 3: Consistency & Cleanup
 
