@@ -179,6 +179,16 @@ npm run preview      # Preview production build
 ### CI/CD
 
 - **Release**: GitHub Actions workflow (`.github/workflows/release.yml`) — triggered on version tags
+- **Dist branch**: GitHub Actions workflow (`.github/workflows/build-dist.yml`) — on every push to `main`, builds with `VITE_SKIN_ID=passione-dist` and `VITE_APP_VERSION=<base>-dev.<sha>.<run>`, then force-pushes `dist/` to the `dist` branch as a standalone skin (id `passione-dist`, name "Passione Dev")
+
+### Build-time defines
+
+Vite injects two compile-time constants via `define` (same fallback pattern as `typeof __X__ !== 'undefined'` in source):
+
+- `__APP_VERSION__` — from `VITE_APP_VERSION` env or `package.json` version
+- `__SKIN_ID__` — from `VITE_SKIN_ID` env or `'passione'`
+
+Both are consumed by the update checker (`useUpdateAvailable.js`) and About tab (`AboutTab.vue`) so dev builds poll `/skins/passione-dist` and compare against the dev version string — no false-positive update banners.
 
 ### Test artifacts
 
@@ -196,21 +206,25 @@ App code uses relative paths (`/api/v1/...`, `/ws/v1/...`) — the proxy handles
 
 ### Skin Deployment
 
-The `dist/` folder is a Streamline-Bridge skin. Include a `manifest.json`:
+The `dist/` folder is a Streamline-Bridge skin. Vite's `skinManifest` plugin generates `manifest.json` at build time:
+
 ```json
 {
   "id": "passione",
   "name": "Passione",
   "description": "A work of passion — a modern web interface for the DE1 espresso machine via Streamline-Bridge",
-  "version": "1.0.0"
+  "version": "0.9.3",
+  "author": "Vid Tadel"
 }
 ```
+
+The `id` and `version` are controlled by `VITE_SKIN_ID` / `VITE_APP_VERSION` env vars (default: `passione` / `package.json` version). When `id ≠ "passione"`, the name automatically becomes "Passione Dev". The CI dist-build workflow overrides both to produce a `passione-dist` skin with a dev version string.
 
 Install via Streamline-Bridge API:
 ```bash
 curl -X POST http://localhost:8080/api/v1/webui/skins/install/github-branch \
   -H "Content-Type: application/json" \
-  -d '{"repo": "owner/passione", "branch": "main"}'
+  -d '{"repo": "tadelv/passione", "branch": "dist"}'
 ```
 
 ## Design Context

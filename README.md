@@ -142,7 +142,7 @@ Passione is a skin for [Streamline-Bridge](https://github.com/tadelv/reaprime). 
 3. Install from URL using the latest release ZIP:
 
 ```
-https://github.com/tadelv/passione/releases/latest/download/passione-v0.5.5.zip
+https://github.com/tadelv/passione/releases/latest/download/passione.zip
 ```
 
 Or via the REST API:
@@ -150,15 +150,17 @@ Or via the REST API:
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-release \
   -H "Content-Type: application/json" \
-  -d '{"repo": "tadelv/passione", "asset": "passione-v0.5.5.zip"}'
+  -d '{"repo": "tadelv/passione", "asset": "passione.zip"}'
 ```
 
-### From GitHub Branch (latest development)
+### From `dist` Branch (latest development build)
+
+Every push to `main` triggers a GitHub Actions workflow that builds the project and pushes the output to the [`dist`](https://github.com/tadelv/passione/tree/dist) branch. This build installs as a separate skin (`passione-dist`) alongside the release skin so they don't overwrite each other:
 
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-branch \
   -H "Content-Type: application/json" \
-  -d '{"repo": "tadelv/passione", "branch": "main"}'
+  -d '{"repo": "tadelv/passione", "branch": "dist"}'
 ```
 
 ### Set as Default Skin
@@ -202,8 +204,14 @@ VITE_WS_URL=ws://<tablet-ip>:8080
 ### Build
 
 ```bash
-npm run build        # Output in dist/
+npm run build        # Output in dist/ (release skin: id=passione)
 npm run preview      # Preview the production build locally
+```
+
+To build a dev skin that installs alongside the release (same as CI):
+
+```bash
+VITE_SKIN_ID=passione-dist VITE_APP_VERSION=0.9.3-dev.local npm run build
 ```
 
 ### Test
