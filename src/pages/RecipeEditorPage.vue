@@ -75,7 +75,7 @@ const comboValues = () => _comboValues({ selectedBeanId, selectedBatchId })
 // properties with getter/setter properties (the `updating` guard).
 const refsForEditor = {
   coffeeName, roaster, grinder, grinderSetting,
-  doseIn, doseOut,
+  doseIn, doseOut, ratioValue,
   selectedGrinderId,
   profileId, profileTitle, brewTemperature,
   grinderRpm, basketSize, basketType,
@@ -213,19 +213,21 @@ function daysSinceRoast(batch) {
 }
 
 // ---- Mount-time load coordination ----
-// Load on mount if a preset is selected. The overlay (overlayFromWorkflow)
-// must wait for the workflow composable's refresh() to complete — otherwise
-// it reads an empty/default workflow.context and the overlay produces wrong
-// values (the root cause of the pre-existing e2e failures in recipe-editor
-// and recipe-power-fields tests).
-if (selectedIndex.value >= 0) {
-  loadFromPreset(selectedIndex.value).then(async () => {
+// If a recipe is selected, load it and overlay the live workflow on top.
+// If none is selected, auto-select the first recipe (index 0) so the
+// well-tested loadFromPreset + overlayFromWorkflow path handles context
+// hydration including extras (basketType, grinderRpm, etc.). Falling
+// through to hydrateFromWorkflowContext would skip the updating guard
+// and loses extras on the first live-apply PUT.
+const effectiveIndex = selectedIndex.value >= 0 ? selectedIndex.value
+  : workflowCombos.value.length > 0 ? 0 : -1
+if (effectiveIndex >= 0) {
+  loadFromPreset(effectiveIndex).then(async () => {
     if (workflowReady) await workflowReady
     await overlayFromWorkflow()
   })
 } else {
-  // No preset selected
-  // No preset selected — hydrate from live workflow once it's loaded
+  // No recipes exist yet — hydrate whatever the workflow has (first-run user)
   if (workflowReady) {
     workflowReady.then(() => hydrateFromWorkflowContext())
   } else {

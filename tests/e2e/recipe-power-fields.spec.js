@@ -100,6 +100,6 @@ test.describe('Recipe-editor power-user fields', () => {
     await page.waitForTimeout(700)
 
     const workflow = await (await request.get(`${BASE_URL}/api/v1/workflow`)).json()
-    expect(workflow.context?.basketType).toBe('VST 18')
+    expect(workflow.context?.extras?.basketType).toBe('VST 18')
   })
 })
