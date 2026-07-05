@@ -26,6 +26,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_SKIN_ID: passione-dist
 
       - name: Prepare dist branch contents
         id: prep
@@ -42,8 +44,8 @@ jobs:
           # Write dev manifest inside dist/
           cat > dist/manifest.json << EOF
           {
-            "id": "${ID}",
-            "name": "${NAME}",
+            "id": "${ID}-dist",
+            "name": "${NAME} Dev",
             "description": "${DESC}",
             "version": "${DEV_VERSION}",
             "author": "${AUTHOR}",

@@ -5,7 +5,7 @@
  * button just forces an immediate check). The running webview, however, holds
  * the OLD bundle in memory — a page reload is needed to pick up new JS/CSS.
  *
- * This composable polls `GET /skins/passione` every 12h and compares the
+ * This composable polls `GET /skins/<skin-id>` every 12h and compares the
  * bridge-reported `version` against the baked-in `__APP_VERSION__`. A
  * mismatch means the files on disk are newer than what's running — surface a
  * reload prompt to the user.
@@ -17,7 +17,7 @@ import { ref, computed } from 'vue'
 import { getSkin } from '../api/rest.js'
 import { useSettings } from './useSettings.js'
 
-const SKIN_ID = 'passione'
+const SKIN_ID = typeof __SKIN_ID__ !== 'undefined' ? __SKIN_ID__ : 'passione'
 const POLL_INTERVAL_MS = 12 * 60 * 60 * 1000 // 12h
 const FIRST_CHECK_DELAY_MS = 30 * 1000 // 30s after app start — let boot traffic settle
 

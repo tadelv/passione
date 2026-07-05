@@ -39,6 +39,7 @@ export default defineConfig(({ mode }) => {
     plugins: [vue(), skinManifest(skinId)],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),
+      __SKIN_ID__: JSON.stringify(skinId),
     },
     base: './',
     build: {

@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { getBuildInfo, checkForSkinUpdates, getSkin, getShotsPaginated } from '../../api/rest.js'
 
-const SKIN_ID = 'passione'
+const SKIN_ID = typeof __SKIN_ID__ !== 'undefined' ? __SKIN_ID__ : 'passione'
 const { t } = useI18n()
 
 const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'
