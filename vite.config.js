@@ -11,7 +11,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
  * but can be overridden via VITE_SKIN_ID (e.g. "passione-dev") so a dev
  * build installs alongside the release skin without overwriting it.
  */
-function skinManifest(skinId) {
+function skinManifest(skinId, version) {
   return {
     name: 'skin-manifest',
     writeBundle() {
@@ -23,7 +23,7 @@ function skinManifest(skinId) {
         id,
         name: isDev ? 'Passione Dev' : 'Passione',
         description: 'A work of passion — a modern web interface for the DE1 espresso machine via Streamline-Bridge',
-        version: pkg.version,
+        version: version,
         author: 'Vid Tadel'
       }, null, 2) + '\n')
     }
@@ -35,10 +35,14 @@ export default defineConfig(({ mode }) => {
   // VITE_SKIN_ID can be set via shell env or .env file.
   // "passione-dev" avoids overwriting the release skin on the device.
   const skinId = process.env.VITE_SKIN_ID || env.VITE_SKIN_ID || 'passione'
+  // VITE_APP_VERSION overrides the baked-in version (used by CI to inject
+  // a dev version string like "0.9.3-dev.abc1234.42" so the update checker
+  // doesn't false-positive against the manifest on disk).
+  const appVersion = process.env.VITE_APP_VERSION || env.VITE_APP_VERSION || pkg.version
   return {
-    plugins: [vue(), skinManifest(skinId)],
+    plugins: [vue(), skinManifest(skinId, appVersion)],
     define: {
-      __APP_VERSION__: JSON.stringify(pkg.version),
+      __APP_VERSION__: JSON.stringify(appVersion),
       __SKIN_ID__: JSON.stringify(skinId),
     },
     base: './',

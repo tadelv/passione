@@ -24,46 +24,45 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Compute dev version
+        id: meta
+        run: |
+          BASE_VERSION=$(node -p "require('./manifest.json').version")
+          ID=$(node -p "require('./manifest.json').id")
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          DEV_VERSION="${BASE_VERSION}-dev.${SHORT_SHA}.${{ github.run_number }}"
+          echo "dev_version=${DEV_VERSION}" >> $GITHUB_OUTPUT
+          echo "dev_skin_id=${ID}-dist" >> $GITHUB_OUTPUT
+          echo "commit_msg=build: ${DEV_VERSION}" >> $GITHUB_OUTPUT
+
       - name: Build
         run: npm run build
         env:
-          VITE_SKIN_ID: passione-dist
+          VITE_SKIN_ID: ${{ steps.meta.outputs.dev_skin_id }}
+          VITE_APP_VERSION: ${{ steps.meta.outputs.dev_version }}
 
-      - name: Prepare dist branch contents
-        id: prep
+      - name: Write dev manifest
         run: |
-          # Read base version from source manifest
-          BASE_VERSION=$(node -p "require('./manifest.json').version")
-          ID=$(node -p "require('./manifest.json').id")
           NAME=$(node -p "require('./manifest.json').name")
           DESC=$(node -p "require('./manifest.json').description")
           AUTHOR=$(node -p "require('./manifest.json').author")
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          DEV_VERSION="${BASE_VERSION}-dev.${SHORT_SHA}.${{ github.run_number }}"
 
-          # Write dev manifest inside dist/
           cat > dist/manifest.json << EOF
           {
-            "id": "${ID}-dist",
+            "id": "${{ steps.meta.outputs.dev_skin_id }}",
             "name": "${NAME} Dev",
             "description": "${DESC}",
-            "version": "${DEV_VERSION}",
+            "version": "${{ steps.meta.outputs.dev_version }}",
             "author": "${AUTHOR}",
             "repository": "https://github.com/${{ github.repository }}"
           }
           EOF
 
-          echo "Dev version: ${DEV_VERSION}"
-          echo "dev_version=${DEV_VERSION}" >> $GITHUB_OUTPUT
-          echo "commit_msg=build: ${DEV_VERSION}" >> $GITHUB_OUTPUT
-
       - name: Deploy to dist branch
-        env:
-          DEV_VERSION: ${{ steps.prep.outputs.dev_version }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           publish_branch: dist
           force_orphan: true
-          commit_message: ${{ steps.prep.outputs.commit_msg }}
+          commit_message: ${{ steps.meta.outputs.commit_msg }}
