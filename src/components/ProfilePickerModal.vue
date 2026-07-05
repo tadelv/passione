@@ -19,7 +19,7 @@ const searchQuery = ref('')
 const selectedId = ref(null)
 const loading = ref(false)
 
-const profiles = computed(() => profilesCache.records.value ?? [])
+const profiles = computed(() => profilesCache.profiles.value ?? [])
 
 const filtered = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
@@ -42,7 +42,7 @@ watch(() => props.visible, async (v) => {
   if (v && profiles.value.length === 0 && !loading.value) {
     loading.value = true
     try {
-      await profilesCache.refresh()
+      await profilesCache.ensureLoaded()
     } catch { /* toast-spam guard */ }
     loading.value = false
   }

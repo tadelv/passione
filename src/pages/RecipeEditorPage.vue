@@ -23,6 +23,7 @@ const { suggestions: historySuggestions, load: loadHistorySuggestions } = useSho
 
 const settings = inject('settings', null)
 const workflow = inject('workflow', null)
+const workflowReady = inject('workflowReady', null)
 const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
 const router = useRouter()
@@ -68,12 +69,28 @@ const {
 // Wire comboValues to include bean link refs (owned by useBeanLink, not useRecipeForm)
 const comboValues = () => _comboValues({ selectedBeanId, selectedBatchId })
 
+// Form refs object passed to both live-apply and overlay composables.
+// Must use the destructured refs directly (not form.xxx) to avoid ref
+// divergence caused by Vite pre-bundler when an object mixes plain ref
+// properties with getter/setter properties (the `updating` guard).
+const refsForEditor = {
+  coffeeName, roaster, grinder, grinderSetting,
+  doseIn, doseOut,
+  selectedGrinderId,
+  profileId, profileTitle, brewTemperature,
+  grinderRpm, basketSize, basketType,
+  includeSteam, steamDuration, steamFlow, steamTemperature,
+  includeFlush, flushDuration, flushFlowRate,
+  includeHotWater, hotWaterVolume, hotWaterTemperature,
+  updating: form.updating,
+}
+
 // ---- Live-apply composable ----
 const {
   buildWorkflowUpdate,
   applyToLiveWorkflow,
   buildTemperatureOverrideProfile,
-} = useRecipeLiveApply(form, {
+} = useRecipeLiveApply(refsForEditor, {
   settings, workflow, updateWorkflow,
   selectedBeanId, selectedBatchId, selectedGrinder, linkedBean,
   pickBrewTempFromProfile,
@@ -104,7 +121,7 @@ const {
   isAwaitingProfileFromPicker,
   getAwaitingProfileBaselineId,
   setAwaitingProfileFromPicker,
-} = useRecipeOverlay(form, {
+} = useRecipeOverlay(refsForEditor, {
   workflow, grinders, beansApi,
   enterLinked, clearLink, hydrateFromContext,
   selectedBeanId, selectedBatchId, batchesForBean,
@@ -120,12 +137,12 @@ onMounted(() => {
     const baselineId = getAwaitingProfileBaselineId()
     const currentKey = workflow.profile.id ?? workflow.profile.title ?? ''
     if (baselineId !== String(currentKey)) {
-      form.updating = true
+      refsForEditor.updating.value = true
       profileTitle.value = workflow.profile.title ?? ''
       profileId.value = workflow.profile.id ?? null
       const t = pickBrewTempFromProfile(workflow.profile)
       if (t != null) brewTemperature.value = t
-      nextTick(() => { form.updating = false })
+      nextTick(() => { refsForEditor.updating.value = false })
     }
     setAwaitingProfileFromPicker(false)
   }
@@ -139,12 +156,12 @@ const expandedOp = ref(null)
 const showProfilePicker = ref(false)
 
 function onProfilePicked(record) {
-  form.updating = true
+  refsForEditor.updating.value = true
   profileTitle.value = record.profile?.title ?? ''
   profileId.value = record.id ?? null
   const t = pickBrewTempFromProfile(record.profile)
   if (t != null) brewTemperature.value = t
-  nextTick(() => { form.updating = false })
+  nextTick(() => { refsForEditor.updating.value = false })
   showProfilePicker.value = false
 }
 
@@ -196,12 +213,26 @@ function daysSinceRoast(batch) {
 }
 
 // ---- Mount-time load coordination ----
-// Load on mount if a preset is selected
+// Load on mount if a preset is selected. The overlay (overlayFromWorkflow)
+// must wait for the workflow composable's refresh() to complete — otherwise
+// it reads an empty/default workflow.context and the overlay produces wrong
+// values (the root cause of the pre-existing e2e failures in recipe-editor
+// and recipe-power-fields tests).
 if (selectedIndex.value >= 0) {
-  loadFromPreset(selectedIndex.value).then(overlayFromWorkflow)
+  loadFromPreset(selectedIndex.value).then(async () => {
+    if (workflowReady) await workflowReady
+    await overlayFromWorkflow()
+  })
 } else {
-  hydrateFromWorkflowContext()
+  // No preset selected
+  // No preset selected — hydrate from live workflow once it's loaded
+  if (workflowReady) {
+    workflowReady.then(() => hydrateFromWorkflowContext())
+  } else {
+    hydrateFromWorkflowContext()
+  }
 }
+
 // Sync profile from workflow only when no preset is loaded
 if (selectedIndex.value < 0 && workflow?.profile) {
   profileTitle.value = workflow.profile.title ?? ''
@@ -254,7 +285,7 @@ function onComboEditCancel() {
 const {
   saveToSelectedCombo,
   saveAsNew,
-} = useRecipePersist(form, {
+} = useRecipePersist(refsForEditor, {
   settings, toast, t,
   comboValues, linkedBean,
   selectedIndex, workflowCombos,
@@ -315,7 +346,7 @@ function onSaveAsNewClick() {
 //   1. No combo selected — ambient safety default
 //   2. User explicitly picked a profile via the Change button (sessionStorage flag)
 watch(() => workflow?.profile, (newProfile) => {
-  if (!newProfile || form.updating) return
+  if (!newProfile || refsForEditor.updating.value) return
   const explicitlyPicked = isAwaitingProfileFromPicker()
   const noComboSelected = selectedIndex.value < 0
   if (explicitlyPicked || noComboSelected) {

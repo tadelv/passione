@@ -7,14 +7,14 @@ import { useRouter } from 'vue-router'
  * only), onChangeProfile (navigates to profile picker + sessionStorage
  * protocol), and onGrinderSelect (grinder entity selection helper).
  *
- * @param {object} form    The useRecipeForm return object
+ * @param {object} refs  Form refs (destructured, incl. `updating` Ref)
  * @param {object} ctx     Injected context: { workflow, grinders, beansApi,
  *                         enterLinked, clearLink, hydrateFromContext,
  *                         selectedBeanId, selectedBatchId, batchesForBean,
  *                         pickBrewTempFromProfile, round1, workflowCombos,
  *                         selectedIndex }
  */
-export function useRecipeOverlay(form, ctx) {
+export function useRecipeOverlay(refs, ctx) {
   const {
     workflow, grinders, beansApi,
     enterLinked, clearLink, hydrateFromContext,
@@ -55,16 +55,16 @@ export function useRecipeOverlay(form, ctx) {
 
   // ---- Grinder selection helper ----
   function onGrinderSelect(grinderId, { resetSetting = true } = {}) {
-    form.selectedGrinderId.value = grinderId || null
+    refs.selectedGrinderId.value = grinderId || null
     if (!grinderId) {
-      form.grinder.value = ''
-      form.grinderSetting.value = ''
+      refs.grinder.value = ''
+      refs.grinderSetting.value = ''
       return
     }
     const g = grinders.value.find(g => g.id === grinderId)
     if (g) {
-      form.grinder.value = g.model ?? ''
-      if (resetSetting) form.grinderSetting.value = ''
+      refs.grinder.value = g.model ?? ''
+      if (resetSetting) refs.grinderSetting.value = ''
     }
   }
 
@@ -72,44 +72,44 @@ export function useRecipeOverlay(form, ctx) {
   async function loadFromPreset(index) {
     const preset = workflowCombos.value[index]
     if (!preset) return
-    form.updating = true
+    refs.updating.value = true
     // Coffee: support legacy beanBrand/beanType combos
-    form.coffeeName.value = preset.coffeeName ?? ([preset.beanBrand, preset.beanType].filter(Boolean).join(' ') || '')
-    form.roaster.value = preset.roaster ?? ''
-    form.grinder.value = preset.grinder ?? ''
-    form.grinderSetting.value = preset.grinderSetting ?? ''
-    form.doseIn.value = preset.doseIn ?? 18.0
-    form.doseOut.value = preset.doseOut ?? 36.0
-    form.ratioValue.value = form.doseIn.value > 0 ? +(form.doseOut.value / form.doseIn.value).toFixed(1) : 2.0
-    form.profileId.value = preset.profileId ?? null
-    form.profileTitle.value = preset.profileTitle ?? ''
+    refs.coffeeName.value = preset.coffeeName ?? ([preset.beanBrand, preset.beanType].filter(Boolean).join(' ') || '')
+    refs.roaster.value = preset.roaster ?? ''
+    refs.grinder.value = preset.grinder ?? ''
+    refs.grinderSetting.value = preset.grinderSetting ?? ''
+    refs.doseIn.value = preset.doseIn ?? 18.0
+    refs.doseOut.value = preset.doseOut ?? 36.0
+    refs.ratioValue.value = refs.doseIn.value > 0 ? +(refs.doseOut.value / refs.doseIn.value).toFixed(1) : 2.0
+    refs.profileId.value = preset.profileId ?? null
+    refs.profileTitle.value = preset.profileTitle ?? ''
     if (preset.brewTemperature != null) {
-      form.brewTemperature.value = preset.brewTemperature
+      refs.brewTemperature.value = preset.brewTemperature
     } else {
-      form.brewTemperature.value = pickBrewTempFromProfile(workflow?.profile) ?? 93
+      refs.brewTemperature.value = pickBrewTempFromProfile(workflow?.profile) ?? 93
     }
-    form.grinderRpm.value = preset.grinderRpm ?? 1200
-    form.basketSize.value = preset.basketSize ?? 18
-    form.basketType.value = preset.basketType ?? ''
+    refs.grinderRpm.value = preset.grinderRpm ?? 1200
+    refs.basketSize.value = preset.basketSize ?? 18
+    refs.basketType.value = preset.basketType ?? ''
     // Operation settings — always restore sub-field values so they survive
     // a toggle-off/toggle-on cycle (user disables steam, re-enables later)
-    form.includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
+    refs.includeSteam.value = preset.includeSteam ?? (preset.steamSettings?.duration > 0)
     if (preset.steamSettings) {
-      form.steamDuration.value = preset.steamSettings.duration ?? 30
-      form.steamFlow.value = preset.steamSettings.flow ?? 1.5
-      form.steamTemperature.value = preset.steamSettings.temperature ?? 160
+      refs.steamDuration.value = preset.steamSettings.duration ?? 30
+      refs.steamFlow.value = preset.steamSettings.flow ?? 1.5
+      refs.steamTemperature.value = preset.steamSettings.temperature ?? 160
     }
-    form.includeFlush.value = preset.includeFlush ?? (preset.flushSettings?.duration > 0)
+    refs.includeFlush.value = preset.includeFlush ?? (preset.flushSettings?.duration > 0)
     if (preset.flushSettings) {
-      form.flushDuration.value = preset.flushSettings.duration ?? 5
-      form.flushFlowRate.value = preset.flushSettings.flow ?? 6.0
+      refs.flushDuration.value = preset.flushSettings.duration ?? 5
+      refs.flushFlowRate.value = preset.flushSettings.flow ?? 6.0
     }
-    form.includeHotWater.value = preset.includeHotWater ?? (preset.hotWaterSettings?.volume > 0)
+    refs.includeHotWater.value = preset.includeHotWater ?? (preset.hotWaterSettings?.volume > 0)
     if (preset.hotWaterSettings) {
-      form.hotWaterVolume.value = preset.hotWaterSettings.volume ?? 200
-      form.hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
+      refs.hotWaterVolume.value = preset.hotWaterSettings.volume ?? 200
+      refs.hotWaterTemperature.value = preset.hotWaterSettings.temperature ?? 80
     }
-    // Restore entity selections — keep form.updating true through async work
+    // Restore entity selections — keep refs.updating true through async work
     // so the auto-save watcher doesn't fire with partially-loaded data
     if (preset.selectedBeanId) {
       if (preset.selectedBatchId) {
@@ -127,15 +127,15 @@ export function useRecipeOverlay(form, ctx) {
     if (preset.selectedGrinderId) {
       onGrinderSelect(preset.selectedGrinderId, { resetSetting: false })
     } else {
-      form.selectedGrinderId.value = null
+      refs.selectedGrinderId.value = null
     }
-    form.updating = false
+    refs.updating.value = false
   }
 
   // ---- Mount-time hydration: overlay live-workflow divergence on top ----
   async function overlayFromWorkflow() {
     if (!workflow) return
-    form.updating = true
+    refs.updating.value = true
     const ctxPayload = workflow.context ?? {}
     // Reconcile the entity links FIRST. loadFromPreset restored the SAVED
     // combo's bean/grinder, but the live workflow may carry different ones
@@ -154,76 +154,76 @@ export function useRecipeOverlay(form, ctx) {
       }
     }
     const liveGrinderId = ctxPayload.grinderId ? String(ctxPayload.grinderId) : null
-    const formGrinderId = form.selectedGrinderId.value ? String(form.selectedGrinderId.value) : null
+    const formGrinderId = refs.selectedGrinderId.value ? String(refs.selectedGrinderId.value) : null
     if (liveGrinderId !== formGrinderId) {
       if (liveGrinderId) onGrinderSelect(liveGrinderId, { resetSetting: false })
-      else form.selectedGrinderId.value = null
+      else refs.selectedGrinderId.value = null
     }
-    if (ctxPayload.targetDoseWeight != null) form.doseIn.value = ctxPayload.targetDoseWeight
-    if (ctxPayload.targetYield != null) form.doseOut.value = ctxPayload.targetYield
-    if (form.doseIn.value > 0 && form.doseOut.value > 0) {
-      form.ratioValue.value = round1(form.doseOut.value / form.doseIn.value)
+    if (ctxPayload.targetDoseWeight != null) refs.doseIn.value = ctxPayload.targetDoseWeight
+    if (ctxPayload.targetYield != null) refs.doseOut.value = ctxPayload.targetYield
+    if (refs.doseIn.value > 0 && refs.doseOut.value > 0) {
+      refs.ratioValue.value = round1(refs.doseOut.value / refs.doseIn.value)
     }
     // Skip coffeeName/coffeeRoaster while a bean is linked
     if (!selectedBeanId.value) {
-      if (ctxPayload.coffeeName != null) form.coffeeName.value = ctxPayload.coffeeName
-      if (ctxPayload.coffeeRoaster != null) form.roaster.value = ctxPayload.coffeeRoaster
+      if (ctxPayload.coffeeName != null) refs.coffeeName.value = ctxPayload.coffeeName
+      if (ctxPayload.coffeeRoaster != null) refs.roaster.value = ctxPayload.coffeeRoaster
     }
-    if (ctxPayload.grinderModel != null) form.grinder.value = ctxPayload.grinderModel
-    if (ctxPayload.grinderSetting != null) form.grinderSetting.value = String(ctxPayload.grinderSetting)
+    if (ctxPayload.grinderModel != null) refs.grinder.value = ctxPayload.grinderModel
+    if (ctxPayload.grinderSetting != null) refs.grinderSetting.value = String(ctxPayload.grinderSetting)
     if (workflow.profile) {
-      form.profileId.value = workflow.profile.id ?? form.profileId.value
-      form.profileTitle.value = workflow.profile.title ?? form.profileTitle.value
+      refs.profileId.value = workflow.profile.id ?? refs.profileId.value
+      refs.profileTitle.value = workflow.profile.title ?? refs.profileTitle.value
       const t = pickBrewTempFromProfile(workflow.profile)
-      if (t != null) form.brewTemperature.value = t
+      if (t != null) refs.brewTemperature.value = t
     }
     const extras = ctxPayload.extras ?? {}
-    if (extras.grinderRpm != null) form.grinderRpm.value = extras.grinderRpm
-    if (extras.basketSize != null) form.basketSize.value = extras.basketSize
-    if (extras.basketType != null) form.basketType.value = extras.basketType
+    if (extras.grinderRpm != null) refs.grinderRpm.value = extras.grinderRpm
+    if (extras.basketSize != null) refs.basketSize.value = extras.basketSize
+    if (extras.basketType != null) refs.basketType.value = extras.basketType
     // Operation settings
     const ss = workflow.steamSettings
     if (ss) {
       const on = (ss.duration ?? 0) > 0
-      form.includeSteam.value = on
+      refs.includeSteam.value = on
       if (on) {
-        form.steamDuration.value = ss.duration
-        if (ss.flow != null) form.steamFlow.value = ss.flow
-        if (ss.targetTemperature != null) form.steamTemperature.value = ss.targetTemperature
+        refs.steamDuration.value = ss.duration
+        if (ss.flow != null) refs.steamFlow.value = ss.flow
+        if (ss.targetTemperature != null) refs.steamTemperature.value = ss.targetTemperature
       }
     }
     const rd = workflow.rinseData
     if (rd) {
       const on = (rd.duration ?? 0) > 0
-      form.includeFlush.value = on
+      refs.includeFlush.value = on
       if (on) {
-        form.flushDuration.value = rd.duration
-        if (rd.flow != null) form.flushFlowRate.value = rd.flow
+        refs.flushDuration.value = rd.duration
+        if (rd.flow != null) refs.flushFlowRate.value = rd.flow
       }
     }
     const hw = workflow.hotWaterData
     if (hw) {
       const on = (hw.volume ?? 0) > 0
-      form.includeHotWater.value = on
+      refs.includeHotWater.value = on
       if (on) {
-        form.hotWaterVolume.value = hw.volume
-        if (hw.targetTemperature != null) form.hotWaterTemperature.value = hw.targetTemperature
+        refs.hotWaterVolume.value = hw.volume
+        if (hw.targetTemperature != null) refs.hotWaterTemperature.value = hw.targetTemperature
       }
     }
-    form.updating = false
+    refs.updating.value = false
   }
 
   async function hydrateFromWorkflowContext() {
     const ctxPayload = workflow?.context
     if (!ctxPayload) return
-    form.doseIn.value = ctxPayload.targetDoseWeight ?? 18.0
-    form.doseOut.value = ctxPayload.targetYield ?? 36.0
-    if (form.doseIn.value > 0) form.ratioValue.value = +(form.doseOut.value / form.doseIn.value).toFixed(1)
-    form.grinder.value = ctxPayload.grinderModel ?? ''
-    form.grinderSetting.value = ctxPayload.grinderSetting ?? ''
-    form.coffeeName.value = ctxPayload.coffeeName ?? ''
-    form.roaster.value = ctxPayload.coffeeRoaster ?? ''
-    if (ctxPayload.grinderId) form.selectedGrinderId.value = ctxPayload.grinderId
+    refs.doseIn.value = ctxPayload.targetDoseWeight ?? 18.0
+    refs.doseOut.value = ctxPayload.targetYield ?? 36.0
+    if (refs.doseIn.value > 0) refs.ratioValue.value = +(refs.doseOut.value / refs.doseIn.value).toFixed(1)
+    refs.grinder.value = ctxPayload.grinderModel ?? ''
+    refs.grinderSetting.value = ctxPayload.grinderSetting ?? ''
+    refs.coffeeName.value = ctxPayload.coffeeName ?? ''
+    refs.roaster.value = ctxPayload.coffeeRoaster ?? ''
+    if (ctxPayload.grinderId) refs.selectedGrinderId.value = ctxPayload.grinderId
     if (ctxPayload.beanBatchId) {
       await hydrateFromContext(ctxPayload)
       if (selectedBeanId.value && beansApi) {
@@ -231,9 +231,9 @@ export function useRecipeOverlay(form, ctx) {
       }
     }
     const extras = ctxPayload.extras ?? {}
-    if (extras.grinderRpm != null) form.grinderRpm.value = extras.grinderRpm
-    if (extras.basketSize != null) form.basketSize.value = extras.basketSize
-    if (extras.basketType != null) form.basketType.value = extras.basketType
+    if (extras.grinderRpm != null) refs.grinderRpm.value = extras.grinderRpm
+    if (extras.basketSize != null) refs.basketSize.value = extras.basketSize
+    if (extras.basketType != null) refs.basketType.value = extras.basketType
   }
 
   // ---- Profile change navigation ----

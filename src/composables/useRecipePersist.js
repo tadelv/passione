@@ -4,11 +4,11 @@
  * combo, selects it, fires a toast, returns the new index for the caller
  * to open the rename popup).
  *
- * @param {object} form    The useRecipeForm return object
+ * @param {object} refs   Form refs (destructured)
  * @param {object} ctx     Injected context: { settings, toast, t, comboValues,
  *                         linkedBean, selectedIndex, workflowCombos }
  */
-export function useRecipePersist(form, ctx) {
+export function useRecipePersist(refs, ctx) {
   const {
     settings, toast, t,
     comboValues, linkedBean,
@@ -35,8 +35,8 @@ export function useRecipePersist(form, ctx) {
     // Prefer the linked bean's name (coffeeName is blank while linked) so a
     // recipe created from a bean record still gets a meaningful default name.
     const autoName = linkedBean.value?.name
-      || form.coffeeName.value
-      || form.profileTitle.value
+      || refs.coffeeName.value
+      || refs.profileTitle.value
       || t('recipe.newRecipeName')
     const vals = {
       id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,

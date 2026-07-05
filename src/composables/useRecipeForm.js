@@ -63,7 +63,7 @@ export function useRecipeForm({ settings }) {
   // Exposed as a getter/setter so useRecipeLiveApply can check it and
   // useRecipeOverlay can set it. Internal ratio cascade watchers reference
   // the closure variable directly.
-  let _updating = false
+  const _updating = ref(false)
 
   // ---- Derived state from settings ----
   const workflowCombos = computed(() => settings?.settings?.workflowCombos ?? [])
@@ -123,30 +123,30 @@ export function useRecipeForm({ settings }) {
 
   // ---- Linked ratio: changing any of doseIn/doseOut/ratio updates the others ----
   watch(doseIn, (val) => {
-    if (_updating) return
-    _updating = true
+    if (_updating.value) return
+    _updating.value = true
     if (val > 0 && ratioValue.value > 0) {
       doseOut.value = round1(val * ratioValue.value)
     }
-    _updating = false
+    _updating.value = false
   })
 
   watch(doseOut, (val) => {
-    if (_updating) return
-    _updating = true
+    if (_updating.value) return
+    _updating.value = true
     if (doseIn.value > 0 && val > 0) {
       ratioValue.value = round1(val / doseIn.value)
     }
-    _updating = false
+    _updating.value = false
   })
 
   watch(ratioValue, (val) => {
-    if (_updating) return
-    _updating = true
+    if (_updating.value) return
+    _updating.value = true
     if (doseIn.value > 0 && val > 0) {
       doseOut.value = round1(doseIn.value * val)
     }
-    _updating = false
+    _updating.value = false
   })
 
   return {
@@ -160,9 +160,8 @@ export function useRecipeForm({ settings }) {
     includeFlush, flushDuration, flushFlowRate,
     includeHotWater, hotWaterVolume, hotWaterTemperature,
 
-    // Guard (getter/setter for cross-composable sharing)
-    get updating() { return _updating },
-    set updating(v) { _updating = v },
+    // Guard (shared Ref for cross-composable access — callers read/write .value)
+    updating: _updating,
 
     // Derived state
     selectedIndex,
