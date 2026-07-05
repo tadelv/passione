@@ -104,7 +104,10 @@ export function useRecipeLiveApply(refs, ctx) {
     refs.includeFlush, refs.flushDuration, refs.flushFlowRate,
     refs.includeHotWater, refs.hotWaterVolume, refs.hotWaterTemperature,
   ], () => {
-    if (refs.updating.value) return
+    // Store last-trigger timestamp for debounce — no updating guard needed
+    // because the 300ms debounce already batches multiple synchronous changes
+    // into a single PUT. If loadFromPreset/overlayFromWorkflow writes all refs
+    // synchronously, the watcher fires once with all changes batched.
     clearTimeout(liveApplyTimer)
     liveApplyTimer = setTimeout(applyToLiveWorkflow, 300)
   })

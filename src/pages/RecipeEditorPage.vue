@@ -50,7 +50,7 @@ const {
   round1,
   selectedIndex,
   workflowCombos,
-} = useRecipeForm({ settings })
+} = form
 
 const selectedGrinder = computed(() => grinders.value.find(g => g.id === selectedGrinderId.value) ?? null)
 const batchesForBean = ref([])
