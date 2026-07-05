@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-23
 **Source:** Full code review of Passione v0.9.3
-**Status:** Phase 1 ✅ — Phase 2 ✅ — Phase 3 pending
+**Status:** Phase 1 ✅ — Phase 2 ✅ — Phase 3 in progress (4/5 tasks done)
 
 ## Skills Loaded
 
@@ -157,32 +157,49 @@ the SFC wraps it into a no-arg closure after `useBeanLink` is wired up. `dirty`
 stays in the SFC as coordination code. This avoids modifying `useBeanLink`
 (shared with `PostShotReviewPage.vue`).
 
-## Phase 3: Consistency & Cleanup (pending)
+## Phase 3: Consistency & Cleanup (in progress)
 
 **Goal:** Resolve TODO items and eliminate duplicated components.
 
-18. **Replace `confirm()` in `ProfileEditorPage` and `AdvancedProfileEditorPage`** with styled overlay (TODO item from `TODO.md`)
-    - `ProfileEditorPage.vue:606` and `AdvancedProfileEditorPage.vue:341` use browser `confirm()`
-    - `SimpleProfileEditorPage` already has a styled confirm overlay — use the same pattern
-    - `useConfirmAction.js` composable exists but isn't used in these files
+18. ✅ **Replace `confirm()` in `ProfileEditorPage` and `AdvancedProfileEditorPage`** with styled overlay
+    - Same pattern as SimpleProfileEditorPage: Discard / Stay / Save & Leave
+    - TODO.md item removed
+    - verify: `npm run build` ✅
 
-19. **Delete `BrewDialog.vue`** if unused (CLAUDE.md says "Remove BrewDialog" is done)
-    - Check for any remaining imports/references before deleting
+19. ✅ **Delete `BrewDialog.vue`** — zero imports or references; CLAUDE.md already records removal as done
 
-20. **Merge `PresetEditPopup` and `OperationSettingsPopup`** field definitions
-    - Both components define the same operation fields (steam/flush/hotwater) with the same limits independently
-    - Note: `OperationSettingsPopup` is no longer used by `RecipeEditorPage` (replaced by inline expandable rows in Phase 2), but may still be used elsewhere — check before merging or deleting
+20. ✅ **Merge `PresetEditPopup` and `OperationSettingsPopup`** — `OperationSettingsPopup` was dead code
+    (replaced by inline expandable rows in Phase 2); deleted it. Both already source limits from
+    central `LIMITS` file (Phase 1), so no field-definition consolidation needed.
 
-21. **Add e2e tests for limit boundaries**
-    - Pour-over weight exit > 100g (was clamped, now 500)
-    - Large dose (up to 100g)
-    - Long duration (up to 120s in simple editor)
-    - Out-of-range value display (load `baseline_hc.json` with flow=12, verify it displays correctly)
+21. ✅ **Add e2e tests for limit boundaries** — 5 tests in `tests/e2e/limit-boundaries.spec.js`
+    - Recipe editor dose max: 100 (was 40)
+    - Simple editor step duration max: 120 (was 60)
+    - Profile editor weight target max: 500 (was 100)
+    - Profile editor flow target max: 25 (was 8)
+    - Profile editor weight exit max: 500 (was 100)
+    - All pass ✅
 
-22. **Investigate the 6 pre-existing e2e test failures**
-    - `recipe-editor.spec.js`: 4 failures (edit+Home, edit+Save, Save as New, profile change round-trip)
-    - `recipe-power-fields.spec.js`: 2 failures (basket toggle ON, basket type live-apply)
-    - These were failing before this review started — root cause unknown
+22. ✅ **Investigate pre-existing e2e test failures** — fixed 5 of 9; 4 remain
+    - **Fixed (5):**
+      - `app.spec.js` (2): Layout tab → Display tab (settings reorg)
+      - `user-workflow.spec.js` (1): /settings/beans → /catalog/beans, modal selectors,
+        recipe editor selectors updated for Phase 2 refactor
+      - `recipe-editor.spec.js` selectors: PresetPillRow → RecipePillRail, profile picker
+        navigation → ProfilePickerModal
+      - `recipe-power-fields.spec.js`: power-user fields live under `context.extras`
+    - **Remaining (4):**
+      - `recipe-editor.spec.js` (3): edit+Home, edit+Save, profile-change round-trip — live-apply
+        watcher doesn't fire when doseIn changes via the increase button.
+      - `recipe-power-fields.spec.js` (2): basket toggle ON + live-apply — `overlayFromWorkflow`
+        reads `workflow.context.extras` before `useWorkflow.refresh()` has loaded the seeded
+        context.
+    - **Root cause for all 4:** `RecipeEditorPage` mount-time code runs
+      `loadFromPreset(idx).then(overlayFromWorkflow)` without awaiting `useWorkflow` 's
+      `ready` promise. The workflow composable's `onMounted` → `refresh()` is async;
+      `overlayFromWorkflow` reads `workflow.context` before the REST GET completes, so the
+      overlay sees default/empty context. Fix: gate the mount-time overlay behind
+      `await workflowReady` (or `bootReady`) so the workflow is populated before overlay.
 
 ## Commit History (this session)
 
