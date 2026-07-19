@@ -85,6 +85,13 @@ const DEFAULT_LAYOUT = {
   },
 }
 
+// structuredClone isn't available on older WebViews (e.g. Decent.app's
+// Android host) -- DEFAULT_LAYOUT is plain JSON-safe data, so the
+// stringify round-trip is an equivalent deep clone with wider support.
+function cloneDefaultLayout() {
+  return JSON.parse(JSON.stringify(DEFAULT_LAYOUT))
+}
+
 // ---- Singleton state --------------------------------------------------------
 
 let _instance = null
@@ -92,7 +99,7 @@ let _instance = null
 export function useLayout() {
   if (_instance) return _instance
 
-  const layout = ref(structuredClone(DEFAULT_LAYOUT))
+  const layout = ref(cloneDefaultLayout())
   const loaded = ref(false)
   const loading = ref(false)
 
@@ -155,11 +162,11 @@ export function useLayout() {
       if (validated) {
         layout.value = validated
       } else {
-        layout.value = structuredClone(DEFAULT_LAYOUT)
+        layout.value = cloneDefaultLayout()
       }
     } catch {
       // Key does not exist yet or network error -- use defaults
-      layout.value = structuredClone(DEFAULT_LAYOUT)
+      layout.value = cloneDefaultLayout()
     } finally {
       loaded.value = true
       loading.value = false
@@ -215,7 +222,7 @@ export function useLayout() {
    * Reset to the default layout and persist.
    */
   async function resetLayout() {
-    layout.value = structuredClone(DEFAULT_LAYOUT)
+    layout.value = cloneDefaultLayout()
     await saveLayout()
   }
 

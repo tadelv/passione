@@ -10,6 +10,7 @@ Tracked items for future work.
 - [ ] **Steam calibration dialog** — blocked on ReaPrime orchestration API
 - [ ] **AI dialing assistant** — deferred per project decision
 - [ ] **Restore native date pickers** — `<input type="date">` was replaced with plain text + `inputmode="numeric"` in `BeansTab.vue` and `PostShotReviewPage.vue` because the Android Flutter `flutter_inappwebview` host bootstraps the WebView when the native `DatePickerDialog` dismisses. Revert to native inputs once tadelv/reaprime#202 ships the host-side `android:configChanges` + `useHybridComposition` fix.
+- [ ] **Set up `@vitejs/plugin-legacy` with browserslist targets** — older WebView hosts (e.g. Decent.app) lack modern runtime globals like `structuredClone` (see `src/composables/useLayout.js` fix). Vite's build target/bundling doesn't polyfill runtime APIs on its own; add `@vitejs/plugin-legacy` + a pinned `browserslist` config so future modern-API usage gets caught/polyfilled instead of crashing on-device.
 
 ## Done (v0.3.0)
 
