@@ -1,0 +1,1 @@
+import{ab as r,a2 as n}from"./index-D65qcGmw.js";async function f(i,a){const e=a?.isDefault===!0,t=a?.id;if(t&&!e)return await r(t,i);const s={profile:i};return e&&t&&(s.parentId=t),await n(s)}export{f as p};

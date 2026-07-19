@@ -1,0 +1,8 @@
+{
+  "id": "passione-dist",
+  "name": "Passione Dev",
+  "description": "A work of passion — a modern web interface for the DE1 espresso machine via Streamline-Bridge",
+  "version": "0.9.3-dev.745b87c.8",
+  "author": "Vid Tadel",
+  "repository": "https://github.com/tadelv/passione"
+}
