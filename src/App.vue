@@ -28,6 +28,9 @@ import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
 import { useShotCache } from './composables/useShotCache'
+import { useProfilesCache } from './composables/useProfilesCache'
+import { buildComboUpdate } from './composables/useComboApply.js'
+import { isComboModifiedVsWorkflow } from './composables/useComboDirty.js'
 import { setMachineState, getLatestShot } from './api/rest.js'
 
 const router = useRouter()
@@ -47,6 +50,7 @@ const shotData = useShotData()
 const beansComposable = useBeans()
 const grindersComposable = useGrinders()
 const shotCache = useShotCache()
+const profilesCache = useProfilesCache()
 
 // Settings, theme, and cross-cutting composables
 const settings = useSettings()
@@ -629,6 +633,27 @@ function onKeyDown(e) {
   }
 }
 
+// Push the last-selected recipe onto the live workflow at boot. A fresh
+// gateway boot starts with its own default/empty workflow, which would
+// otherwise silently disagree with whatever recipe pill the skin shows as
+// selected. Skipped when the workflow already matches (isComboModifiedVsWorkflow)
+// so a boot that already agrees with the gateway doesn't fire a redundant PUT.
+async function applySelectedComboOnBoot() {
+  const idx = settings.settings.selectedWorkflowCombo
+  const combo = settings.settings.workflowCombos?.[idx]
+  if (idx == null || idx < 0 || !combo) return
+  if (!isComboModifiedVsWorkflow(combo, workflow)) return
+
+  try {
+    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, toast })
+    if (Object.keys(update).length > 0) {
+      await updateWorkflow(update)
+    }
+  } catch {
+    toast?.error(`Failed to load ${combo.name || 'recipe'}`)
+  }
+}
+
 onMounted(async () => {
   document.addEventListener('keydown', onKeyDown)
   // Suppress native context menu globally — this is a dedicated appliance UI,
@@ -643,6 +668,7 @@ onMounted(async () => {
   let synced = false
   try {
     await Promise.all([settings.load(), workflowReady])
+    await applySelectedComboOnBoot()
     operationSettings.syncFromWorkflow()
     synced = true
   } finally {

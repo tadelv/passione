@@ -291,4 +291,32 @@ test.describe('Recipe editor', () => {
     // Back on the recipe editor, profile row should show the alternative profile
     await expect(page.locator('.recipe-editor__profile-name')).toContainText('Alternative Profile', { timeout: 5000 })
   })
+
+  test('boot pushes the selected recipe onto a diverged live workflow', async ({ page, request }) => {
+    // Simulate a fresh gateway boot whose own workflow disagrees with the
+    // recipe the skin has selected (different profile, different dose).
+    await request.put(`${BASE_URL}/api/v1/workflow`, {
+      data: {
+        profile: {
+          id: 'profile-alt0987654321fedcba',
+          title: 'Alternative Profile',
+          author: 'Test Author',
+        },
+        context: {
+          targetDoseWeight: 20,
+          targetYield: 40,
+        },
+      },
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    await loadAppAt(page, '/')
+    await page.waitForTimeout(800)
+
+    const wf = await readWorkflow(request)
+    expect(wf?.profile?.title).toBe(SAMPLE_RECIPE.profileTitle)
+    expect(wf?.context?.targetDoseWeight).toBe(SAMPLE_RECIPE.doseIn)
+    expect(wf?.context?.targetYield).toBe(SAMPLE_RECIPE.doseOut)
+    expect(wf?.context?.coffeeName).toBe(SAMPLE_RECIPE.coffeeName)
+  })
 })

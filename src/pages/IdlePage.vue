@@ -8,6 +8,7 @@ import PresetEditPopup from '../components/PresetEditPopup.vue'
 import LayoutEditOverlay from '../components/LayoutEditOverlay.vue'
 import { useLayout } from '../composables/useLayout.js'
 import { isComboModifiedVsWorkflow } from '../composables/useComboDirty.js'
+import { buildComboUpdate } from '../composables/useComboApply.js'
 import { setMachineState } from '../api/rest.js'
 import { useProfilesCache } from '../composables/useProfilesCache'
 
@@ -139,75 +140,7 @@ async function onComboSelect(index) {
   // Optimistic selection — reverted below if the workflow update fails.
   settings.settings.selectedWorkflowCombo = index
 
-  const update = {}
-
-  if (combo.profileId || combo.profileTitle) {
-    const currentProfile = workflow?.profile
-    const alreadyLoaded =
-      (combo.profileId && currentProfile?.id === combo.profileId) ||
-      (combo.profileTitle && currentProfile?.title === combo.profileTitle)
-    if (!alreadyLoaded) {
-      try {
-        const records = await profilesCache.ensureLoaded()
-        const allRecords = Array.isArray(records) ? records : []
-        // Match by ID first, fall back to title match (Profile objects don't carry the ProfileRecord ID)
-        const record = allRecords.find(r => r.id === combo.profileId)
-          || (combo.profileTitle && allRecords.find(r => r.profile?.title === combo.profileTitle))
-        if (record?.profile) {
-          update.profile = record.profile
-        } else {
-          toast?.warning(`Profile "${combo.profileTitle || combo.profileId}" not found — keeping current profile`)
-        }
-      } catch {
-        toast?.warning('Could not load profile — keeping current profile')
-      }
-    }
-  }
-
-  const coffeeName = combo.coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
-  const hasBasketExtras = combo.grinderRpm != null || combo.basketSize != null || combo.basketType != null
-  if (coffeeName || combo.roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting || hasBasketExtras) {
-    update.context = {
-      coffeeName: coffeeName || null,
-      coffeeRoaster: combo.roaster || null,
-      targetDoseWeight: combo.doseIn ?? undefined,
-      targetYield: combo.doseOut ?? undefined,
-      grinderModel: combo.grinder || null,
-      grinderSetting: combo.grinderSetting != null ? String(combo.grinderSetting) : null,
-    }
-    if (hasBasketExtras) {
-      update.context.extras = {
-        grinderRpm: combo.grinderRpm ?? null,
-        basketSize: combo.basketSize ?? null,
-        basketType: combo.basketType ?? null,
-      }
-    }
-  }
-
-  if (combo.includeSteam && combo.steamSettings) {
-    update.steamSettings = {
-      targetTemperature: combo.steamSettings.temperature ?? settings.settings.steamTemperature ?? 160,
-      duration: combo.steamSettings.duration ?? settings.settings.steamDuration ?? 30,
-      flow: combo.steamSettings.flow ?? settings.settings.steamFlow ?? 1.5,
-    }
-  }
-
-  if (combo.includeFlush && combo.flushSettings) {
-    update.rinseData = {
-      targetTemperature: combo.flushSettings.temperature ?? settings.settings.flushTemperature ?? 90,
-      duration: combo.flushSettings.duration ?? settings.settings.flushDuration ?? 5,
-      flow: combo.flushSettings.flow ?? settings.settings.flushFlowRate ?? 6.0,
-    }
-  }
-
-  if (combo.includeHotWater && combo.hotWaterSettings) {
-    update.hotWaterData = {
-      targetTemperature: combo.hotWaterSettings.temperature ?? settings.settings.hotWaterTemperature ?? 80,
-      volume: combo.hotWaterSettings.volume ?? settings.settings.hotWaterVolume ?? 200,
-      duration: settings.settings.hotWaterDuration ?? 60,
-      flow: settings.settings.hotWaterFlow ?? 6.0,
-    }
-  }
+  const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, toast })
 
   if (Object.keys(update).length === 0) {
     toast?.success(`Loaded ${combo.name || 'combo'}`)
