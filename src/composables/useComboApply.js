@@ -12,10 +12,13 @@
  * @param {object} deps
  * @param {object} deps.profilesCache - from useProfilesCache()
  * @param {object} deps.settings - from useSettings(), for operation fallback defaults
- * @param {object} [deps.toast] - optional, warns on profile lookup failure
+ * @param {object} [deps.beans] - from useBeans(), resolves combo.selectedBeanId to the
+ *   linked bean's name/roaster. Saved combos blank coffeeName/roaster once a bean is
+ *   linked (see useBeanLink.enterLinked) — the bean record is the source of truth.
+ * @param {object} [deps.toast] - optional, warns on profile/bean lookup failure
  * @returns {Promise<object>} partial WorkflowRequest payload for updateWorkflow()
  */
-export async function buildComboUpdate(combo, workflow, { profilesCache, settings, toast } = {}) {
+export async function buildComboUpdate(combo, workflow, { profilesCache, settings, beans, toast } = {}) {
   const update = {}
 
   if (combo.profileId || combo.profileTitle) {
@@ -41,12 +44,23 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
     }
   }
 
-  const coffeeName = combo.coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
+  let coffeeName = combo.coffeeName
+  let roaster = combo.roaster
+  if (combo.selectedBeanId && beans) {
+    try {
+      const bean = await beans.getById(combo.selectedBeanId)
+      coffeeName = bean?.name || null
+      roaster = bean?.roaster || null
+    } catch {
+      toast?.warning('Could not load linked bean — keeping current coffee name')
+    }
+  }
+  coffeeName = coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
   const hasBasketExtras = combo.grinderRpm != null || combo.basketSize != null || combo.basketType != null
-  if (coffeeName || combo.roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting || hasBasketExtras) {
+  if (coffeeName || roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting || hasBasketExtras) {
     update.context = {
       coffeeName: coffeeName || null,
-      coffeeRoaster: combo.roaster || null,
+      coffeeRoaster: roaster || null,
       targetDoseWeight: combo.doseIn ?? undefined,
       targetYield: combo.doseOut ?? undefined,
       grinderModel: combo.grinder || null,

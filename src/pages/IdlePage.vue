@@ -11,6 +11,7 @@ import { isComboModifiedVsWorkflow } from '../composables/useComboDirty.js'
 import { buildComboUpdate } from '../composables/useComboApply.js'
 import { setMachineState } from '../api/rest.js'
 import { useProfilesCache } from '../composables/useProfilesCache'
+import { useBeans } from '../composables/useBeans'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -30,6 +31,7 @@ const operationSettings = inject('operationSettings', null)
 const editingLayout = inject('editingLayout', ref(false))
 
 const profilesCache = useProfilesCache()
+const beans = useBeans()
 
 const isEditMode = computed(() => route.query.editLayout === 'true')
 
@@ -140,7 +142,7 @@ async function onComboSelect(index) {
   // Optimistic selection — reverted below if the workflow update fails.
   settings.settings.selectedWorkflowCombo = index
 
-  const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, toast })
+  const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans, toast })
 
   if (Object.keys(update).length === 0) {
     toast?.success(`Loaded ${combo.name || 'combo'}`)

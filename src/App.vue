@@ -645,7 +645,7 @@ async function applySelectedComboOnBoot() {
   if (!isComboModifiedVsWorkflow(combo, workflow)) return
 
   try {
-    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, toast })
+    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans: beansComposable, toast })
     if (Object.keys(update).length > 0) {
       await updateWorkflow(update)
     }
