@@ -46,16 +46,28 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
 
   let coffeeName = combo.coffeeName
   let roaster = combo.roaster
+  let beanLookupFailed = false
   if (combo.selectedBeanId && beans) {
     try {
       const bean = await beans.getById(combo.selectedBeanId)
       coffeeName = bean?.name || null
       roaster = bean?.roaster || null
     } catch {
+      beanLookupFailed = true
       toast?.warning('Could not load linked bean — keeping current coffee name')
     }
   }
-  coffeeName = coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
+  // A bean-linked combo denormalizes coffeeName/roaster to blank (the bean
+  // record is the source of truth — see useBeanLink.enterLinked). If the
+  // lookup above failed, combo.coffeeName is that blank, and defaulting to
+  // it here would push a wiped coffee name to the gateway. Fall back to
+  // whatever's already live instead of blanking it.
+  if (beanLookupFailed) {
+    coffeeName = workflow?.context?.coffeeName ?? null
+    roaster = workflow?.context?.coffeeRoaster ?? null
+  } else {
+    coffeeName = coffeeName || [combo.beanBrand, combo.beanType].filter(Boolean).join(' ')
+  }
   const hasBasketExtras = combo.grinderRpm != null || combo.basketSize != null || combo.basketType != null
   if (coffeeName || roaster || combo.doseIn != null || combo.doseOut != null || combo.grinder || combo.grinderSetting || hasBasketExtras) {
     update.context = {

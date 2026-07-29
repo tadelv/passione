@@ -25,6 +25,7 @@ import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
 import { useConnectionError } from './composables/useConnectionError.js'
 import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
+import { bootReady } from './composables/useBootReady.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
 import { useShotCache } from './composables/useShotCache'
@@ -643,6 +644,11 @@ async function applySelectedComboOnBoot() {
   const combo = settings.settings.workflowCombos?.[idx]
   if (idx == null || idx < 0 || !combo) return
   if (!isComboModifiedVsWorkflow(combo, workflow)) return
+
+  // Boot-quiet: profile/bean lookups are REST calls, not user-blocking on
+  // first render — firing them before the machine WS is up starves BLE
+  // pairing on the Teclast host (see CLAUDE.md Boot-quiet section).
+  await bootReady()
 
   try {
     const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans: beansComposable, toast })
