@@ -99,12 +99,12 @@ test.describe('Screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/shot-detail-phase-summary.png` })
   })
 
-  test('simple profile editor', async ({ page }) => {
+  test('advanced profile editor', async ({ page }) => {
     await loadApp(page)
     await page.waitForTimeout(500)
-    await page.evaluate(() => window.__vueRouter.push('/simple-editor?type=pressure'))
+    await page.evaluate(() => window.__vueRouter.push('/advanced-editor'))
     await page.waitForTimeout(2000)
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/simple-editor.png` })
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/advanced-editor.png` })
   })
 
   test('shot comparison page', async ({ page }) => {

@@ -18,9 +18,7 @@ const DescalingPage = () => import('../pages/DescalingPage.vue')
 const VisualizerBrowserPage = () => import('../pages/VisualizerBrowserPage.vue')
 const VisualizerMultiImportPage = () => import('../pages/VisualizerMultiImportPage.vue')
 const RecipeEditorPage = () => import('../pages/RecipeEditorPage.vue')
-const ProfileEditorPage = () => import('../pages/ProfileEditorPage.vue')
 const AdvancedProfileEditorPage = () => import('../pages/AdvancedProfileEditorPage.vue')
-const SimpleProfileEditorPage = () => import('../pages/SimpleProfileEditorPage.vue')
 const AutoFavoritesPage = () => import('../pages/AutoFavoritesPage.vue')
 const CatalogPage = () => import('../pages/CatalogPage.vue')
 
@@ -32,7 +30,6 @@ const routes = [
   { path: '/flush', name: 'flush', component: FlushPage },
   { path: '/profiles', name: 'profiles', component: ProfileSelectorPage },
   { path: '/profile-info/:id', name: 'profile-info', component: ProfileInfoPage },
-  { path: '/profile-editor/:id?', name: 'profile-editor', component: ProfileEditorPage },
   { path: '/advanced-editor/:id?', name: 'advanced-editor', component: AdvancedProfileEditorPage },
   { path: '/settings/:tab?', name: 'settings', component: SettingsPage },
   { path: '/history', name: 'history', component: ShotHistoryPage },
@@ -48,7 +45,10 @@ const routes = [
   // any hardcoded external references continue to land on the editor.
   { path: '/workflow/edit', redirect: '/recipe/edit' },
   { path: '/bean-info', redirect: '/recipe/edit' },
-  { path: '/simple-editor/:id?', name: 'simple-editor', component: SimpleProfileEditorPage },
+  // Simple/Recipe profile editors were consolidated into the single
+  // frame-by-frame (Advanced) editor — old links still land correctly.
+  { path: '/profile-editor/:id?', redirect: to => to.params.id ? `/advanced-editor/${to.params.id}` : '/advanced-editor' },
+  { path: '/simple-editor/:id?', redirect: to => to.params.id ? `/advanced-editor/${to.params.id}` : '/advanced-editor' },
   { path: '/auto-favorites', name: 'auto-favorites', component: AutoFavoritesPage },
   { path: '/catalog/:tab?', name: 'catalog', component: CatalogPage },
   // Legacy settings deep-links that landed on bean/grinder catalogs now belong

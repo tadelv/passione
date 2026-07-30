@@ -42,12 +42,10 @@ Browse, search, and manage espresso profiles.
 - Visual profile graph showing pressure, flow, and temperature curves
 - View step-by-step breakdown of each profile frame
 - Apply profiles to the current workflow with a single tap
-- **Simple Profile Editor** for classic 4-step pressure/flow profiles -- perfect for beginners
-- **Profile Editor** with named phases (fill, bloom, rise, pour, hold, decline) for intermediate users
-- **Advanced Editor** with full frame-by-frame control for power users
-- Edit button automatically routes to the correct editor based on profile type
+- **Profile Editor** with full frame-by-frame control, matching Streamline-Bridge's native profile schema exactly
+- **Quick-start presets** (Classic Espresso, Turbo Shot, Blooming Espresso, Allonge, Lever Style) seed a full frame set in one tap
 
-![Simple Profile Editor](docs/screenshots/simple-editor.png)
+![Profile Editor](docs/screenshots/advanced-editor.png)
 
 ### Shot History
 

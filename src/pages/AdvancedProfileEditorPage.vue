@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch, inject, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import ValueInput from '../components/ValueInput.vue'
@@ -8,6 +8,7 @@ import { getProfile, uploadProfileToMachine } from '../api/rest.js'
 import { invalidateProfileCaches } from '../composables/useProfileCacheInvalidation'
 import { buildReaProfile, reaProfileToInternal } from '../composables/useProfileSerialize'
 import { persistProfile } from '../composables/useProfilePersist'
+import { PROFILE_PRESETS } from '../composables/useProfilePresets'
 import { LIMITS } from '../constants/limits'
 
 const router = useRouter()
@@ -148,6 +149,23 @@ function createDefaultFrame(index, name, pump, pressure, flow) {
     max_flow_or_pressure_range: 0.6,
     popup: '',
   }
+}
+
+// ---------------------------------------------------------------------------
+// Presets
+// ---------------------------------------------------------------------------
+
+function applyPreset(key) {
+  const preset = PROFILE_PRESETS.find(p => p.key === key)
+  if (!preset || !profile.value) return
+  profile.value = {
+    ...profile.value,
+    title: preset.name,
+    target_weight: preset.targetWeight,
+    stop_at_type: 'weight',
+    frames: JSON.parse(JSON.stringify(preset.frames)),
+  }
+  selectedFrame.value = profile.value.frames.length > 0 ? 0 : -1
 }
 
 // ---------------------------------------------------------------------------
@@ -339,28 +357,35 @@ async function uploadToMachine() {
 
 // Styled confirm overlay for unsaved changes (replaces browser confirm)
 const confirmLeave = ref(false)
+let pendingNavigation = null
+
+// Catches every navigation away from this page (bottom-nav, keyboard
+// shortcuts, browser back, this page's own Back button), not just the
+// Back button — the previous per-button isDirty check missed those paths.
+onBeforeRouteLeave((to, from, next) => {
+  if (!isDirty.value) { next(); return }
+  pendingNavigation = next
+  confirmLeave.value = true
+})
 
 function goBack() {
-  if (isDirty.value) {
-    confirmLeave.value = true
-    return
-  }
   router.back()
 }
 
 function discardAndLeave() {
   confirmLeave.value = false
-  router.back()
+  if (pendingNavigation) { pendingNavigation(); pendingNavigation = null }
 }
 
 function cancelLeave() {
   confirmLeave.value = false
+  if (pendingNavigation) { pendingNavigation(false); pendingNavigation = null }
 }
 
 async function saveAndLeave() {
   await saveProfile()
   confirmLeave.value = false
-  router.back()
+  if (pendingNavigation) { pendingNavigation(); pendingNavigation = null }
 }
 
 function onFrameSelected(index) {
@@ -515,6 +540,20 @@ onMounted(loadProfile)
 
             <!-- Profile settings panel -->
             <div v-if="showSettings" class="profile-editor__settings-panel">
+              <!-- Presets -->
+              <div class="profile-editor__field-group">
+                <label class="profile-editor__label">Quick start</label>
+                <div class="profile-editor__preset-row">
+                  <button
+                    v-for="preset in PROFILE_PRESETS"
+                    :key="preset.key"
+                    class="profile-editor__preset-pill"
+                    :title="preset.description"
+                    @click="applyPreset(preset.key)"
+                  >{{ preset.name }}</button>
+                </div>
+              </div>
+
               <!-- Title -->
               <div class="profile-editor__field-group">
                 <label class="profile-editor__label">Name</label>
@@ -664,6 +703,10 @@ onMounted(loadProfile)
                   @update:model-value="v => updateFrameField('seconds', v)"
                   :min="LIMITS.duration.stepMin"
                   :max="LIMITS.duration.stepMax"
+                  :step="1"
+                  :decimals="0"
+                  suffix=" s"
+                  aria-label="Frame duration"
                 />
               </div>
 
@@ -1150,6 +1193,29 @@ onMounted(loadProfile)
 
 .profile-editor__field-row > .value-input {
   flex: 1;
+}
+
+.profile-editor__preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-editor__preset-pill {
+  padding: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.15));
+  background: transparent;
+  color: var(--color-text, #fff);
+  font-size: var(--font-caption, 11px);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-editor__preset-pill:active {
+  filter: brightness(0.8);
 }
 
 .profile-editor__label {

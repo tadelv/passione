@@ -10,14 +10,11 @@
  *     matching `pressure`/`flow` target, `transition` ('fast'|'smooth'),
  *     `sensor` ('coffee'|'water'), and OPTIONAL nested `exit:{type,condition,value}`
  *     and `limiter:{value,range}`.
- * The Advanced and Recipe(phase) editors author a flat frame instead
- * (`exit_if`, `exit_type:'pressure_over'`, `exit_pressure_over`,
- * `max_flow_or_pressure`, …). These converters bridge the two so save/upload
- * produce valid REA profiles and load restores exit/limiter data the flat
- * getters would otherwise drop.
- *
- * The Simple editor (useSimpleProfile.js) already emits REA `steps` directly and
- * does not go through here.
+ * The (Advanced) profile editor authors a flat frame instead (`exit_if`,
+ * `exit_type:'pressure_over'`, `exit_pressure_over`, `max_flow_or_pressure`,
+ * …). These converters bridge the two so save/upload produce valid REA
+ * profiles and load restores exit/limiter data the flat getters would
+ * otherwise drop.
  */
 
 function num(v, fallback = 0) {

@@ -4,7 +4,6 @@ import { useRouter, useRoute } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
 import { getProfile } from '../api/rest.js'
-import { isSimpleProfile } from '../composables/useSimpleProfile'
 import { useProfilesCache } from '../composables/useProfilesCache'
 
 const router = useRouter()
@@ -182,16 +181,9 @@ onMounted(fetchProfile)
       <button
         v-if="record?.id"
         class="profile-info__edit-btn"
-        @click="router.push(isSimpleProfile(record?.profile ?? record) ? `/simple-editor/${encodeURIComponent(record.id)}` : `/profile-editor/${encodeURIComponent(record.id)}`)"
-      >
-        Edit
-      </button>
-      <button
-        v-if="record?.id"
-        class="profile-info__advanced-btn"
         @click="router.push(`/advanced-editor/${encodeURIComponent(record.id)}`)"
       >
-        Advanced
+        Edit
       </button>
     </BottomBar>
   </div>
@@ -371,8 +363,7 @@ onMounted(fetchProfile)
   cursor: pointer;
 }
 
-.profile-info__edit-btn,
-.profile-info__advanced-btn {
+.profile-info__edit-btn {
   padding: 8px 24px;
   border: none;
   border-radius: var(--radius-button);

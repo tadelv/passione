@@ -157,7 +157,7 @@ test.describe('AutoFavoritesPage', () => {
 test.describe('New pages load without errors', () => {
   const routes = [
     { path: '/#/auto-favorites', name: 'AutoFavoritesPage' },
-    { path: '/#/simple-editor', name: 'SimpleProfileEditorPage (new)' },
+    { path: '/#/advanced-editor', name: 'AdvancedProfileEditorPage (new)' },
   ]
 
   for (const route of routes) {
@@ -181,45 +181,4 @@ test.describe('New pages load without errors', () => {
       expect(realErrors).toEqual([])
     })
   }
-})
-
-// ---- Simple Profile Editor page -----------------------------------------
-
-test.describe('SimpleProfileEditorPage', () => {
-  test('creates a new pressure profile with default values', async ({ page }) => {
-    await loadApp(page)
-    await page.waitForTimeout(500)
-
-    await page.evaluate(() => {
-      window.__vueRouter.push('/simple-editor?type=pressure')
-    })
-    await page.waitForTimeout(2000)
-
-    // Should show the simple editor with Pressure badge
-    const badge = page.locator('.simple-editor__type-badge')
-    await expect(badge).toBeVisible()
-    await expect(badge).toContainText('Pressure')
-
-    // Title input should have default
-    const titleInput = page.locator('.simple-editor__title-input')
-    await expect(titleInput).toBeVisible()
-    await expect(titleInput).toHaveValue('New Pressure Profile')
-
-    // Should have 4 numbered step sections
-    const stepNums = page.locator('.simple-editor__step-num')
-    await expect(stepNums).toHaveCount(4)
-  })
-
-  test('creates a new flow profile', async ({ page }) => {
-    await loadApp(page)
-    await page.waitForTimeout(500)
-
-    await page.evaluate(() => {
-      window.__vueRouter.push('/simple-editor?type=flow')
-    })
-    await page.waitForTimeout(2000)
-
-    const badge = page.locator('.simple-editor__type-badge')
-    await expect(badge).toContainText('Flow')
-  })
 })

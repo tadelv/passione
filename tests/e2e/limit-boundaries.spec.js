@@ -2,13 +2,14 @@
  * E2E tests for limit boundary values (Phase 1 of code review action plan).
  *
  * Verifies that the central limits file values are correctly wired into the
- * UI's ValueInput components across three editors:
+ * UI's ValueInput components across the two remaining editors (workflow
+ * recipe editor + the single frame-by-frame profile editor):
  *
  *  - Recipe editor: dose max is 100 (was 40)
- *  - Simple editor: step duration max is 120 (was 60)
- *  - Profile editor: weight target max is 500 (was 100)
- *  - Profile editor: flow target max is 25 (was 8)
- *  - Profile editor: weight exit max is 500 (was 100)
+ *  - Advanced editor: frame duration max is 120 (was 60)
+ *  - Advanced editor: weight target max is 500 (was 100)
+ *  - Advanced editor: flow target max is 25 (was 8)
+ *  - Advanced editor: weight exit max is 500 (was 100)
  *
  * Each test navigates to the editor, locates the relevant ValueInput
  * (via data-testid or aria-label), and asserts aria-valuemax matches the
@@ -39,60 +40,63 @@ test.describe('Limit boundaries', () => {
     await expect(doseInput).toHaveAttribute('aria-valuemax', '100')
   })
 
-  test('simple editor: step duration max is 120 (was 60)', async ({ page }) => {
-    await loadAppAt(page, '/simple-editor')
-    await page.waitForSelector('.simple-editor', { timeout: 5000 })
+  test('advanced editor: frame duration max is 120 (was 60)', async ({ page }) => {
+    await loadAppAt(page, '/advanced-editor')
+    await page.waitForSelector('.profile-editor', { timeout: 5000 })
 
-    const durationInput = page.locator('[aria-label="Preinfusion duration"]')
+    // New profile auto-selects its first frame, so the frame editor panel
+    // (not the settings panel) is visible by default.
+    const durationInput = page.locator('[aria-label="Frame duration"]')
     await expect(durationInput).toHaveAttribute('aria-valuemax', '120')
   })
 
-  test('profile editor: weight target max is 500 (was 100)', async ({ page }) => {
-    await loadAppAt(page, '/profile-editor')
-    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
+  test('advanced editor: weight target max is 500 (was 100)', async ({ page }) => {
+    await loadAppAt(page, '/advanced-editor')
+    await page.waitForSelector('.profile-editor', { timeout: 5000 })
+
+    // Switch to the Profile Settings panel to reach the Stop-at field.
+    await page.locator('.profile-editor__settings-btn').click()
+    await page.waitForTimeout(100)
 
     const stopAtInput = page.locator('[aria-label="Stop-at value"]')
     await expect(stopAtInput).toHaveAttribute('aria-valuemax', '500')
   })
 
-  test('profile editor: flow target max is 25 (was 8)', async ({ page }) => {
-    await loadAppAt(page, '/profile-editor')
-    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
-    await page.waitForTimeout(300)
+  test('advanced editor: flow target max is 25 (was 8)', async ({ page }) => {
+    await loadAppAt(page, '/advanced-editor')
+    await page.waitForSelector('.profile-editor', { timeout: 5000 })
 
-    // The "Fill" phase has pump=flow (max=25). It's not expanded by default
-    // (default expanded is "Pour"). Click the Fill phase header to expand it.
-    const fillHeader = page.locator('.recipe-editor__phase-header').filter({ hasText: 'Fill' })
-    await fillHeader.click()
-    await page.waitForTimeout(200)
+    // Apply the Classic Espresso preset — its first frame ("Fill") is a
+    // flow-mode frame, matching what the old Recipe-editor test exercised.
+    await page.locator('.profile-editor__settings-btn').click()
+    await page.waitForTimeout(100)
+    await page.locator('.profile-editor__preset-pill').filter({ hasText: 'Classic Espresso' }).click()
+    await page.waitForTimeout(100)
 
-    const targetInput = page.locator('[aria-label="Fill target"]')
+    // Switch back to the frame editor panel for the auto-selected "Fill" frame.
+    await page.locator('.profile-editor__settings-btn').click()
+    await page.waitForTimeout(100)
+
+    const targetInput = page.locator('[aria-label="Flow setpoint"]')
     await expect(targetInput).toHaveAttribute('aria-valuemax', '25')
   })
 
-  test('profile editor: weight exit max is 500 when exit type is weight', async ({ page }) => {
-    await loadAppAt(page, '/profile-editor')
-    await page.waitForSelector('.recipe-editor', { timeout: 5000 })
-    await page.waitForTimeout(300)
+  test('advanced editor: weight exit max is 500 when exit type is weight', async ({ page }) => {
+    await loadAppAt(page, '/advanced-editor')
+    await page.waitForSelector('.profile-editor', { timeout: 5000 })
 
-    // Expand the Fill phase
-    const fillHeader = page.locator('.recipe-editor__phase-header').filter({ hasText: 'Fill' })
-    await fillHeader.click()
-    await page.waitForTimeout(200)
-
-    // The phase body is now visible. Enable exit condition.
-    const fillPhase = page.locator('.recipe-editor__phase').filter({ hasText: 'Fill' })
-    const exitCheckbox = fillPhase.locator('.recipe-editor__section input[type="checkbox"]').first()
+    // First frame is selected by default. Enable exit condition.
+    const exitCheckbox = page.locator('.profile-editor__section input[type="checkbox"]').first()
     await exitCheckbox.check()
     await page.waitForTimeout(100)
 
     // Select "Weight Over" as exit type
-    const exitSelect = fillPhase.locator('select').first()
+    const exitSelect = page.locator('.profile-editor__select')
     await exitSelect.selectOption('weight')
     await page.waitForTimeout(100)
 
     // Now the exit value input should have max 500
-    const exitInput = page.locator('[aria-label="Fill exit value"]')
+    const exitInput = page.locator('[aria-label="Exit condition value"]')
     await expect(exitInput).toHaveAttribute('aria-valuemax', '500')
   })
 })
