@@ -113,8 +113,16 @@ export function useRecipeLiveApply(refs, ctx) {
   })
 
   onBeforeUnmount(() => {
-    clearTimeout(liveApplyTimer)
-    liveApplyTimer = null
+    // Flush, don't drop: a pending debounced edit (grinder/coffee/dose/etc.)
+    // must still reach the workflow, or navigating away within the 300ms
+    // window silently discards the user's change (it never reaches
+    // workflow.context, so overlayFromWorkflow on the next mount re-applies
+    // stale pre-edit values, which looks like a reset to the saved recipe).
+    if (liveApplyTimer != null) {
+      clearTimeout(liveApplyTimer)
+      liveApplyTimer = null
+      applyToLiveWorkflow()
+    }
   })
 
   return {
