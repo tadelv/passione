@@ -850,7 +850,7 @@ onMounted(loadProfile)
                     :step="1"
                     :decimals="0"
                     suffix="s"
-                    :aria-label="def.label + ' duration'""
+                    :aria-label="def.label + ' duration'"
                   />
                 </div>
 
