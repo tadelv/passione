@@ -64,9 +64,14 @@ export function useRecipeLiveApply(refs, ctx) {
     }
 
     const payload = { context: ctxPayload }
+    // targetTemperature must drop below 130 (send 0) when steam is
+    // disabled, not just duration — the gateway re-applies the persisted
+    // workflow on every machine reconnect using a targetTemperature >= 130
+    // check that ignores duration entirely (de1_controller.defaults.dart).
+    // See useComboApply.js for the full explanation.
     payload.steamSettings = refs.includeSteam.value
       ? { targetTemperature: refs.steamTemperature.value, duration: refs.steamDuration.value, flow: refs.steamFlow.value }
-      : { targetTemperature: settings?.settings?.steamTemperature ?? 160, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
+      : { targetTemperature: 0, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
     payload.rinseData = refs.includeFlush.value
       ? { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: refs.flushDuration.value, flow: refs.flushFlowRate.value }
       : { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: 0, flow: settings?.settings?.flushFlowRate ?? 6.0 }

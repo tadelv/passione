@@ -87,11 +87,30 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
     }
   }
 
+  // Always send these three fields, even when the recipe doesn't include the
+  // operation — the gateway PUT is a partial merge, so omitting a field
+  // leaves whatever the previously-loaded recipe set on the machine in
+  // place. duration: 0 / volume: 0 is the established "disabled" convention
+  // (see useRecipeForm.js, useComboDirty.js) that the machine honors.
+  //
+  // Steam's targetTemperature must also drop below 130 (send 0) when
+  // disabled, not just duration. The live PUT handler derives steamEnabled
+  // from duration > 0 (workflow_handler.dart), but the gateway re-applies
+  // defaultWorkflow on every machine reconnect using a *different* check —
+  // targetTemperature >= 130 (de1_controller.defaults.dart) — ignoring
+  // duration entirely. Leaving targetTemperature at a real value (e.g. 160)
+  // with duration: 0 turns steam back on at the next reconnect.
   if (combo.includeSteam && combo.steamSettings) {
     update.steamSettings = {
       targetTemperature: combo.steamSettings.temperature ?? settings?.settings?.steamTemperature ?? 160,
       duration: combo.steamSettings.duration ?? settings?.settings?.steamDuration ?? 30,
       flow: combo.steamSettings.flow ?? settings?.settings?.steamFlow ?? 1.5,
+    }
+  } else {
+    update.steamSettings = {
+      targetTemperature: 0,
+      duration: 0,
+      flow: settings?.settings?.steamFlow ?? 1.5,
     }
   }
 
@@ -101,6 +120,12 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
       duration: combo.flushSettings.duration ?? settings?.settings?.flushDuration ?? 5,
       flow: combo.flushSettings.flow ?? settings?.settings?.flushFlowRate ?? 6.0,
     }
+  } else {
+    update.rinseData = {
+      targetTemperature: settings?.settings?.flushTemperature ?? 90,
+      duration: 0,
+      flow: settings?.settings?.flushFlowRate ?? 6.0,
+    }
   }
 
   if (combo.includeHotWater && combo.hotWaterSettings) {
@@ -108,6 +133,13 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
       targetTemperature: combo.hotWaterSettings.temperature ?? settings?.settings?.hotWaterTemperature ?? 80,
       volume: combo.hotWaterSettings.volume ?? settings?.settings?.hotWaterVolume ?? 200,
       duration: settings?.settings?.hotWaterDuration ?? 60,
+      flow: settings?.settings?.hotWaterFlow ?? 6.0,
+    }
+  } else {
+    update.hotWaterData = {
+      targetTemperature: settings?.settings?.hotWaterTemperature ?? 80,
+      volume: 0,
+      duration: 0,
       flow: settings?.settings?.hotWaterFlow ?? 6.0,
     }
   }
