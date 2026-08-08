@@ -1,4 +1,5 @@
 import { watch, onBeforeUnmount } from 'vue'
+import { roundGrinderSetting } from './useGrinderSetting.js'
 
 /**
  * Owns the recipe editor's live-apply pipeline: the 23-ref watcher (checks
@@ -60,7 +61,7 @@ export function useRecipeLiveApply(refs, ctx) {
       coffeeName: beanLinked ? (linkedBean.value?.name || null) : (refs.coffeeName.value || null),
       coffeeRoaster: beanLinked ? (linkedBean.value?.roaster || null) : (refs.roaster.value || null),
       grinderModel: selectedGrinder.value?.model ?? (refs.grinder.value || null),
-      grinderSetting: refs.grinderSetting.value != null ? String(refs.grinderSetting.value) : null,
+      grinderSetting: roundGrinderSetting(refs.grinderSetting.value, selectedGrinder.value),
     }
     if (refs.selectedGrinderId.value) ctxPayload.grinderId = String(refs.selectedGrinderId.value)
     if (selectedBatchId.value) ctxPayload.beanBatchId = String(selectedBatchId.value)

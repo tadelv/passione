@@ -1,5 +1,11 @@
 <script setup>
+import { computed, watch } from 'vue'
 import ValueInput from './ValueInput.vue'
+import {
+  grinderSettingStep,
+  grinderSettingDecimals,
+  roundGrinderSetting,
+} from '../composables/useGrinderSetting.js'
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -7,6 +13,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
+
+const settingStep = computed(() => grinderSettingStep(props.grinder))
+const settingDecimals = computed(() => grinderSettingDecimals(props.grinder))
 
 function onInput(e) {
   emit('update:modelValue', e.target.value)
@@ -19,6 +28,17 @@ function onSelect(e) {
 function onNumeric(v) {
   emit('update:modelValue', String(v))
 }
+
+// Normalize values that enter the form from anywhere — stepper float noise
+// (0.1-step increments emit 12.300000000000001), combo loads, workflow
+// overlays — by snapping to the grinder's step grid (max 2 decimals) and
+// pushing the clean value back into the form ref, so the workflow PUT,
+// recipe save, and dirty compare all see the normalized setting. Terminates:
+// a clean value re-enters unchanged.
+watch(() => props.modelValue, (v) => {
+  const clean = roundGrinderSetting(v, props.grinder)
+  if (clean !== v) emit('update:modelValue', clean)
+})
 </script>
 
 <template>
@@ -42,10 +62,10 @@ function onNumeric(v) {
   <ValueInput
     v-else-if="grinder?.settingType === 'numeric'"
     :modelValue="Number(modelValue) || 0"
-    :step="grinder.settingSmallStep || 0.5"
+    :step="settingStep"
     :min="0"
     :max="grinder.settingMax || 1000"
-    :decimals="(grinder.settingSmallStep || 0.5) < 1 ? 1 : 0"
+    :decimals="settingDecimals"
     aria-label="Grind setting"
     @update:modelValue="onNumeric"
   />
