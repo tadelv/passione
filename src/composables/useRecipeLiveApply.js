@@ -5,7 +5,7 @@ import { watch, onBeforeUnmount } from 'vue'
  * updating guard to skip during batch loads), buildWorkflowUpdate() (assembles
  * the workflow PUT payload from form state), applyToLiveWorkflow() (debounced
  * push), and buildTemperatureOverrideProfile() (clones the profile with the
- * recipe's brew temperature override).
+ * recipe's brew temperature override applied as a per-step delta).
  *
  * Form refs are passed directly (not through the useRecipeForm object) to
  * avoid ref divergence caused by Vite pre-bundler optimizations on objects
@@ -24,9 +24,13 @@ export function useRecipeLiveApply(refs, ctx) {
     pickBrewTempFromProfile,
   } = ctx
 
-  // Build a modified profile payload with every step's temperature set to
-  // the recipe's brewTemperature. Returns null when no profile is available
-  // or brewTemperature is unset (no override to apply).
+  // Build a modified profile payload with the recipe's brewTemperature
+  // override applied as a *delta*, not an absolute flat overwrite: the first
+  // step anchors at brewTemperature and every later step shifts by the same
+  // amount, preserving the profile's per-step temperature curve (e.g. a
+  // [90, 86] profile with brewTemperature 90 → 92 becomes [92, 88], not
+  // [92, 92]). Returns null when no profile is available or brewTemperature
+  // is unset (no override to apply).
   function buildTemperatureOverrideProfile() {
     const base = workflow?.profile
     if (!base || refs.brewTemperature.value == null) return null
@@ -35,7 +39,15 @@ export function useRecipeLiveApply(refs, ctx) {
     const clone = JSON.parse(JSON.stringify(base))
     const t = refs.brewTemperature.value
     const cloneSteps = clone.steps ?? clone.frames
-    for (const s of cloneSteps) s.temperature = t
+    // Delta from the first step, matched to the display value's rounding
+    // (pickBrewTempFromProfile rounds to 1 decimal).
+    const first = cloneSteps[0]?.temperature
+    const delta = typeof first === 'number' ? t - Math.round(first * 10) / 10 : 0
+    for (const s of cloneSteps) {
+      s.temperature = typeof s.temperature === 'number'
+        ? Math.round((s.temperature + delta) * 10) / 10
+        : t
+    }
     return clone
   }
 

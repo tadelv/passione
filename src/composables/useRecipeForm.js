@@ -33,10 +33,11 @@ export function useRecipeForm({ settings }) {
   // ---- Profile state ----
   const profileTitle = ref('')
   const profileId = ref(null)
-  // Recipe-level brew temperature override. Expressed in °C absolute; when
-  // present, the live-apply path clones workflow.profile and overwrites every
-  // step's `temperature` so the machine targets this value regardless of the
-  // profile's own per-step variation. Stored on the combo (not on the saved
+  // Recipe-level brew temperature override. Expressed in °C as the profile's
+  // first-step temperature; when present, the live-apply path clones
+  // workflow.profile and shifts every step's `temperature` by the delta from
+  // the first step (first step 90 → 92 shifts a [90, 86] profile to [92, 88],
+  // preserving per-step variation). Stored on the combo (not on the saved
   // profile) so the shared gateway profile library is never mutated.
   const brewTemperature = ref(93)
 
