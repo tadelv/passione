@@ -36,7 +36,7 @@ export function useDisplay() {
   }
 
   function dim() {
-    setBrightness(5)
+    setBrightness(0)
   }
 
   function restore() {
