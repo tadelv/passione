@@ -30,6 +30,7 @@ import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
 import { useShotCache } from './composables/useShotCache'
 import { useProfilesCache } from './composables/useProfilesCache'
+import { useMachineCapabilities } from './composables/useMachineCapabilities'
 import { buildComboUpdate } from './composables/useComboApply.js'
 import { isComboModifiedVsWorkflow } from './composables/useComboDirty.js'
 import { setMachineState, getLatestShot } from './api/rest.js'
@@ -52,6 +53,7 @@ const beansComposable = useBeans()
 const grindersComposable = useGrinders()
 const shotCache = useShotCache()
 const profilesCache = useProfilesCache()
+const machineCapabilities = useMachineCapabilities()
 
 // Settings, theme, and cross-cutting composables
 const settings = useSettings()
@@ -173,6 +175,7 @@ provide('previousState', machine.previousState)
 provide('machine', machine)
 provide('scale', scale)
 provide('devices', devices)
+provide('machineCapabilities', machineCapabilities)
 provide('shotData', shotData)
 provide('settings', settings)
 provide('theme', theme)
@@ -197,6 +200,8 @@ watch(devices.machineConnected, (connected, wasConnected) => {
   if (connected && !wasConnected) {
     toast.success(t('toast.machineConnected'))
   }
+  if (connected) machineCapabilities.refresh()
+  else machineCapabilities.reset()
 })
 
 watch(scale.isConnected, (connected, wasConnected) => {

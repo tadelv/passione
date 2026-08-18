@@ -22,14 +22,18 @@ export async function sendCommand(endpoint, method = 'GET', body = null) {
   const response = await fetch(`${GATEWAY_URL}${endpoint}`, options)
 
   if (!response.ok) {
+    let parsed = null
     let errorMsg
     try {
-      const err = await response.json()
-      errorMsg = err.message || err.e || `HTTP ${response.status}`
+      parsed = await response.json()
+      errorMsg = parsed.message || parsed.e || `HTTP ${response.status}`
     } catch {
       errorMsg = `HTTP ${response.status}`
     }
-    throw new Error(errorMsg)
+    const err = new Error(errorMsg)
+    err.status = response.status
+    err.body = parsed
+    throw err
   }
 
   if (response.status === 204) return null
@@ -101,6 +105,52 @@ export function setMachineState(state) {
 
 export function getMachineInfo() {
   return sendCommand('/api/v1/machine/info')
+}
+
+// ---------------------------------------------------------------------------
+// Machine capabilities & Bengle features
+// ---------------------------------------------------------------------------
+
+export function getMachineCapabilities() {
+  return sendCommand('/api/v1/machine/capabilities')
+}
+
+export function getCupWarmer() {
+  return sendCommand('/api/v1/machine/cupWarmer')
+}
+
+export function updateCupWarmer(data) {
+  return sendCommand('/api/v1/machine/cupWarmer', 'PUT', data)
+}
+
+export function getCupWarmerPreheat() {
+  return sendCommand('/api/v1/machine/cupWarmer/preheat')
+}
+
+export function updateCupWarmerPreheat(data) {
+  return sendCommand('/api/v1/machine/cupWarmer/preheat', 'PUT', data)
+}
+
+export function getLedStrip() {
+  return sendCommand('/api/v1/machine/ledStrip')
+}
+
+export function updateLedStrip(data) {
+  return sendCommand('/api/v1/machine/ledStrip', 'PUT', data)
+}
+
+export function resetLedStrip() {
+  return sendCommand('/api/v1/machine/ledStrip/reset', 'POST')
+}
+
+export function getScaleCalibration() {
+  return sendCommand('/api/v1/machine/scaleCalibration')
+}
+
+export function sendScaleCalibrationCommand(command, weightGrams) {
+  const body = { command }
+  if (weightGrams != null) body.weightGrams = weightGrams
+  return sendCommand('/api/v1/machine/scaleCalibration', 'PUT', body)
 }
 
 // ---------------------------------------------------------------------------

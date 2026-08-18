@@ -316,6 +316,11 @@ function routeApi(path, method, body, res, url, headers = {}) {
     return json({ model: 'DE1', serial: 'TEST001', firmware: '1.0.0' })
   }
 
+  // Machine capabilities — empty for a plain DE1 (no Bengle-only features)
+  if (path === '/api/v1/machine/capabilities' && method === 'GET') {
+    return json({ capabilities: [] })
+  }
+
   // Workflow
   if (path === '/api/v1/workflow' && method === 'GET') {
     return json(mockWorkflow)
