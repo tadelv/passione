@@ -8,6 +8,8 @@ const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
 const operationSettings = inject('operationSettings', null)
+const milkProbe = inject('milkProbe', null)
+const milkTemperature = computed(() => milkProbe?.temperature?.value ?? null)
 
 // Refresh local steam settings from the live workflow whenever the user
 // lands on this page — picks up changes made by the workflow editor or by
@@ -87,6 +89,11 @@ function startSteam() {
             aria-label="Steam flow rate"
             @update:model-value="steamFlow = $event"
           />
+        </div>
+
+        <div v-if="milkTemperature != null" class="steam-page__milk">
+          <span class="steam-page__milk-value">{{ milkTemperature.toFixed(1) }}°C</span>
+          <span class="steam-page__milk-label">Milk</span>
         </div>
 
         <div class="steam-page__spacer" />
@@ -200,6 +207,24 @@ function startSteam() {
 
 .steam-page__flow-label {
   font-size: var(--font-body);
+  color: var(--color-text-secondary);
+}
+
+.steam-page__milk {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
+
+.steam-page__milk-value {
+  font-size: var(--font-subtitle);
+  font-weight: 700;
+  color: var(--color-temperature);
+}
+
+.steam-page__milk-label {
+  font-size: var(--font-md);
   color: var(--color-text-secondary);
 }
 

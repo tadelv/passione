@@ -31,6 +31,7 @@ import { useGrinders } from './composables/useGrinders'
 import { useShotCache } from './composables/useShotCache'
 import { useProfilesCache } from './composables/useProfilesCache'
 import { useMachineCapabilities } from './composables/useMachineCapabilities'
+import { useMilkProbe } from './composables/useMilkProbe'
 import { buildComboUpdate } from './composables/useComboApply.js'
 import { isComboModifiedVsWorkflow } from './composables/useComboDirty.js'
 import { setMachineState, getLatestShot } from './api/rest.js'
@@ -54,6 +55,7 @@ const grindersComposable = useGrinders()
 const shotCache = useShotCache()
 const profilesCache = useProfilesCache()
 const machineCapabilities = useMachineCapabilities()
+const milkProbe = useMilkProbe()
 
 // Settings, theme, and cross-cutting composables
 const settings = useSettings()
@@ -176,6 +178,7 @@ provide('machine', machine)
 provide('scale', scale)
 provide('devices', devices)
 provide('machineCapabilities', machineCapabilities)
+provide('milkProbe', milkProbe)
 provide('shotData', shotData)
 provide('settings', settings)
 provide('theme', theme)
@@ -202,6 +205,8 @@ watch(devices.machineConnected, (connected, wasConnected) => {
   }
   if (connected) machineCapabilities.refresh()
   else machineCapabilities.reset()
+  if (connected) milkProbe.refresh()
+  else milkProbe.close()
 })
 
 watch(scale.isConnected, (connected, wasConnected) => {

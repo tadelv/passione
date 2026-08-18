@@ -80,6 +80,11 @@ const mockLedStrip = {
 }
 const mockScaleCalibration = { step: 'idle', detectedCell: 'none', subState: 'done', secondsRemaining: 0, status: 'none' }
 
+// Sensor inventory — empty for a plain DE1; tests can register a Bengle milk
+// probe via POST /api/v1/sensors.
+const mockSensors = []
+const MILK_PROBE_TEMP = 27.25
+
 const mockShotSettings = {
   targetSteamTemp: 160,
   targetHotWaterTemp: 80,
@@ -368,6 +373,17 @@ function routeApi(path, method, body, res, url, headers = {}) {
   }
   if (path === '/api/v1/machine/ledStrip/reset' && method === 'POST') {
     return json(mockLedStrip)
+  }
+
+  // Sensors (Bengle milk probe lives here)
+  if (path === '/api/v1/sensors' && method === 'GET') {
+    return json(mockSensors)
+  }
+  if (path === '/api/v1/sensors' && method === 'POST') {
+    if (body && Array.isArray(body.sensors)) {
+      mockSensors.splice(0, mockSensors.length, ...body.sensors)
+    }
+    return json(mockSensors)
   }
 
   // Bengle integrated-scale calibration
@@ -898,6 +914,21 @@ function setupWebSockets(server) {
       if (ws.readyState === 1) {
         ws.send(JSON.stringify(mockWaterLevels))
       }
+      return
+    }
+
+    if (path.startsWith('/ws/v1/sensors/') && path.endsWith('/snapshot')) {
+      const send = () => {
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            temperature: MILK_PROBE_TEMP,
+          }))
+        }
+      }
+      send()
+      const interval = setInterval(send, 500) // 2 Hz for tests
+      ws.on('close', () => clearInterval(interval))
       return
     }
   })

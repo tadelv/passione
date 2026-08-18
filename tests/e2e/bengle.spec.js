@@ -60,3 +60,35 @@ test.describe('Bengle settings tab', () => {
     await expect(page.getByText('Integrated scale calibration', { exact: true })).toBeVisible()
   })
 })
+
+test.describe('Bengle milk probe', () => {
+  test.afterEach(async ({ request }) => {
+    await request.post('/api/v1/sensors', { data: { sensors: [] } })
+    await request.put('/api/v1/machine/state/idle')
+  })
+
+  test('shows milk temperature during steaming when a probe is present', async ({ page, request }) => {
+    await request.post('/api/v1/sensors', {
+      data: {
+        sensors: [{
+          id: 'F2:5C:EB:CF:54:9F-milkprobe',
+          info: {
+            name: 'Bengle Milk Probe',
+            vendor: 'DecentEspresso',
+            data: [{ key: 'temperature', type: 'number', unit: '°C' }],
+          },
+        }],
+      },
+    })
+
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    await request.put('/api/v1/machine/state/steam')
+    await page.waitForSelector('.steam-page', { timeout: 10000 })
+
+    const milk = page.locator('.steam-page__milk-value')
+    await expect(milk).toBeVisible()
+    await expect(milk).toContainText('°C')
+  })
+})
