@@ -42,7 +42,7 @@ const {
   selectedGrinderId,
   profileId, profileTitle, brewTemperature,
   grinderRpm, basketSize, basketType,
-  includeSteam, steamDuration, steamFlow, steamTemperature,
+  includeSteam, steamDuration, steamFlow, steamTemperature, steamStopAtTemperature,
   includeFlush, flushDuration, flushFlowRate,
   includeHotWater, hotWaterVolume, hotWaterTemperature,
   comboValues: _comboValues,
@@ -79,7 +79,7 @@ const refsForEditor = {
   selectedGrinderId,
   profileId, profileTitle, brewTemperature,
   grinderRpm, basketSize, basketType,
-  includeSteam, steamDuration, steamFlow, steamTemperature,
+  includeSteam, steamDuration, steamFlow, steamTemperature, steamStopAtTemperature,
   includeFlush, flushDuration, flushFlowRate,
   includeHotWater, hotWaterVolume, hotWaterTemperature,
   updating: form.updating,
@@ -191,11 +191,11 @@ function onProfilePicked(record) {
 
 // Concise one-line summaries for the operations list rows. Show an em-dash
 // when the operation is off; otherwise the active field values.
-const steamSummary = computed(() =>
-  includeSteam.value
-    ? `${steamTemperature.value} °C · ${steamDuration.value} s`
-    : t('recipe.opNotIncluded'),
-)
+const steamSummary = computed(() => {
+  if (!includeSteam.value) return t('recipe.opNotIncluded')
+  const stop = steamStopAtTemperature.value > 0 ? ` · stop ${steamStopAtTemperature.value} °C` : ''
+  return `${steamTemperature.value} °C · ${steamDuration.value} s${stop}`
+})
 const flushSummary = computed(() =>
   includeFlush.value
     ? `${flushDuration.value} s · ${flushFlowRate.value.toFixed(1)} mL/s`
@@ -741,6 +741,10 @@ watch(() => workflow?.profile, (newProfile) => {
                 <div class="recipe-editor__field">
                   <label class="recipe-editor__label">{{ t('recipe.temperature') }}</label>
                   <ValueInput v-model="steamTemperature" :min="LIMITS.temp.steamMin" :max="LIMITS.temp.steamMax" :step="1" :decimals="0" suffix=" °C" value-color="var(--color-temperature)" :aria-label="t('recipe.temperature')" />
+                </div>
+                <div class="recipe-editor__field">
+                  <label class="recipe-editor__label">{{ t('recipe.stopAtTemperature') }}</label>
+                  <ValueInput v-model="steamStopAtTemperature" :min="0" :max="80" :step="1" :decimals="0" suffix=" °C" :aria-label="t('recipe.stopAtTemperature')" />
                 </div>
               </div>
               </Transition>

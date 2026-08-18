@@ -116,7 +116,7 @@ describe('useRecipeForm ratio cascade', () => {
       assert.equal(vals.doseOut, 36)
       assert.equal(vals.coffeeName, 'Test Coffee')
       assert.equal(vals.includeSteam, true)
-      assert.deepEqual(vals.steamSettings, { duration: 45, flow: 1.5, temperature: 160 })
+      assert.deepEqual(vals.steamSettings, { duration: 45, flow: 1.5, temperature: 160, stopAtTemperature: 0 })
     } finally { scope.stop() }
   })
 

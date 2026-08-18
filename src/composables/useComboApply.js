@@ -105,12 +105,14 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
       targetTemperature: combo.steamSettings.temperature ?? settings?.settings?.steamTemperature ?? 160,
       duration: combo.steamSettings.duration ?? settings?.settings?.steamDuration ?? 30,
       flow: combo.steamSettings.flow ?? settings?.settings?.steamFlow ?? 1.5,
+      stopAtTemperature: combo.steamSettings.stopAtTemperature ?? settings?.settings?.steamStopAtTemperature ?? 0,
     }
   } else {
     update.steamSettings = {
       targetTemperature: 0,
       duration: 0,
       flow: settings?.settings?.steamFlow ?? 1.5,
+      stopAtTemperature: 0,
     }
   }
 

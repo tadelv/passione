@@ -86,6 +86,9 @@ export function useOperationSettings(settings, workflow, updateWorkflow, toast =
       if (workflow.steamSettings.targetTemperature != null) {
         settings.settings.steamTemperature = workflow.steamSettings.targetTemperature
       }
+      if (workflow.steamSettings.stopAtTemperature != null) {
+        settings.settings.steamStopAtTemperature = workflow.steamSettings.stopAtTemperature
+      }
     }
 
     // Hot water
@@ -131,14 +134,16 @@ export function useOperationSettings(settings, workflow, updateWorkflow, toast =
       settings.settings.steamDuration,
       settings.settings.steamFlow,
       settings.settings.steamTemperature,
+      settings.settings.steamStopAtTemperature,
     ],
-    ([duration, flow, temperature]) => {
+    ([duration, flow, temperature, stopAtTemperature]) => {
       if (!settings.loaded.value) return
       _debouncedUpdate('steam', {
         steamSettings: {
           targetTemperature: temperature,
           duration: duration,
           flow: flow,
+          stopAtTemperature: stopAtTemperature,
         },
       })
     }

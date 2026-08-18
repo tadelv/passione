@@ -51,6 +51,7 @@ export function useRecipeForm({ settings }) {
   const steamDuration = ref(30)
   const steamFlow = ref(1.5)
   const steamTemperature = ref(160)
+  const steamStopAtTemperature = ref(0)
 
   const includeFlush = ref(false)
   const flushDuration = ref(5)
@@ -99,7 +100,7 @@ export function useRecipeForm({ settings }) {
       basketSize: basketSize.value ?? null,
       basketType: basketType.value || null,
       includeSteam: includeSteam.value,
-      steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value } : { duration: 0 },
+      steamSettings: includeSteam.value ? { duration: steamDuration.value, flow: steamFlow.value, temperature: steamTemperature.value, stopAtTemperature: steamStopAtTemperature.value } : { duration: 0 },
       includeFlush: includeFlush.value,
       flushSettings: includeFlush.value ? { duration: flushDuration.value, flow: flushFlowRate.value } : { duration: 0 },
       includeHotWater: includeHotWater.value,
@@ -157,7 +158,7 @@ export function useRecipeForm({ settings }) {
     selectedGrinderId,
     profileId, profileTitle, brewTemperature,
     grinderRpm, basketSize, basketType,
-    includeSteam, steamDuration, steamFlow, steamTemperature,
+    includeSteam, steamDuration, steamFlow, steamTemperature, steamStopAtTemperature,
     includeFlush, flushDuration, flushFlowRate,
     includeHotWater, hotWaterVolume, hotWaterTemperature,
 

@@ -98,6 +98,7 @@ export function useRecipeOverlay(refs, ctx) {
       refs.steamDuration.value = preset.steamSettings.duration ?? 30
       refs.steamFlow.value = preset.steamSettings.flow ?? 1.5
       refs.steamTemperature.value = preset.steamSettings.temperature ?? 160
+      refs.steamStopAtTemperature.value = preset.steamSettings.stopAtTemperature ?? 0
     }
     refs.includeFlush.value = preset.includeFlush ?? (preset.flushSettings?.duration > 0)
     if (preset.flushSettings) {
@@ -190,6 +191,7 @@ export function useRecipeOverlay(refs, ctx) {
         refs.steamDuration.value = ss.duration
         if (ss.flow != null) refs.steamFlow.value = ss.flow
         if (ss.targetTemperature != null) refs.steamTemperature.value = ss.targetTemperature
+        if (ss.stopAtTemperature != null) refs.steamStopAtTemperature.value = ss.stopAtTemperature
       }
     }
     const rd = workflow.rinseData

@@ -58,6 +58,7 @@ describe('buildComboUpdate — operation disable-on-switch', () => {
       targetTemperature: 155,
       duration: 45,
       flow: 0.9,
+      stopAtTemperature: 0,
     })
   })
 

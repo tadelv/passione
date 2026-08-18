@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
   steamDuration: 30,
   steamFlow: 1.5,           // mL/s (actual value)
   steamTemperature: 160,
+  steamStopAtTemperature: 0, // 0 = disabled; milk-probe stop target in °C (0-80)
   keepSteamHeaterOn: false,
   steamDisabled: false,
   steamAutoFlushSeconds: 0,
@@ -169,7 +170,7 @@ export function useSettings() {
       'autoSleepMinutes',
     ],
     steam: [
-      'steamDuration', 'steamFlow', 'steamTemperature',
+      'steamDuration', 'steamFlow', 'steamTemperature', 'steamStopAtTemperature',
       'steamPitcherPresets', 'selectedSteamPitcherPreset',
     ],
     hotwater: [

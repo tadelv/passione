@@ -21,6 +21,7 @@ export function effectiveSteam(s) {
     duration: s.duration ?? 0,
     flow: s.flow ?? null,
     temperature: s.temperature ?? null,
+    stopAtTemperature: s.stopAtTemperature ?? 0,
   }
 }
 
@@ -124,7 +125,7 @@ export function workflowToComboShape(workflow) {
     basketType: ctx.extras?.basketType ?? null,
     includeSteam: !!(ss && (ss.duration ?? 0) > 0),
     steamSettings: ss
-      ? { duration: ss.duration ?? 0, flow: ss.flow ?? null, temperature: ss.targetTemperature ?? null }
+      ? { duration: ss.duration ?? 0, flow: ss.flow ?? null, temperature: ss.targetTemperature ?? null, stopAtTemperature: ss.stopAtTemperature ?? 0 }
       : { duration: 0 },
     includeFlush: !!(rd && (rd.duration ?? 0) > 0),
     flushSettings: rd
@@ -168,9 +169,15 @@ export function isComboModifiedVsWorkflow(savedRaw, workflow) {
   if (scalarsDiffer(current, saved, { requireSavedNonNull: true })) return true
 
   if (saved.includeSteam) {
-    const a = JSON.stringify(effectiveSteam(saved.steamSettings))
-    const b = JSON.stringify(effectiveSteam(current.steamSettings))
-    if (a !== b) return true
+    const a = effectiveSteam(saved.steamSettings)
+    const b = effectiveSteam(current.steamSettings)
+    // Old combos never pinned stopAtTemperature — don't flag a live workflow
+    // carrying Decaid's default as a user change.
+    if (saved.steamSettings?.stopAtTemperature == null) {
+      delete a.stopAtTemperature
+      delete b.stopAtTemperature
+    }
+    if (JSON.stringify(a) !== JSON.stringify(b)) return true
   }
   if (saved.includeFlush) {
     const a = JSON.stringify(effectiveFlush(saved.flushSettings))

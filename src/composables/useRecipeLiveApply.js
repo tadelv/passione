@@ -83,8 +83,8 @@ export function useRecipeLiveApply(refs, ctx) {
     // check that ignores duration entirely (de1_controller.defaults.dart).
     // See useComboApply.js for the full explanation.
     payload.steamSettings = refs.includeSteam.value
-      ? { targetTemperature: refs.steamTemperature.value, duration: refs.steamDuration.value, flow: refs.steamFlow.value }
-      : { targetTemperature: 0, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5 }
+      ? { targetTemperature: refs.steamTemperature.value, duration: refs.steamDuration.value, flow: refs.steamFlow.value, stopAtTemperature: refs.steamStopAtTemperature.value }
+      : { targetTemperature: 0, duration: 0, flow: settings?.settings?.steamFlow ?? 1.5, stopAtTemperature: 0 }
     payload.rinseData = refs.includeFlush.value
       ? { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: refs.flushDuration.value, flow: refs.flushFlowRate.value }
       : { targetTemperature: settings?.settings?.flushTemperature ?? 90, duration: 0, flow: settings?.settings?.flushFlowRate ?? 6.0 }
@@ -118,7 +118,7 @@ export function useRecipeLiveApply(refs, ctx) {
     selectedBeanId, selectedBatchId, refs.selectedGrinderId,
     refs.profileId, refs.profileTitle, refs.brewTemperature,
     refs.grinderRpm, refs.basketSize, refs.basketType,
-    refs.includeSteam, refs.steamDuration, refs.steamFlow, refs.steamTemperature,
+    refs.includeSteam, refs.steamDuration, refs.steamFlow, refs.steamTemperature, refs.steamStopAtTemperature,
     refs.includeFlush, refs.flushDuration, refs.flushFlowRate,
     refs.includeHotWater, refs.hotWaterVolume, refs.hotWaterTemperature,
   ], () => {

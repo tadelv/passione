@@ -42,6 +42,11 @@ const temperature = computed({
   set: (v) => { settings.settings.steamTemperature = v },
 })
 
+const steamStopAtTemperature = computed({
+  get: () => settings.settings.steamStopAtTemperature ?? 0,
+  set: (v) => { settings.settings.steamStopAtTemperature = v },
+})
+
 const timerProgress = computed(() =>
   duration.value > 0 ? Math.min(1, shotTime.value / duration.value) : 0
 )
@@ -88,6 +93,14 @@ function startSteam() {
             value-color="var(--color-primary)"
             aria-label="Steam flow rate"
             @update:model-value="steamFlow = $event"
+          />
+          <span class="steam-page__flow-label">Stop at temperature</span>
+          <ValueInput
+            :model-value="steamStopAtTemperature"
+            :min="0" :max="80" :step="1" :decimals="0"
+            suffix=" °C"
+            aria-label="Stop steaming at milk temperature"
+            @update:model-value="steamStopAtTemperature = $event"
           />
         </div>
 

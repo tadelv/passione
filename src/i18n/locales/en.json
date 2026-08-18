@@ -46,6 +46,7 @@
     "flow": "Flow",
     "flowRate": "Flow Rate",
     "temperature": "Temperature",
+    "stopAtTemperature": "Stop at temperature",
     "volume": "Volume",
     "opNotIncluded": "—",
     "coffee": "Coffee",
