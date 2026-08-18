@@ -68,6 +68,18 @@ const mockScaleSnapshot = {
   timerValue: null,
 }
 
+// Bengle-only feature mocks. `mockCapabilities` defaults to empty (plain DE1)
+// and tests can flip it to the full Bengle set via POST.
+const mockCapabilities = []
+const mockCupWarmer = { temperature: 0, enabled: false, currentTemperature: null }
+const mockPreheat = { enabled: false, leadMinutes: 30, active: false }
+const mockLedStrip = {
+  frontStrip: { sleeping: '000000000000', awake: 'FFFFFFFFFFFF' },
+  backStrip: { sleeping: '000000000000', awake: 'FFFFFFFFFFFF' },
+  frontSwitch: { sleeping: '000000000000', awake: 'FFFFFFFFFFFF' },
+}
+const mockScaleCalibration = { step: 'idle', detectedCell: 'none', subState: 'done', secondsRemaining: 0, status: 'none' }
+
 const mockShotSettings = {
   targetSteamTemp: 160,
   targetHotWaterTemp: 80,
@@ -316,9 +328,67 @@ function routeApi(path, method, body, res, url, headers = {}) {
     return json({ model: 'DE1', serial: 'TEST001', firmware: '1.0.0' })
   }
 
-  // Machine capabilities — empty for a plain DE1 (no Bengle-only features)
+  // Machine capabilities — empty for a plain DE1; tests flip this to the
+  // full Bengle set via POST.
   if (path === '/api/v1/machine/capabilities' && method === 'GET') {
-    return json({ capabilities: [] })
+    return json({ capabilities: mockCapabilities })
+  }
+  if (path === '/api/v1/machine/capabilities' && method === 'POST') {
+    if (body && Array.isArray(body.capabilities)) {
+      mockCapabilities.splice(0, mockCapabilities.length, ...body.capabilities)
+    }
+    return json({ capabilities: mockCapabilities })
+  }
+
+  // Bengle cup warmer
+  if (path === '/api/v1/machine/cupWarmer' && method === 'GET') {
+    return json(mockCupWarmer)
+  }
+  if (path === '/api/v1/machine/cupWarmer' && method === 'PUT') {
+    if (body) Object.assign(mockCupWarmer, body)
+    return json(mockCupWarmer)
+  }
+
+  // Bengle cup warmer preheat
+  if (path === '/api/v1/machine/cupWarmer/preheat' && method === 'GET') {
+    return json(mockPreheat)
+  }
+  if (path === '/api/v1/machine/cupWarmer/preheat' && method === 'PUT') {
+    if (body) Object.assign(mockPreheat, body)
+    return json(mockPreheat)
+  }
+
+  // Bengle LED strip
+  if (path === '/api/v1/machine/ledStrip' && method === 'GET') {
+    return json(mockLedStrip)
+  }
+  if (path === '/api/v1/machine/ledStrip' && method === 'PUT') {
+    if (body) Object.assign(mockLedStrip, body)
+    return json(mockLedStrip)
+  }
+  if (path === '/api/v1/machine/ledStrip/reset' && method === 'POST') {
+    return json(mockLedStrip)
+  }
+
+  // Bengle integrated-scale calibration
+  if (path === '/api/v1/machine/scaleCalibration' && method === 'GET') {
+    return json(mockScaleCalibration)
+  }
+  if (path === '/api/v1/machine/scaleCalibration' && method === 'PUT') {
+    if (body?.command === 'zero') {
+      mockScaleCalibration.step = 'zeroing'
+      mockScaleCalibration.subState = 'settling'
+      mockScaleCalibration.status = 'none'
+    } else if (body?.command === 'latch') {
+      mockScaleCalibration.step = 'calLatch'
+      mockScaleCalibration.subState = 'averaging'
+      mockScaleCalibration.status = 'none'
+    } else if (body?.command === 'abort') {
+      mockScaleCalibration.step = 'idle'
+      mockScaleCalibration.subState = 'done'
+      mockScaleCalibration.status = 'none'
+    }
+    return json({ status: 'accepted', state: mockScaleCalibration }, 202)
   }
 
   // Workflow

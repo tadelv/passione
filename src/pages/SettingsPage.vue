@@ -1,10 +1,33 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, inject, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// Lazy-load tab components
+const BrewingTab = defineAsyncComponent(() => import('../components/settings/BrewingTab.vue'))
+const PowerTab = defineAsyncComponent(() => import('../components/settings/PowerTab.vue'))
+const WaterTab = defineAsyncComponent(() => import('../components/settings/WaterTab.vue'))
+const DisplayTab = defineAsyncComponent(() => import('../components/settings/DisplayTab.vue'))
+const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
+const BridgeTab = defineAsyncComponent(() => import('../components/settings/BridgeTab.vue'))
+const BengleTab = defineAsyncComponent(() => import('../components/settings/BengleTab.vue'))
+const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
+const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
+
+const TAB_COMPONENTS = {
+  brewing: BrewingTab,
+  power: PowerTab,
+  water: WaterTab,
+  display: DisplayTab,
+  visualizer: VisualizerTab,
+  gateway: BridgeTab,
+  bengle: BengleTab,
+  accessibility: AccessibilityTab,
+  about: AboutTab,
+}
 
 const TABS = [
   { id: 'brewing', label: 'Brewing' },
@@ -13,9 +36,22 @@ const TABS = [
   { id: 'display', label: 'Display' },
   { id: 'visualizer', label: 'Visualizer' },
   { id: 'gateway', label: 'Bridge' },
+  { id: 'bengle', label: 'Bengle', bengleOnly: true },
   { id: 'accessibility', label: 'Accessibility' },
   { id: 'about', label: 'About' },
 ]
+
+const machineCapabilities = inject('machineCapabilities', null)
+
+// Show the Bengle tab only when a Bengle-compatible capability surface is
+// advertised (plain DE1 / outdated firmware return an empty list).
+const hasBengle = computed(() => (machineCapabilities?.capabilities?.value ?? []).length > 0)
+
+const tabs = computed(() =>
+  TABS
+    .filter((t) => !t.bengleOnly || hasBengle.value)
+    .map((t) => ({ ...t, component: TAB_COMPONENTS[t.id] }))
+)
 
 const currentTab = ref(0)
 
@@ -40,16 +76,21 @@ function syncTabFromRoute() {
     router.replace({ params: { tab: redirected } })
     return
   }
-  const idx = TABS.findIndex(t => t.id === tabParam)
+  const idx = tabs.value.findIndex((t) => t.id === tabParam)
   if (idx >= 0) currentTab.value = idx
 }
 
 onMounted(syncTabFromRoute)
 watch(() => route.params.tab, syncTabFromRoute)
 
+// If the Bengle tab disappears (machine disconnect), fall back to the first tab.
+watch(tabs, (list) => {
+  if (currentTab.value >= list.length) currentTab.value = 0
+})
+
 function selectTab(index, opts = {}) {
   currentTab.value = index
-  router.replace({ params: { tab: TABS[index].id } })
+  router.replace({ params: { tab: tabs.value[index].id } })
   if (opts.focus) {
     const bar = tabBarRef.value
     const btn = bar?.children?.[index]
@@ -86,7 +127,7 @@ onMounted(() => {
 
 // Arrow-key navigation per WAI-ARIA tablist pattern. Wraps at ends.
 function onTabKeydown(e) {
-  const last = TABS.length - 1
+  const last = tabs.value.length - 1
   let next = currentTab.value
   switch (e.key) {
     case 'ArrowRight':
@@ -107,24 +148,6 @@ function onTabKeydown(e) {
   e.preventDefault()
   selectTab(next, { focus: true })
 }
-
-// Lazy-load tab components
-import { defineAsyncComponent } from 'vue'
-
-const BrewingTab = defineAsyncComponent(() => import('../components/settings/BrewingTab.vue'))
-const PowerTab = defineAsyncComponent(() => import('../components/settings/PowerTab.vue'))
-const WaterTab = defineAsyncComponent(() => import('../components/settings/WaterTab.vue'))
-const DisplayTab = defineAsyncComponent(() => import('../components/settings/DisplayTab.vue'))
-const VisualizerTab = defineAsyncComponent(() => import('../components/settings/VisualizerTab.vue'))
-const BridgeTab = defineAsyncComponent(() => import('../components/settings/BridgeTab.vue'))
-const AccessibilityTab = defineAsyncComponent(() => import('../components/settings/AccessibilityTab.vue'))
-const AboutTab = defineAsyncComponent(() => import('../components/settings/AboutTab.vue'))
-
-const tabComponents = [
-  BrewingTab, PowerTab, WaterTab,
-  DisplayTab, VisualizerTab, BridgeTab,
-  AccessibilityTab, AboutTab,
-]
 </script>
 
 <template>
@@ -146,7 +169,7 @@ const tabComponents = [
         @scroll.passive="updateOverflow"
       >
         <button
-          v-for="(tab, i) in TABS"
+          v-for="(tab, i) in tabs"
           :key="tab.id"
           class="settings-page__tab"
           :class="{ 'settings-page__tab--active': currentTab === i }"
@@ -166,11 +189,11 @@ const tabComponents = [
     <div
       class="settings-page__content"
       role="tabpanel"
-      :id="`settings-panel-${TABS[currentTab].id}`"
-      :aria-labelledby="`settings-tab-${TABS[currentTab].id}`"
+      :id="`settings-panel-${tabs[currentTab].id}`"
+      :aria-labelledby="`settings-tab-${tabs[currentTab].id}`"
     >
       <KeepAlive>
-        <component :is="tabComponents[currentTab]" :key="TABS[currentTab].id" />
+        <component :is="tabs[currentTab].component" :key="tabs[currentTab].id" />
       </KeepAlive>
     </div>
 
