@@ -41,7 +41,7 @@ const { t } = useI18n()
 // Connect to all WebSocket streams
 const machine = useMachine()
 const devices = useDevices()
-const scale = useScale(devices.scaleConnected)
+const scale = useScale()
 const waterLevels = useWaterLevels()
 const timeToReady = useTimeToReady()
 const shotSettings = useShotSettings()
@@ -65,7 +65,7 @@ const autoSleep = useAutoSleep(machine, settings, display)
 // Provide reactive data for child components that use inject
 provide('machineState', machine.state)
 provide('machineConnected', devices.machineConnected)
-provide('scaleConnected', devices.scaleConnected)
+provide('scaleConnected', scale.isConnected)
 provide('temperature', machine.mixTemperature)
 provide('targetTemperature', machine.targetMixTemperature)
 provide('pressure', machine.pressure)
@@ -199,7 +199,7 @@ watch(devices.machineConnected, (connected, wasConnected) => {
   }
 })
 
-watch(devices.scaleConnected, (connected, wasConnected) => {
+watch(scale.isConnected, (connected, wasConnected) => {
   if (connected && !wasConnected) {
     toast.info(t('toast.scaleConnected'))
   }

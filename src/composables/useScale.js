@@ -1,21 +1,22 @@
 /**
  * Composable for real-time scale snapshot data.
  *
- * Connects to ws/v1/scale/snapshot (5-10 Hz) and exposes reactive refs
- * for weight and battery level.
- *
- * Pass an `enabled` ref to gate the WebSocket on external state (e.g. the
- * `scaleConnected` flag from useDevices). The WS will open when enabled
- * becomes true and close when it becomes false. Without an enabled arg,
- * the WS opens on mount unconditionally (legacy behavior).
+ * Connects to ws/v1/scale/snapshot and exposes reactive refs for weight,
+ * flow, and battery level. The socket is opened once the cold-start burst
+ * has settled and held open — Decaid keeps the channel alive across scale
+ * connect/disconnect cycles and emits its own status frames, which are the
+ * authoritative connection signal. The /ws/v1/devices inventory is not used
+ * here because it can label an active integrated scale disconnected.
  */
 
-import { ref, onUnmounted, watch, isRef } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
 import { tareScale as restTareScale } from '../api/rest'
+import { bootReady } from './useBootReady'
+import { reduceScaleFrame } from './scaleFrame'
 
-export function useScale(enabled = true) {
+export function useScale() {
   const isConnected = ref(false)
   const weight = ref(0)
   const batteryLevel = ref(null)
@@ -23,27 +24,29 @@ export function useScale(enabled = true) {
   const flowRate = ref(0)
 
   let ws = null
+  let disposed = false
 
   function onMessage(data) {
-    timestamp.value = data.timestamp ?? null
-    weight.value = data.weight ?? 0
-    flowRate.value = Math.max(0, data.weightFlow ?? 0)
-    batteryLevel.value = data.battery ?? null
+    const next = reduceScaleFrame(
+      {
+        isConnected: isConnected.value,
+        weight: weight.value,
+        flowRate: flowRate.value,
+        batteryLevel: batteryLevel.value,
+        timestamp: timestamp.value,
+      },
+      data
+    )
+    isConnected.value = next.isConnected
+    weight.value = next.weight
+    flowRate.value = next.flowRate
+    batteryLevel.value = next.batteryLevel
+    timestamp.value = next.timestamp
   }
 
   function _open() {
-    if (ws) return
-    ws = new ReconnectingWebSocket(
-      `${WS_URL}/ws/v1/scale/snapshot`,
-      (data) => {
-        // Mark connected only when we actually receive scale data,
-        // not just when the WebSocket opens. This avoids false
-        // connect/disconnect notifications when no physical scale
-        // is paired with ReaPrime.
-        if (!isConnected.value) isConnected.value = true
-        onMessage(data)
-      }
-    )
+    if (ws || disposed) return
+    ws = new ReconnectingWebSocket(`${WS_URL}/ws/v1/scale/snapshot`, onMessage)
     ws.onConnectionChange = (connected) => {
       if (!connected) isConnected.value = false
     }
@@ -59,27 +62,25 @@ export function useScale(enabled = true) {
     batteryLevel.value = null
   }
 
-  // Honor the `enabled` source — open when true, close when false.
-  if (isRef(enabled)) {
-    watch(
-      enabled,
-      (v) => { v ? _open() : _close() },
-      { immediate: true }
-    )
-  } else if (enabled) {
-    _open()
-  }
+  // Wait out the boot-quiet burst before opening; ReconnectingWebSocket owns
+  // reconnect from here on. The sleep/wake watcher in App.vue still pauses
+  // the channel during machine sleep via connect()/disconnect().
+  bootReady().then(() => {
+    if (!disposed) _open()
+  })
 
   /** Tare (zero) the scale. */
   function tare() {
     return restTareScale()
   }
 
-  // Manual override — rarely needed, the watcher does the work.
   function connect() { _open() }
   function disconnect() { _close() }
 
-  onUnmounted(_close)
+  onUnmounted(() => {
+    disposed = true
+    _close()
+  })
 
   return {
     isConnected,

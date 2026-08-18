@@ -63,8 +63,9 @@ const mockSnapshot = {
 const mockScaleSnapshot = {
   timestamp: new Date().toISOString(),
   weight: 0,
-  batteryLevel: 85,
-  connected: true,
+  weightFlow: 0,
+  battery: 100,
+  timerValue: null,
 }
 
 const mockShotSettings = {
@@ -791,6 +792,11 @@ function setupWebSockets(server) {
     }
 
     if (path === '/ws/v1/scale/snapshot') {
+      const sendStatus = () => {
+        if (ws.readyState === 1) {
+          ws.send(JSON.stringify({ status: 'connected' }))
+        }
+      }
       const send = () => {
         if (ws.readyState === 1) {
           ws.send(JSON.stringify({
@@ -799,6 +805,7 @@ function setupWebSockets(server) {
           }))
         }
       }
+      sendStatus()
       send()
       const interval = setInterval(send, 500) // 2 Hz for tests
       ws.on('close', () => clearInterval(interval))

@@ -223,6 +223,19 @@ test.describe('WebSocket connection', () => {
     const dot = page.locator('.connection-indicator__dot--connected')
     await expect(dot.first()).toBeVisible()
   })
+
+  test('shows scale data even when the devices feed has no connected scale', async ({ page }) => {
+    await loadApp(page)
+
+    // The mock device inventory emits no connected scale, but the scale
+    // socket emits a connected status frame plus snapshots. The scale widget
+    // must reflect the stream, not the device list.
+    await page.waitForTimeout(2000)
+
+    const weight = page.locator('.layout-widget__scale-weight')
+    await expect(weight).toBeVisible()
+    await expect(weight).toHaveText(/^\d+\.\dg$/)
+  })
 })
 
 test.describe('ShotHistoryPage', () => {
