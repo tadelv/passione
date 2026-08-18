@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import ValueInput from '../ValueInput.vue'
 import SettingsToggle from './SettingsToggle.vue'
 import { getReaSettings, updateReaSettings } from '../../api/rest.js'
@@ -7,8 +7,10 @@ import { getReaSettings, updateReaSettings } from '../../api/rest.js'
 const reaSettings = ref(null)
 const loading = ref(true)
 const saving = ref(false)
+const toast = inject('toast', null)
 
-const LOG_LEVELS = ['debug', 'info', 'warn', 'error']
+// Decaid uses Java logging level names, not lowercase shell-style levels.
+const LOG_LEVELS = ['FINEST', 'FINE', 'INFO', 'WARNING', 'SEVERE']
 const SCALE_POWER_MODES = ['disabled', 'displayOff', 'disconnect']
 
 const bridgeSettingsUrl = `${window.location.protocol}//${window.location.hostname}:8080/api/v1/plugins/settings.reaplugin/ui?backName=Passione`
@@ -26,14 +28,17 @@ async function loadSettings() {
 
 async function saveField(key, value) {
   if (!reaSettings.value) return
+  const prev = reaSettings.value[key]
   reaSettings.value[key] = value
   saving.value = true
   try {
     await updateReaSettings({ [key]: value })
   } catch {
-    // ignore
+    reaSettings.value[key] = prev
+    toast?.error?.('Failed to save Bridge setting')
+  } finally {
+    saving.value = false
   }
-  saving.value = false
 }
 
 onMounted(loadSettings)
@@ -81,11 +86,11 @@ onMounted(loadSettings)
         <h4 class="gateway-tab__section-title">Calibration</h4>
 
         <div class="gateway-tab__field">
-          <label class="gateway-tab__label">Weight multiplier</label>
+          <label class="gateway-tab__label">Weight flow multiplier</label>
           <ValueInput
-            :model-value="reaSettings.weightMultiplier ?? reaSettings.weight_multiplier ?? 1.0"
-            @update:model-value="v => saveField('weightMultiplier', v)"
-            :min="0.5"
+            :model-value="reaSettings.weightFlowMultiplier ?? 1.0"
+            @update:model-value="v => saveField('weightFlowMultiplier', v)"
+            :min="0.1"
             :max="2.0"
             :step="0.01"
             :decimals="2"
@@ -94,11 +99,24 @@ onMounted(loadSettings)
         </div>
 
         <div class="gateway-tab__field">
-          <label class="gateway-tab__label">Flow multiplier</label>
+          <label class="gateway-tab__label">Volume flow multiplier</label>
           <ValueInput
-            :model-value="reaSettings.flowMultiplier ?? reaSettings.flow_multiplier ?? 1.0"
-            @update:model-value="v => saveField('flowMultiplier', v)"
-            :min="0.5"
+            :model-value="reaSettings.volumeFlowMultiplier ?? 1.0"
+            @update:model-value="v => saveField('volumeFlowMultiplier', v)"
+            :min="0.1"
+            :max="2.0"
+            :step="0.01"
+            :decimals="2"
+            suffix="x"
+          />
+        </div>
+
+        <div class="gateway-tab__field">
+          <label class="gateway-tab__label">Hot water flow multiplier</label>
+          <ValueInput
+            :model-value="reaSettings.hotWaterFlowMultiplier ?? 1.0"
+            @update:model-value="v => saveField('hotWaterFlowMultiplier', v)"
+            :min="0.1"
             :max="2.0"
             :step="0.01"
             :decimals="2"
@@ -124,6 +142,15 @@ onMounted(loadSettings)
               {{ mode }}
             </button>
           </div>
+        </div>
+
+        <div class="gateway-tab__field">
+          <label class="gateway-tab__label">Block tare during shot</label>
+          <SettingsToggle
+            :model-value="!!reaSettings.blockTareDuringShot"
+            aria-label="Block tare during shot"
+            @update:model-value="v => saveField('blockTareDuringShot', v)"
+          />
         </div>
       </div>
 

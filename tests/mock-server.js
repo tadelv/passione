@@ -564,7 +564,16 @@ function routeApi(path, method, body, res, url, headers = {}) {
 
   // Settings (gateway-level)
   if (path === '/api/v1/settings' && method === 'GET') {
-    return json({})
+    return json({
+      gatewayMode: 'tracking',
+      logLevel: 'FINE',
+      weightFlowMultiplier: 0.83,
+      volumeFlowMultiplier: 0.3,
+      hotWaterFlowMultiplier: 0.3,
+      scalePowerMode: 'disconnect',
+      blockTareDuringShot: false,
+      blockOnNoScale: true,
+    })
   }
   if (path === '/api/v1/settings' && method === 'POST') {
     return json({ ok: true })
