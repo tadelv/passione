@@ -77,6 +77,33 @@ test.describe('Bengle settings tab', () => {
     await off.click()
     await expect(off).toHaveClass(/bengle-tab__level--active/)
   })
+
+  test('opens a colour picker from the LED swatch', async ({ page, request }) => {
+    await setCapabilities(request, BENGLE_CAPS)
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    await page.evaluate(() => window.__vueRouter.push('/settings'))
+    await page.waitForSelector('.settings-page')
+    await page.locator('.settings-page__tab', { hasText: 'Bengle' }).click()
+
+    // The mock's front-strip awake colour is white (FFFFFFFFFFFF → #FFFFFF).
+    await page.getByRole('button', { name: 'Pick Front strip awake colour' }).click()
+    await expect(page.locator('.color-picker__card')).toBeVisible()
+    await expect(page.locator('.color-picker__preview-hex')).toHaveText(/#ffffff/i)
+
+    // Dragging on the saturation/value pad changes the preview and the
+    // bound 12-hex input away from white.
+    const pad = page.locator('.color-picker__pad')
+    const box = await pad.boundingBox()
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.3)
+    await page.mouse.up()
+
+    await expect(page.locator('.color-picker__preview-hex')).not.toHaveText(/#ffffff/i)
+    await expect(page.locator('input[aria-label="Front strip awake colour"]')).not.toHaveValue('FFFFFFFFFFFF')
+  })
 })
 
 test.describe('Bengle milk probe', () => {

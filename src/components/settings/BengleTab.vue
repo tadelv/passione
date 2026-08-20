@@ -2,6 +2,7 @@
 import { ref, computed, inject, onActivated, onDeactivated, onUnmounted } from 'vue'
 import ValueInput from '../ValueInput.vue'
 import SettingsToggle from './SettingsToggle.vue'
+import ColorPicker from '../ColorPicker.vue'
 import {
   getCupWarmer, updateCupWarmer,
   getCupWarmerPreheat, updateCupWarmerPreheat,
@@ -142,6 +143,15 @@ function color16ToCss(hex) {
   return `#${hex.slice(0, 2)}${hex.slice(4, 6)}${hex.slice(8, 10)}`
 }
 
+// Inverse of color16ToCss: an 8-bit channel X becomes a 16-bit XXXX
+// (value * 257), so the round-trip preserves the high byte the display uses
+// and reaches true 0xFFFF full brightness.
+function cssToColor16(css) {
+  const m = /^#?([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$/.exec(css ?? '')
+  if (!m) return '000000000000'
+  return `${m[1]}${m[1]}${m[2]}${m[2]}${m[3]}${m[3]}`.toLowerCase()
+}
+
 async function saveLed() {
   ledError.value = null
   for (const zone of LED_EDIT_ZONES) {
@@ -171,6 +181,34 @@ async function reloadLed() {
   } catch (e) {
     ledError.value = e.message
   }
+}
+
+const pickerTarget = ref(null) // { zone, mode } | null
+
+const pickerColor = computed(() => {
+  const t = pickerTarget.value
+  if (!t) return '#000000'
+  return color16ToCss(led.value[t.zone]?.[t.mode])
+})
+
+const pickerTitle = computed(() => {
+  const t = pickerTarget.value
+  if (!t) return 'Colour'
+  const label = LED_EDIT_ZONES.find((z) => z.key === t.zone)?.label ?? t.zone
+  return `${label} ${t.mode}`
+})
+
+function openPicker(zone, mode) {
+  pickerTarget.value = { zone, mode }
+}
+
+function onPickerColor(css) {
+  const t = pickerTarget.value
+  if (t) led.value[t.zone][t.mode] = cssToColor16(css)
+}
+
+function closePicker() {
+  pickerTarget.value = null
 }
 
 // ---- Integrated-scale calibration ------------------------------------------
@@ -332,10 +370,12 @@ onUnmounted(stopCalPolling)
             spellcheck="false"
             :aria-label="`${zone.label} ${mode} colour`"
           />
-          <span
-            class="bengle-tab__swatch"
+          <button
+            type="button"
+            class="bengle-tab__swatch bengle-tab__swatch--button"
             :style="{ backgroundColor: color16ToCss(led[zone.key][mode]) }"
-            aria-hidden="true"
+            :aria-label="`Pick ${zone.label} ${mode} colour`"
+            @click="openPicker(zone.key, mode)"
           />
         </div>
       </div>
@@ -400,6 +440,14 @@ onUnmounted(stopCalPolling)
 
       <span v-if="calError" class="bengle-tab__error">{{ calError }}</span>
     </section>
+
+    <ColorPicker
+      :visible="!!pickerTarget"
+      :model-value="pickerColor"
+      :title="pickerTitle"
+      @update:model-value="onPickerColor"
+      @close="closePicker"
+    />
   </div>
 </template>
 
@@ -517,6 +565,17 @@ onUnmounted(stopCalPolling)
   border-radius: 8px;
   border: 1px solid var(--color-border);
   flex-shrink: 0;
+}
+
+.bengle-tab__swatch--button {
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bengle-tab__swatch--button:active {
+  transform: scale(0.92);
 }
 
 .bengle-tab__led-actions,
