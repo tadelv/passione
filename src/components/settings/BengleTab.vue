@@ -18,6 +18,14 @@ const has = (token) => caps.value.includes(token)
 const cupWarmer = ref(null)
 const cupWarmerBusy = ref(false)
 
+// Discrete cup-warmer heat levels. `0` turns the mat off (surprising as a
+// setpoint), so expose three sensible levels from 40 °C (low) to 80 °C (max).
+const CUP_WARMER_LEVELS = [
+  { label: 'Low', value: 40 },
+  { label: 'Mid', value: 60 },
+  { label: 'High', value: 80 },
+]
+
 async function loadCupWarmer() {
   try {
     cupWarmer.value = await getCupWarmer()
@@ -245,15 +253,22 @@ onUnmounted(stopCalPolling)
         />
       </div>
 
-      <div class="bengle-tab__row">
-        <label class="bengle-tab__label">Setpoint</label>
-        <ValueInput
-          :model-value="cupWarmer?.temperature ?? 0"
-          :min="0" :max="80" :step="1" :decimals="0"
-          suffix=" °C"
-          aria-label="Cup warmer setpoint"
-          @update:model-value="setCupWarmerTemperature"
-        />
+      <div class="bengle-tab__field">
+        <label class="bengle-tab__label">Heat level</label>
+        <div class="bengle-tab__levels" role="radiogroup" aria-label="Cup warmer heat level">
+          <button
+            v-for="level in CUP_WARMER_LEVELS"
+            :key="level.value"
+            class="bengle-tab__level"
+            :class="{ 'bengle-tab__level--active': cupWarmer?.temperature === level.value }"
+            role="radio"
+            :aria-checked="cupWarmer?.temperature === level.value"
+            :disabled="!cupWarmer || cupWarmerBusy"
+            @click="setCupWarmerTemperature(level.value)"
+          >
+            {{ level.label }} · {{ level.value }}°
+          </button>
+        </div>
       </div>
 
       <div class="bengle-tab__row">
@@ -427,6 +442,42 @@ onUnmounted(stopCalPolling)
   font-weight: 600;
   color: var(--color-text);
   text-transform: capitalize;
+}
+
+.bengle-tab__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bengle-tab__levels {
+  display: flex;
+  gap: 8px;
+}
+
+.bengle-tab__level {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-md);
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bengle-tab__level--active {
+  background: var(--color-primary);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.bengle-tab__level:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .bengle-tab__led-zone {

@@ -59,6 +59,20 @@ test.describe('Bengle settings tab', () => {
     await expect(page.getByText('Lighting', { exact: true })).toBeVisible()
     await expect(page.getByText('Integrated scale calibration', { exact: true })).toBeVisible()
   })
+
+  test('sets cup warmer heat level from discrete presets', async ({ page, request }) => {
+    await setCapabilities(request, BENGLE_CAPS)
+    await loadApp(page)
+    await page.waitForTimeout(500)
+
+    await page.evaluate(() => window.__vueRouter.push('/settings'))
+    await page.waitForSelector('.settings-page')
+    await page.locator('.settings-page__tab', { hasText: 'Bengle' }).click()
+
+    const high = page.getByRole('radio', { name: /High/ })
+    await high.click()
+    await expect(high).toHaveClass(/bengle-tab__level--active/)
+  })
 })
 
 test.describe('Bengle milk probe', () => {
