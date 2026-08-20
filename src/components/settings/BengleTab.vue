@@ -18,13 +18,29 @@ const has = (token) => caps.value.includes(token)
 const cupWarmer = ref(null)
 const cupWarmerBusy = ref(false)
 
-// Discrete cup-warmer heat levels. `0` turns the mat off (surprising as a
-// setpoint), so expose three sensible levels from 40 °C (low) to 80 °C (max).
+// Cup-warmer heat levels plus an explicit off state. `0` is the API's "off"
+// setpoint (surprising as a user-facing value), so model off as
+// `enabled: false` and expose three sensible setpoints from 40 °C to 80 °C.
 const CUP_WARMER_LEVELS = [
-  { label: 'Low', value: 40 },
-  { label: 'Mid', value: 60 },
-  { label: 'High', value: 80 },
+  { key: 'off', label: 'Off' },
+  { key: 'low', label: 'Low', value: 40 },
+  { key: 'mid', label: 'Mid', value: 60 },
+  { key: 'high', label: 'High', value: 80 },
 ]
+
+function isCupWarmerActive(level) {
+  if (!cupWarmer.value) return false
+  if (!level.value) return cupWarmer.value.enabled === false
+  return cupWarmer.value.enabled === true && cupWarmer.value.temperature === level.value
+}
+
+function setCupWarmerLevel(level) {
+  if (!level.value) {
+    setCupWarmerEnabled(false)
+    return
+  }
+  setCupWarmerTemperature(level.value)
+}
 
 async function loadCupWarmer() {
   try {
@@ -49,9 +65,8 @@ async function setCupWarmerTemperature(v) {
   if (!cupWarmer.value) return
   cupWarmerBusy.value = true
   try {
-    // Setting a temperature also enables manual heating (Decaid backwards
-    // compatibility); re-read to reflect the authoritative state.
-    await updateCupWarmer({ temperature: v })
+    // Selecting a heat level also turns manual heating on.
+    await updateCupWarmer({ temperature: v, enabled: true })
     await loadCupWarmer()
   } finally {
     cupWarmerBusy.value = false
@@ -243,30 +258,20 @@ onUnmounted(stopCalPolling)
     <section v-if="has('cupWarmer')" class="bengle-tab__section">
       <h4 class="bengle-tab__section-title">Cup warmer</h4>
 
-      <div class="bengle-tab__row">
-        <label class="bengle-tab__label">Manual heating</label>
-        <SettingsToggle
-          :model-value="!!cupWarmer?.enabled"
-          :disabled="!cupWarmer || cupWarmerBusy"
-          aria-label="Manual cup warmer heating"
-          @update:model-value="setCupWarmerEnabled"
-        />
-      </div>
-
       <div class="bengle-tab__field">
         <label class="bengle-tab__label">Heat level</label>
         <div class="bengle-tab__levels" role="radiogroup" aria-label="Cup warmer heat level">
           <button
             v-for="level in CUP_WARMER_LEVELS"
-            :key="level.value"
+            :key="level.key"
             class="bengle-tab__level"
-            :class="{ 'bengle-tab__level--active': cupWarmer?.temperature === level.value }"
+            :class="{ 'bengle-tab__level--active': isCupWarmerActive(level) }"
             role="radio"
-            :aria-checked="cupWarmer?.temperature === level.value"
+            :aria-checked="isCupWarmerActive(level)"
             :disabled="!cupWarmer || cupWarmerBusy"
-            @click="setCupWarmerTemperature(level.value)"
+            @click="setCupWarmerLevel(level)"
           >
-            {{ level.label }} · {{ level.value }}°
+            {{ level.value != null ? `${level.label} · ${level.value}°` : level.label }}
           </button>
         </div>
       </div>

@@ -72,6 +72,10 @@ test.describe('Bengle settings tab', () => {
     const high = page.getByRole('radio', { name: /High/ })
     await high.click()
     await expect(high).toHaveClass(/bengle-tab__level--active/)
+
+    const off = page.getByRole('radio', { name: 'Off', exact: true })
+    await off.click()
+    await expect(off).toHaveClass(/bengle-tab__level--active/)
   })
 })
 
