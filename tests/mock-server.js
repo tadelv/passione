@@ -458,7 +458,11 @@ function routeApi(path, method, body, res, url, headers = {}) {
   }
   if (path === '/api/v1/machine/waterLevels' && method === 'POST') {
     if (body) Object.assign(mockWaterLevels, body)
-    return json(mockWaterLevels)
+    // Decaid answers this with a 202 and no body (jsonAccepted()); mirror it
+    // so the empty-body handling in sendCommand stays covered.
+    res.writeHead(202)
+    res.end()
+    return
   }
 
   // Scale tare

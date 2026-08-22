@@ -37,7 +37,14 @@ export async function sendCommand(endpoint, method = 'GET', body = null) {
   }
 
   if (response.status === 204) return null
-  return response.json()
+  try {
+    return await response.json()
+  } catch {
+    // 2xx with an empty body — e.g. Decaid's jsonAccepted() 202s, which
+    // carry no payload. The request succeeded; there is just nothing to
+    // return. Treat as null instead of throwing a parse error.
+    return null
+  }
 }
 
 // ---------------------------------------------------------------------------

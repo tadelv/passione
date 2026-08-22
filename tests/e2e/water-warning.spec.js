@@ -89,3 +89,27 @@ test.describe('Screensaver water warning', () => {
     await expect(page.locator('[data-testid="screensaver-water-warning"]')).toHaveCount(0)
   })
 })
+
+test.describe('Water settings tab', () => {
+  test('changing the refill threshold tolerates the empty 202 response', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForSelector('.status-bar', { timeout: 10000 })
+    await page.waitForTimeout(500)
+
+    await page.evaluate(() => window.__vueRouter.push('/settings/water'))
+    await page.waitForSelector('.water-tab')
+
+    const before = await page.locator('.value-input__display').innerText()
+    await page.getByRole('button', { name: 'Increase value' }).click()
+
+    // Display updates immediately; the debounced write fires after 300 ms.
+    await expect(page.locator('.value-input__display')).not.toHaveText(before)
+    await page.waitForTimeout(800)
+
+    // Decaid answers POST /api/v1/machine/waterLevels with a body-less 202.
+    // sendCommand must treat that as success instead of throwing a JSON
+    // parse error, which surfaced as a spurious "Failed to set refill level"
+    // toast.
+    await expect(page.locator('.toast--error')).toHaveCount(0)
+  })
+})
