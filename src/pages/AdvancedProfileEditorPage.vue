@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, inject, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import ProfileGraph from '../components/ProfileGraph.vue'
@@ -29,7 +29,7 @@ const record = ref(null)
 const profile = ref(null)
 
 /** Snapshot of the original profile JSON for dirty detection */
-let originalSnapshot = ''
+const originalSnapshot = ref('')
 
 const selectedFrame = ref(-1)
 const showSettings = ref(false)
@@ -42,7 +42,7 @@ const frames = computed(() => profile.value?.frames ?? profile.value?.steps ?? [
 
 const isDirty = computed(() => {
   if (!profile.value) return false
-  return JSON.stringify(profile.value) !== originalSnapshot
+  return JSON.stringify(profile.value) !== originalSnapshot.value
 })
 
 const frameCount = computed(() => frames.value.length)
@@ -86,7 +86,7 @@ async function loadProfile() {
   if (!id) {
     // New profile — create a default
     profile.value = createDefaultProfile()
-    originalSnapshot = JSON.stringify(profile.value)
+    originalSnapshot.value = JSON.stringify(profile.value)
     selectedFrame.value = 0
     return
   }
@@ -99,7 +99,7 @@ async function loadProfile() {
     // surfacing nested exit/limiter into the flat fields the editor binds to.
     const p = reaProfileToInternal(data.profile || data)
     profile.value = p
-    originalSnapshot = JSON.stringify(p)
+    originalSnapshot.value = JSON.stringify(p)
     if (p.frames && p.frames.length > 0) {
       selectedFrame.value = 0
     }
@@ -325,9 +325,18 @@ async function saveProfile() {
     const result = await persistProfile(payload, record.value)
     invalidateProfileCaches()
     if (result?.id) {
+      const newId = result.id
+      const oldId = record.value?.id
       record.value = result
+      // A default fork or an execution-change PUT comes back with a NEW
+      // content-hash id. Adopt it into the route too, or the editor keeps
+      // pointing at the old (deleted/immutable) record and reopens the
+      // original profile without the saved changes.
+      if (route.params.id !== newId && newId !== oldId) {
+        router.replace(`/advanced-editor/${encodeURIComponent(newId)}`)
+      }
     }
-    originalSnapshot = JSON.stringify(profile.value)
+    originalSnapshot.value = JSON.stringify(profile.value)
     if (toast) toast.success('Profile saved')
   } catch (e) {
     console.warn('[ProfileEditorPage] Save failed:', e.message)

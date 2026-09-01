@@ -561,8 +561,11 @@ function onKeyDown(e) {
     return
   }
 
-  // Ignore when typing in input fields
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) {
+  // Ignore when typing in input fields (incl. custom spinbutton controls like
+  // ValueInput, whose root is a div[role=spinbutton] — otherwise keys like
+  // '0'-'4'/'h' typed while adjusting a value trigger the operation/nav
+  // shortcuts and start operations or navigate away).
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable || e.target.closest?.('[role="spinbutton"]')) {
     return
   }
 

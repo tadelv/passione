@@ -107,6 +107,17 @@ const mockSkin = {
 
 let mockSkinUpdateError = false
 
+// Deterministic content-hash for profiles (mimics gateway's profile:<20hex> ids)
+function hashProfile(profile) {
+  const s = JSON.stringify(profile)
+  let h = 0
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0
+  }
+  const hex = Math.abs(h).toString(16).padStart(20, '0').slice(0, 20)
+  return 'profile:' + hex
+}
+
 const mockProfiles = [
   {
     id: 'profile-test1234567890abcdef',
@@ -416,18 +427,68 @@ function routeApi(path, method, body, res, url, headers = {}) {
     return json(mockWorkflow)
   }
 
-  // Profiles
+  // Profiles — gateway-accurate: content-hash ids, default immutability, forks
   if (path === '/api/v1/profiles' && method === 'GET') {
-    return json(mockProfiles)
+    return json(mockProfiles.filter(p => p.visibility === 'visible'))
   }
   if (path === '/api/v1/profiles' && method === 'POST') {
-    if (body) mockProfiles.push(body)
-    return json(body, 201)
+    if (!body || !body.profile) return json({ error: 'Missing profile' }, 400)
+    const parent = body.parentId ? mockProfiles.find(p => p.id === body.parentId) : null
+    if (body.parentId && !parent) return json({ error: 'Parent not found' }, 400)
+    const hash = hashProfile(body.profile)
+    const existing = mockProfiles.find(p => p.id === hash)
+    if (existing) return json(existing, 200)
+    const record = {
+      id: hash,
+      profile: body.profile,
+      parentId: body.parentId ?? null,
+      visibility: 'visible',
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    mockProfiles.push(record)
+    return json(record, 201)
+  }
+  if (path.startsWith('/api/v1/profiles/') && method === 'PUT') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const existing = mockProfiles.find(p => p.id === id)
+    if (!existing) return json({ error: 'Profile not found' }, 404)
+    if (existing.isDefault && body?.profile) return json({ error: 'Cannot modify default profile content' }, 400)
+    let record = existing
+    if (body?.profile) {
+      const newHash = hashProfile(body.profile)
+      const dedupe = mockProfiles.find(p => p.id === newHash && p.id !== id)
+      if (dedupe) record = dedupe
+      else {
+        record = { ...existing, profile: body.profile, updatedAt: new Date().toISOString() }
+        if (newHash !== id) {
+          // Execution changed → replace old record (old id no longer exists)
+          record.id = newHash
+          const idx = mockProfiles.findIndex(p => p.id === id)
+          mockProfiles[idx] = record
+        }
+      }
+    }
+    if (body?.metadata) record = { ...record, metadata: body.metadata }
+    return json(record)
   }
   if (path.startsWith('/api/v1/profiles/') && method === 'GET') {
     const id = decodeURIComponent(path.split('/').pop())
     const profile = mockProfiles.find(p => p.id === id)
     return profile ? json(profile) : json({ error: 'Not found' }, 404)
+  }
+  if (path.endsWith('/purge') && method === 'DELETE') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const idx = mockProfiles.findIndex(p => p.id === id)
+    if (idx >= 0) mockProfiles.splice(idx, 1)
+    return json({ ok: true })
+  }
+  if (path.startsWith('/api/v1/profiles/') && method === 'DELETE') {
+    const id = decodeURIComponent(path.split('/').pop())
+    const idx = mockProfiles.findIndex(p => p.id === id)
+    if (idx >= 0) mockProfiles[idx] = { ...mockProfiles[idx], visibility: 'hidden' }
+    return json({ ok: true })
   }
 
   // Machine profile upload
