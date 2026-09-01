@@ -277,7 +277,7 @@ function updateExitValue(value) {
     case 'pressure_under': f.exit_pressure_under = value; break
     case 'flow_over': f.exit_flow_over = value; break
     case 'flow_under': f.exit_flow_under = value; break
-    case 'weight': f.exit_weight = value; break
+    case 'weight': f.exit_weight = value; f.weight = value; break
   }
   triggerUpdate()
 }

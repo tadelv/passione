@@ -130,6 +130,11 @@ export function stepToFrame(s) {
     max_flow_or_pressure_range: 0.6,
   }
 
+  // The editor's "Wt. exit" row binds `exit_weight` — carry the step's stop
+  // weight into it unconditionally, so a step with BOTH a pressure/flow exit
+  // and a weight (REA allows both) doesn't reload as a phantom 0.
+  frame.exit_weight = num(s.weight, 0)
+
   if (s.exit && typeof s.exit === 'object' && s.exit.type && s.exit.condition) {
     const type = s.exit.type === 'flow' ? 'flow' : 'pressure'
     const condition = s.exit.condition === 'under' ? 'under' : 'over'
@@ -141,7 +146,6 @@ export function stepToFrame(s) {
     // No pressure/flow exit but a stop weight — show it as a weight exit.
     frame.exit_if = true
     frame.exit_type = 'weight'
-    frame.exit_weight = num(s.weight, 0)
   }
 
   if (s.limiter && typeof s.limiter === 'object') {

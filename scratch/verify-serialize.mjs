@@ -88,6 +88,23 @@ function eq(a, b, msg) { if (JSON.stringify(a) !== JSON.stringify(b)) fail(`forw
   // disabled exit -> no exit
   const d = frameToStep({ ...flat, exit_if: false })
   if (d.exit) fail('forward: exit_if=false must drop exit')
+
+  // step with BOTH a pressure exit and a stop weight reloads with exit_weight
+  // populated (the editor's "Wt. exit" row binds exit_weight; a phantom 0
+  // made saved weights look lost and destroyed them on the next +click).
+  const both = stepToFrame({
+    name: 'Soak', pump: 'flow', transition: 'fast', sensor: 'coffee',
+    temperature: 63.5, seconds: 6, volume: 0, flow: 0, pressure: 0,
+    weight: 20,
+    exit: { type: 'pressure', condition: 'under', value: 3 },
+  })
+  if (both.exit_if !== true) fail('both: exit_if must stay true')
+  if (both.exit_weight !== 20) fail(`both: exit_weight ${both.exit_weight} != 20 (row would show 0)`)
+  if (both.weight !== 20) fail('both: flat weight must carry 20')
+  const bothSaved = frameToStep(both)
+  if (bothSaved.weight !== 20) fail('both: weight lost on save')
+  if (!bothSaved.exit || bothSaved.exit.value !== 3) fail('both: exit lost on save')
+
 }
 
 console.log(`Checked ${checked} profiles, ${stepCount} steps. Failures: ${fails}`)
