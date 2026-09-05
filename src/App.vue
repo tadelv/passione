@@ -34,7 +34,8 @@ import { useMachineCapabilities } from './composables/useMachineCapabilities'
 import { useMilkProbe } from './composables/useMilkProbe'
 import { buildComboUpdate } from './composables/useComboApply.js'
 import { isComboModifiedVsWorkflow } from './composables/useComboDirty.js'
-import { setMachineState, getLatestShot } from './api/rest.js'
+import { userMachineCommand } from './composables/useMachineCommand.js'
+import { getLatestShot } from './api/rest.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -554,18 +555,28 @@ function onKeyDown(e) {
   // Ignore during layout editing
   if (editingLayout.value) return
 
-  // Screensaver: any key wakes (like Decenza)
-  if (machine.state.value === 'sleeping' && route.path === '/screensaver') {
-    e.preventDefault()
-    setMachineState('idle').catch(() => {})
-    return
-  }
+  // Only unmodified, user-initiated keys are appliance shortcuts. Browser
+  // and app chords (Ctrl/Cmd/Alt+…), IME composition, OS key auto-repeat,
+  // and keys another handler already consumed must pass through untouched —
+  // otherwise Ctrl/Cmd+W/F/S would start operations and closing the app
+  // would become a machine command.
+  if (e.defaultPrevented) return
+  if (e.isComposing) return
+  if (e.repeat) return
+  if (e.ctrlKey || e.metaKey || e.altKey) return
 
   // Ignore when typing in input fields (incl. custom spinbutton controls like
   // ValueInput, whose root is a div[role=spinbutton] — otherwise keys like
   // '0'-'4'/'h' typed while adjusting a value trigger the operation/nav
   // shortcuts and start operations or navigate away).
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable || e.target.closest?.('[role="spinbutton"]')) {
+    return
+  }
+
+  // Screensaver: any key wakes (like Decenza)
+  if (machine.state.value === 'sleeping' && route.path === '/screensaver') {
+    e.preventDefault()
+    userMachineCommand('idle', toast)
     return
   }
 
@@ -579,27 +590,27 @@ function onKeyDown(e) {
       case 'e':
       case '2':
         e.preventDefault()
-        setMachineState('espresso').catch(() => {})
+        userMachineCommand('espresso', toast)
         return
       case 's':
       case '3':
         e.preventDefault()
-        setMachineState('steam').catch(() => {})
+        userMachineCommand('steam', toast)
         return
       case 'w':
       case '4':
         e.preventDefault()
-        setMachineState('hotWater').catch(() => {})
+        userMachineCommand('hotWater', toast)
         return
       case 'f':
       case '1':
         e.preventDefault()
-        setMachineState('flush').catch(() => {})
+        userMachineCommand('flush', toast)
         return
       case 'p':
       case '0':
         e.preventDefault()
-        setMachineState('sleeping').catch(() => {})
+        userMachineCommand('sleeping', toast)
         return
     }
   }
@@ -609,7 +620,7 @@ function onKeyDown(e) {
     if (key === ' ' || key === 'escape' || key === 'backspace' || key === 'i') {
       e.preventDefault()
       markUserStop()
-      setMachineState('idle').catch(() => {})
+      userMachineCommand('idle', toast)
       return
     }
   }
@@ -619,7 +630,7 @@ function onKeyDown(e) {
     switch (key) {
       case 'i':
         e.preventDefault()
-        setMachineState('idle').catch(() => {})
+        userMachineCommand('idle', toast)
         return
       case 'h':
         e.preventDefault()

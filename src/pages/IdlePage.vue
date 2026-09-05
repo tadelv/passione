@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LayoutWidget from '../components/LayoutWidget.vue'
@@ -9,12 +8,11 @@ import LayoutEditOverlay from '../components/LayoutEditOverlay.vue'
 import { useLayout } from '../composables/useLayout.js'
 import { isComboModifiedVsWorkflow } from '../composables/useComboDirty.js'
 import { buildComboUpdate } from '../composables/useComboApply.js'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { useProfilesCache } from '../composables/useProfilesCache'
 import { useBeans } from '../composables/useBeans'
 
 const { t } = useI18n()
-const router = useRouter()
 const route = useRoute()
 
 // Layout system
@@ -195,28 +193,28 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-async function startEspresso() {
+// Starts never navigate. Success is followed by the machine reporting the
+// new state over WS, and App.vue's machine-state watcher then navigates.
+// A failed start therefore leaves the user on the idle page (with an error
+// toast) instead of stranding them on an operation page that never started.
+function startEspresso() {
   if (!isReady.value) return
-  await setMachineState('espresso').catch(() => {})
-  router.push('/espresso')
+  userMachineCommand('espresso', toast)
 }
 
-async function startSteam() {
+function startSteam() {
   if (!isReady.value) return
-  await setMachineState('steam').catch(() => {})
-  router.push('/steam')
+  userMachineCommand('steam', toast)
 }
 
-async function startHotWater() {
+function startHotWater() {
   if (!isReady.value) return
-  await setMachineState('hotWater').catch(() => {})
-  router.push('/hotwater')
+  userMachineCommand('hotWater', toast)
 }
 
-async function startFlush() {
+function startFlush() {
   if (!isReady.value) return
-  await setMachineState('flush').catch(() => {})
-  router.push('/flush')
+  userMachineCommand('flush', toast)
 }
 
 // ---- Layout helpers ----

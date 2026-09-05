@@ -11,7 +11,7 @@ import { useI18n } from 'vue-i18n'
 import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import BeanPickerPopup from './BeanPickerPopup.vue'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { useShotCache } from '../composables/useShotCache'
 import { bootReady } from '../composables/useBootReady'
@@ -177,6 +177,10 @@ async function repeatLastShot() {
     toast?.error('Failed to load workflow')
   }
 }
+
+function onSleep() {
+  userMachineCommand('sleeping', toast)
+}
 </script>
 
 <template>
@@ -299,7 +303,7 @@ async function repeatLastShot() {
       <div class="layout-widget__sleep">
         <button
           class="layout-widget__nav-btn layout-widget__nav-btn--sleep"
-          @click="setMachineState('sleeping').catch(() => {})"
+          @click="onSleep"
         >{{ t('idle.sleep') }}</button>
       </div>
     </template>

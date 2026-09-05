@@ -2,10 +2,11 @@
 import { ref, computed, inject, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 
 const router = useRouter()
 const machineState = inject('machineState')
+const toast = inject('toast', null)
 
 // Phases: 'preparation' | 'inProgress' | 'rinse'
 const phase = ref('preparation')
@@ -34,15 +35,9 @@ function toggleStep(index) {
 }
 
 async function beginDescaling() {
-  try {
-    await setMachineState('descaling')
-    phase.value = 'inProgress'
-    startTimer()
-  } catch {
-    // Machine may not support descaling state -- still transition UI
-    phase.value = 'inProgress'
-    startTimer()
-  }
+  // Phase transitions below follow the *observed* machine state — a failed or
+  // merely-accepted write must not fake progress into an in-progress cycle.
+  await userMachineCommand('descaling', toast)
 }
 
 // ---- Phase 2: In Progress ----
@@ -68,15 +63,16 @@ const elapsedFormatted = computed(() => {
 })
 
 async function emergencyStop() {
-  try {
-    await setMachineState('idle')
-  } catch {
-    // ignore
-  }
+  await userMachineCommand('idle', toast)
 }
 
-// Watch for machine returning to idle during descaling -> move to rinse
+// Drive wizard phases from the observed machine state: entering descaling
+// starts the cycle timer, returning to idle from it advances to rinse.
 watch(machineState, (newState) => {
+  if (phase.value === 'preparation' && newState === 'descaling') {
+    phase.value = 'inProgress'
+    startTimer()
+  }
   if (phase.value === 'inProgress' && newState === 'idle') {
     stopTimer()
     phase.value = 'rinse'
