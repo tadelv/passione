@@ -23,6 +23,7 @@ export function useRecipeLiveApply(refs, ctx) {
     settings, workflow, updateWorkflow,
     selectedBeanId, selectedBatchId, selectedGrinder, linkedBean,
     pickBrewTempFromProfile,
+    toast = null, t = null,
   } = ctx
 
   // Build a modified profile payload with the recipe's brewTemperature
@@ -95,6 +96,10 @@ export function useRecipeLiveApply(refs, ctx) {
   }
 
   // ---- Apply current form state to the live workflow (no combo mutation) ----
+  // `_applyFailed` is reset on every success so each run of consecutive
+  // failures surfaces exactly one user-facing toast (no time-based spam
+  // guard — a success clears it, so a fresh failure run can toast again).
+  let _applyFailed = false
   async function applyToLiveWorkflow() {
     try {
       const payload = buildWorkflowUpdate()
@@ -105,12 +110,23 @@ export function useRecipeLiveApply(refs, ctx) {
         if (override) payload.profile = override
       }
       await updateWorkflow(payload)
-    } catch {
-      // Silent — live-apply fires often; errors shouldn't toast-spam
+      _applyFailed = false
+    } catch (err) {
+      console.warn('[useRecipeLiveApply] live workflow update failed:', err)
+      if (!_applyFailed) {
+        _applyFailed = true
+        toast?.error?.(t?.('recipe.applyFailed') ?? 'Failed to apply this change to the machine')
+      }
     }
   }
 
   // ---- Live-apply: push every field change to the workflow (300ms debounce) ----
+  // The `updating` guard is checked here so batch hydration (loadFromPreset /
+  // overlayFromWorkflow / hydrateFromWorkflowContext) and slow async entity
+  // links never publish an intermediate/default form. Those read-only paths
+  // keep `updating` raised through Vue's watcher flush and then apply
+  // explicitly (see useRecipeOverlay / RecipeEditorPage) — they never rely on
+  // this debounce firing.
   let liveApplyTimer = null
   watch([
     refs.coffeeName, refs.roaster, refs.grinder, refs.grinderSetting,
@@ -122,25 +138,52 @@ export function useRecipeLiveApply(refs, ctx) {
     refs.includeFlush, refs.flushDuration, refs.flushFlowRate,
     refs.includeHotWater, refs.hotWaterVolume, refs.hotWaterTemperature,
   ], () => {
-    // Store last-trigger timestamp for debounce — no updating guard needed
-    // because the 300ms debounce already batches multiple synchronous changes
-    // into a single PUT. If loadFromPreset/overlayFromWorkflow writes all refs
-    // synchronously, the watcher fires once with all changes batched.
+    if (refs.updating.value) return
     clearTimeout(liveApplyTimer)
-    liveApplyTimer = setTimeout(applyToLiveWorkflow, 300)
+    liveApplyTimer = setTimeout(() => {
+      // Null first so a timer that has already fired is no longer considered
+      // pending — otherwise onBeforeUnmount would flush a redundant write for
+      // a debounce that already ran.
+      liveApplyTimer = null
+      // If a batch hydration or slow entity link started after this edit was
+      // scheduled, don't push an intermediate form; the async path applies the
+      // full resolved state explicitly once it finishes.
+      if (refs.updating.value) return
+      applyToLiveWorkflow()
+    }, 300)
+  })
+
+  // When a batch hydration / async entity link raises `updating`, cancel any
+  // pending genuine-edit debounce so it can't fire mid-batch (publishing an
+  // intermediate form) nor send a redundant second PUT after the batch's
+  // explicit apply.
+  watch(() => refs.updating.value, (v) => {
+    if (v && liveApplyTimer != null) {
+      clearTimeout(liveApplyTimer)
+      liveApplyTimer = null
+    }
   })
 
   onBeforeUnmount(() => {
+    if (liveApplyTimer == null) return
+    // A batch hydration or slow entity link is in progress — never push an
+    // intermediate form on the way out; its explicit apply handles it (or the
+    // component is being torn down mid-resolution).
+    if (refs.updating.value) {
+      clearTimeout(liveApplyTimer)
+      liveApplyTimer = null
+      return
+    }
     // Flush, don't drop: a pending debounced edit (grinder/coffee/dose/etc.)
     // must still reach the workflow, or navigating away within the 300ms
     // window silently discards the user's change (it never reaches
     // workflow.context, so overlayFromWorkflow on the next mount re-applies
     // stale pre-edit values, which looks like a reset to the saved recipe).
-    if (liveApplyTimer != null) {
-      clearTimeout(liveApplyTimer)
-      liveApplyTimer = null
-      applyToLiveWorkflow()
-    }
+    // A timer that already fired is null (see above) and skipped, so an
+    // unmount with no pending edit sends nothing.
+    clearTimeout(liveApplyTimer)
+    liveApplyTimer = null
+    applyToLiveWorkflow()
   })
 
   return {

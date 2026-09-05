@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, inject, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import RecipePillRail from '../components/RecipePillRail.vue'
@@ -94,6 +94,7 @@ const {
   settings, workflow, updateWorkflow,
   selectedBeanId, selectedBatchId, selectedGrinder, linkedBean,
   pickBrewTempFromProfile,
+  toast, t,
 })
 
 // ---- Dirty tracking ----
@@ -155,20 +156,69 @@ const {
 // Grinder select wrapper — also used by the template's @change handler
 function onGrinderSelect(grinderId) { _onGrinderSelect(grinderId) }
 
-onMounted(() => {
+let editorDisposed = false
+onUnmounted(() => { editorDisposed = true })
+
+// ---- Read-only mount hydration (gateway workflow is authoritative) ----
+// Restores profile, context, AND operation flags/values from the live workflow
+// so opening/reloading the recipe editor never PUTs it back and never starts
+// from a saved-recipe baseline that would resurrect cleared fields. The saved
+// recipe (if any) is only a comparison baseline for the modified dot / Save.
+// Works identically with or without saved recipes.
+const hydrating = ref(true)
+async function hydrateEditorBaseline() {
+  if (!workflow) return
+  try {
+    await overlayFromWorkflow()
+  } catch {
+    // Best-effort hydration; a failed lookup must never crash the editor.
+  }
+}
+
+onMounted(async () => {
   loadHistorySuggestions()
-  if (isAwaitingProfileFromPicker() && workflow?.profile) {
-    const baselineId = getAwaitingProfileBaselineId()
-    const currentKey = workflow.profile.id ?? workflow.profile.title ?? ''
-    if (baselineId !== String(currentKey)) {
-      refsForEditor.updating.value = true
-      profileTitle.value = workflow.profile.title ?? ''
-      profileId.value = workflow.profile.id ?? null
-      const t = pickBrewTempFromProfile(workflow.profile)
-      if (t != null) brewTemperature.value = t
-      nextTick(() => { refsForEditor.updating.value = false })
+
+  // Keep the form read-only and the live-apply watcher muted until mount
+  // hydration completes, so early form defaults can never be pushed or
+  // silently overwrite the gateway state. Home (BottomBar) stays usable.
+  refsForEditor.updating.value = true
+  try {
+    try {
+      const settingsReady = settings?.loaded
+        ? (settings.loaded.value
+            ? Promise.resolve()
+            : new Promise((resolve) => {
+                const stop = watch(() => settings.loaded.value, (v) => { if (v) { stop(); resolve() } })
+              }))
+        : Promise.resolve()
+      await Promise.all([settingsReady, workflowReady ?? Promise.resolve()])
+    } catch {
+      // Settings/workflow readiness is best-effort — hydrate with whatever is
+      // already available below rather than leaving a blank editor.
     }
-    setAwaitingProfileFromPicker(false)
+    if (editorDisposed) return
+
+    await hydrateEditorBaseline()
+    if (editorDisposed) return
+
+    // Profile-selector round-trip: the user returned from ProfileSelectorPage
+    // with a profile already applied to the gateway. Reflect it, read-only.
+    if (isAwaitingProfileFromPicker() && workflow?.profile) {
+      const baselineId = getAwaitingProfileBaselineId()
+      const currentKey = workflow.profile.id ?? workflow.profile.title ?? ''
+      if (baselineId !== String(currentKey)) {
+        profileTitle.value = workflow.profile.title ?? ''
+        profileId.value = workflow.profile.id ?? null
+        const bt = pickBrewTempFromProfile(workflow.profile)
+        if (bt != null) brewTemperature.value = bt
+        await nextTick()
+      }
+      setAwaitingProfileFromPicker(false)
+    }
+  } finally {
+    // Always release the gate — on success, failure, or unmount.
+    hydrating.value = false
+    refsForEditor.updating.value = false
   }
 })
 
@@ -180,12 +230,13 @@ const expandedOp = ref(null)
 const showProfilePicker = ref(false)
 
 function onProfilePicked(record) {
-  refsForEditor.updating.value = true
+  // Synchronous form writes; the live-apply debounce pushes them (including a
+  // brew-temperature override) exactly like any other field edit. No guard is
+  // needed because these writes land in a single Vue flush.
   profileTitle.value = record.profile?.title ?? ''
   profileId.value = record.id ?? null
-  const t = pickBrewTempFromProfile(record.profile)
-  if (t != null) brewTemperature.value = t
-  nextTick(() => { refsForEditor.updating.value = false })
+  const bt = pickBrewTempFromProfile(record.profile)
+  if (bt != null) brewTemperature.value = bt
   showProfilePicker.value = false
 }
 
@@ -216,17 +267,34 @@ async function onBeanSelect(beanId) {
     batchesForBean.value = []
     return
   }
-  await enterLinked(beanId)
-  // The linked-mode watcher in useBeanLink already syncs coffeeName/roaster
-  // to the bean record. Load batches for the picker dropdown.
-  if (beansApi) {
-    batchesForBean.value = await beansApi.getBatches(beanId).catch(() => []) ?? []
+  // Gate the live-apply debounce while the link resolves — record + active
+  // batch lookups can outlast the 300ms debounce — so an intermediate form
+  // (beanId set but bean/batch still loading) is never pushed as a mixed
+  // payload. This is an intentional user action, so apply the fully resolved
+  // state once at the end.
+  refsForEditor.updating.value = true
+  try {
+    await enterLinked(beanId)
+    if (beansApi) {
+      batchesForBean.value = await beansApi.getBatches(beanId).catch(() => []) ?? []
+    }
+    await nextTick()
+  } finally {
+    refsForEditor.updating.value = false
   }
+  if (!editorDisposed) applyToLiveWorkflow()
 }
 
 async function onBatchSelect(batchId) {
   if (!selectedBeanId.value) return
-  await enterLinked(selectedBeanId.value, batchId)
+  refsForEditor.updating.value = true
+  try {
+    await enterLinked(selectedBeanId.value, batchId)
+    await nextTick()
+  } finally {
+    refsForEditor.updating.value = false
+  }
+  if (!editorDisposed) applyToLiveWorkflow()
 }
 
 // ---- Batch info helper ----
@@ -236,39 +304,16 @@ function daysSinceRoast(batch) {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-// ---- Mount-time load coordination ----
-// If a recipe is selected, load it and overlay the live workflow on top.
-// If none is selected, auto-select the first recipe (index 0) so the
-// well-tested loadFromPreset + overlayFromWorkflow path handles context
-// hydration including extras (basketType, grinderRpm, etc.). Falling
-// through to hydrateFromWorkflowContext would skip the updating guard
-// and loses extras on the first live-apply PUT.
-const effectiveIndex = selectedIndex.value >= 0 ? selectedIndex.value
-  : workflowCombos.value.length > 0 ? 0 : -1
-if (effectiveIndex >= 0) {
-  loadFromPreset(effectiveIndex).then(async () => {
-    if (workflowReady) await workflowReady
-    await overlayFromWorkflow()
-  })
-} else {
-  // No recipes exist yet — hydrate whatever the workflow has (first-run user)
-  if (workflowReady) {
-    workflowReady.then(() => hydrateFromWorkflowContext())
-  } else {
-    hydrateFromWorkflowContext()
-  }
-}
-
-// Sync profile from workflow only when no preset is loaded
-if (selectedIndex.value < 0 && workflow?.profile) {
-  profileTitle.value = workflow.profile.title ?? ''
-  profileId.value = workflow.profile.id ?? null
-}
-
 function onPresetSelect(index) {
   if (!settings) return
   settings.settings.selectedWorkflowCombo = index
-  loadFromPreset(index)
+  // Intentional user selection — load the recipe, then apply it to the live
+  // workflow exactly once after hydration. loadFromPreset keeps the updating
+  // guard raised through its async entity lookups, so the live-apply debounce
+  // won't fire on its own; this explicit apply is the single push.
+  loadFromPreset(index).then(() => {
+    if (!editorDisposed) applyToLiveWorkflow()
+  }).catch(() => {})
 }
 
 // ---- Combo edit popup ----
@@ -389,7 +434,7 @@ watch(() => workflow?.profile, (newProfile) => {
 
 <template>
   <div class="recipe-editor">
-    <div class="recipe-editor__main">
+    <div v-if="!hydrating" class="recipe-editor__main">
       <!-- Left rail: vertical recipe list + "+ New" button. -->
       <div class="recipe-editor__rail">
         <RecipePillRail
@@ -810,6 +855,13 @@ watch(() => workflow?.profile, (newProfile) => {
       </div><!-- end area -->
     </div><!-- end main -->
 
+    <!-- Mount hydration in progress: editable form is hidden so early defaults
+         can't be changed/pushed before the gateway hydrates the form. Home in
+         the BottomBar below remains available as the only exit. -->
+    <div v-else class="recipe-editor__loading" role="status" aria-label="Loading recipe">
+      <span class="recipe-editor__loading-spinner" aria-hidden="true"></span>
+    </div>
+
     <BottomBar
       :title="selectedIndex >= 0
         ? workflowCombos[selectedIndex]?.name || t('recipe.title')
@@ -902,6 +954,28 @@ watch(() => workflow?.profile, (newProfile) => {
   gap: 1px;
   min-width: 0;
   flex: 1;
+}
+
+/* Mount-hydration loading state (editable form is hidden until gateway hydrates) */
+.recipe-editor__loading {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recipe-editor__loading-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--color-text-secondary) 20%, transparent);
+  border-top-color: var(--color-primary);
+  animation: recipe-editor-spin 0.9s linear infinite;
+}
+
+@keyframes recipe-editor-spin {
+  to { transform: rotate(360deg); }
 }
 
 .recipe-editor__header-name {

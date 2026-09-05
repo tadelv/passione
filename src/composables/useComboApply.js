@@ -1,8 +1,10 @@
 /**
  * Builds a workflow PUT payload from a saved workflow combo.
  *
- * Shared by IdlePage (user taps a recipe pill) and App.vue (push the
- * selected recipe to the gateway on boot) so the two paths can't drift.
+ * Used by IdlePage when the user taps a recipe pill to load it into the live
+ * workflow. (It previously also pushed the selected recipe to the gateway at
+ * boot; that startup write was removed because the gateway's live workflow is
+ * authoritative at startup.)
  */
 
 /**

@@ -25,15 +25,11 @@ import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
 import { useConnectionError } from './composables/useConnectionError.js'
 import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
-import { bootReady } from './composables/useBootReady.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
 import { useShotCache } from './composables/useShotCache'
-import { useProfilesCache } from './composables/useProfilesCache'
 import { useMachineCapabilities } from './composables/useMachineCapabilities'
 import { useMilkProbe } from './composables/useMilkProbe'
-import { buildComboUpdate } from './composables/useComboApply.js'
-import { isComboModifiedVsWorkflow } from './composables/useComboDirty.js'
 import { userMachineCommand } from './composables/useMachineCommand.js'
 import { getLatestShot } from './api/rest.js'
 
@@ -54,7 +50,6 @@ const shotData = useShotData()
 const beansComposable = useBeans()
 const grindersComposable = useGrinders()
 const shotCache = useShotCache()
-const profilesCache = useProfilesCache()
 const machineCapabilities = useMachineCapabilities()
 const milkProbe = useMilkProbe()
 
@@ -658,32 +653,6 @@ function onKeyDown(e) {
   }
 }
 
-// Push the last-selected recipe onto the live workflow at boot. A fresh
-// gateway boot starts with its own default/empty workflow, which would
-// otherwise silently disagree with whatever recipe pill the skin shows as
-// selected. Skipped when the workflow already matches (isComboModifiedVsWorkflow)
-// so a boot that already agrees with the gateway doesn't fire a redundant PUT.
-async function applySelectedComboOnBoot() {
-  const idx = settings.settings.selectedWorkflowCombo
-  const combo = settings.settings.workflowCombos?.[idx]
-  if (idx == null || idx < 0 || !combo) return
-  if (!isComboModifiedVsWorkflow(combo, workflow)) return
-
-  // Boot-quiet: profile/bean lookups are REST calls, not user-blocking on
-  // first render — firing them before the machine WS is up starves BLE
-  // pairing on the Teclast host (see CLAUDE.md Boot-quiet section).
-  await bootReady()
-
-  try {
-    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans: beansComposable, toast })
-    if (Object.keys(update).length > 0) {
-      await updateWorkflow(update)
-    }
-  } catch {
-    toast?.error(`Failed to load ${combo.name || 'recipe'}`)
-  }
-}
-
 onMounted(async () => {
   document.addEventListener('keydown', onKeyDown)
   // Suppress native context menu globally — this is a dedicated appliance UI,
@@ -698,7 +667,12 @@ onMounted(async () => {
   let synced = false
   try {
     await Promise.all([settings.load(), workflowReady])
-    await applySelectedComboOnBoot()
+    // The gateway's live workflow is authoritative at startup — there is no
+    // recipe write here. syncFromWorkflow() copies workflow steam/hotwater/
+    // flush values into settings so the operation pages match the machine;
+    // it reads only, it does not PUT the workflow back. The selected recipe
+    // stays a pure comparison baseline for the modified dot on the home
+    // screen (isComboModifiedVsWorkflow) rather than something to re-load.
     operationSettings.syncFromWorkflow()
     synced = true
   } finally {

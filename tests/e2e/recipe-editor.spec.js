@@ -292,9 +292,10 @@ test.describe('Recipe editor', () => {
     await expect(page.locator('.recipe-editor__profile-name')).toContainText('Alternative Profile', { timeout: 5000 })
   })
 
-  test('boot pushes the selected recipe onto a diverged live workflow', async ({ page, request }) => {
-    // Simulate a fresh gateway boot whose own workflow disagrees with the
-    // recipe the skin has selected (different profile, different dose).
+  test('reloading with a diverged live workflow does NOT overwrite it (no startup PUT)', async ({ page, request }) => {
+    // Gateway live state is authoritative at startup. A saved recipe that
+    // disagrees with it (different profile, different dose) is only a
+    // comparison baseline — reopening the skin must not PUT it back.
     await request.put(`${BASE_URL}/api/v1/workflow`, {
       data: {
         profile: {
@@ -310,13 +311,22 @@ test.describe('Recipe editor', () => {
       headers: { 'Content-Type': 'application/json' },
     })
 
+    let workflowPuts = 0
+    page.on('request', (req) => {
+      if (req.method() === 'PUT' && req.url().includes('/api/v1/workflow')) workflowPuts++
+    })
+
     await loadAppAt(page, '/')
     await page.waitForTimeout(800)
 
+    // No workflow write may have happened at startup.
+    expect(workflowPuts).toBe(0)
+
+    // Gateway workflow is untouched — the saved 18g/36g recipe was NOT
+    // reloaded over the live 20g/40g.
     const wf = await readWorkflow(request)
-    expect(wf?.profile?.title).toBe(SAMPLE_RECIPE.profileTitle)
-    expect(wf?.context?.targetDoseWeight).toBe(SAMPLE_RECIPE.doseIn)
-    expect(wf?.context?.targetYield).toBe(SAMPLE_RECIPE.doseOut)
-    expect(wf?.context?.coffeeName).toBe(SAMPLE_RECIPE.coffeeName)
+    expect(wf?.profile?.title).toBe('Alternative Profile')
+    expect(wf?.context?.targetDoseWeight).toBe(20)
+    expect(wf?.context?.targetYield).toBe(40)
   })
 })
