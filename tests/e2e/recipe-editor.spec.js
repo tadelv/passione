@@ -292,9 +292,10 @@ test.describe('Recipe editor', () => {
     await expect(page.locator('.recipe-editor__profile-name')).toContainText('Alternative Profile', { timeout: 5000 })
   })
 
-  test('boot pushes the selected recipe onto a diverged live workflow', async ({ page, request }) => {
-    // Simulate a fresh gateway boot whose own workflow disagrees with the
-    // recipe the skin has selected (different profile, different dose).
+  test('reloading with a diverged live workflow does NOT overwrite it (no startup PUT)', async ({ page, request }) => {
+    // Gateway live state is authoritative at startup. A saved recipe that
+    // disagrees with it (different profile, different dose) is only a
+    // comparison baseline — reopening the skin must not PUT it back.
     await request.put(`${BASE_URL}/api/v1/workflow`, {
       data: {
         profile: {
@@ -310,13 +311,65 @@ test.describe('Recipe editor', () => {
       headers: { 'Content-Type': 'application/json' },
     })
 
+    let workflowPuts = 0
+    page.on('request', (req) => {
+      if (req.method() === 'PUT' && req.url().includes('/api/v1/workflow')) workflowPuts++
+    })
+
     await loadAppAt(page, '/')
     await page.waitForTimeout(800)
 
+    // No workflow write may have happened at startup.
+    expect(workflowPuts).toBe(0)
+
+    // Gateway workflow is untouched — the saved 18g/36g recipe was NOT
+    // reloaded over the live 20g/40g.
     const wf = await readWorkflow(request)
-    expect(wf?.profile?.title).toBe(SAMPLE_RECIPE.profileTitle)
-    expect(wf?.context?.targetDoseWeight).toBe(SAMPLE_RECIPE.doseIn)
-    expect(wf?.context?.targetYield).toBe(SAMPLE_RECIPE.doseOut)
-    expect(wf?.context?.coffeeName).toBe(SAMPLE_RECIPE.coffeeName)
+    expect(wf?.profile?.title).toBe('Alternative Profile')
+    expect(wf?.context?.targetDoseWeight).toBe(20)
+    expect(wf?.context?.targetYield).toBe(40)
+  })
+
+  test('busy selection area is inert: keyboard cannot focus/mutate the form mid-selection', async ({ page, request }) => {
+    await loadAppAt(page, '/recipe/edit')
+    await page.waitForSelector('.recipe-pill-rail__pill', { timeout: 10000 })
+    await page.waitForTimeout(200)
+
+    // Hold the selection PUT open so the editable area stays busy while we
+    // probe for focus/mutation. A keyboard user must be unable to reach or
+    // change a field (or Save) during the pending selection.
+    await page.route('**/api/v1/workflow', async (route) => {
+      if (route.request().method() === 'PUT') {
+        await new Promise((r) => setTimeout(r, 1500))
+      }
+      await route.continue()
+    })
+
+    await page.locator('.recipe-pill-rail__pill').first().click()
+    await page.waitForTimeout(150)
+
+    const area = page.locator('.recipe-editor__area')
+    // Busy region is announced and native-inert (pointer + keyboard + focus).
+    expect(await area.evaluate((el) => el.hasAttribute('inert'))).toBe(true)
+    expect(await area.evaluate((el) => el.getAttribute('aria-busy'))).toBe('true')
+
+    // Trying to focus a form control inside the inert area must not move focus
+    // into it — the pending selection cannot be mutated by the keyboard.
+    const focusLandedInside = await page.evaluate(() => {
+      const el = document.querySelector('.recipe-editor__area')
+      const btn = el?.querySelector('[data-testid="recipe-doseIn"] .value-input__btn')
+      btn?.focus()
+      return el ? el.contains(document.activeElement) : false
+    })
+    expect(focusLandedInside).toBe(false)
+
+    // Release the PUT; the selection completes and busy clears.
+    await expect.poll(() => area.evaluate((el) => el.hasAttribute('inert'))).toBe(false)
+    await page.waitForTimeout(300)
+
+    // The form reflects the recipe's default dose — the keyboard probe never
+    // reached a control, so nothing was mutated (18, not 18.1).
+    const wf = await readWorkflow(request)
+    expect(wf?.context?.targetDoseWeight).toBe(18)
   })
 })

@@ -2,12 +2,13 @@
 import { computed, inject, onMounted } from 'vue'
 import ValueInput from '../components/ValueInput.vue'
 import { LIMITS } from '../constants/limits'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
 const operationSettings = inject('operationSettings', null)
+const toast = inject('toast', null)
 const milkProbe = inject('milkProbe', null)
 const milkTemperature = computed(() => milkProbe?.temperature?.value ?? null)
 
@@ -52,11 +53,11 @@ const timerProgress = computed(() =>
 )
 
 function stopSteam() {
-  setMachineState('idle').catch(() => {})
+  userMachineCommand('idle', toast)
 }
 
 function startSteam() {
-  setMachineState('steam').catch(() => {})
+  userMachineCommand('steam', toast)
 }
 </script>
 

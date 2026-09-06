@@ -1,6 +1,5 @@
 <script setup>
-import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, inject, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LayoutWidget from '../components/LayoutWidget.vue'
@@ -9,12 +8,12 @@ import LayoutEditOverlay from '../components/LayoutEditOverlay.vue'
 import { useLayout } from '../composables/useLayout.js'
 import { isComboModifiedVsWorkflow } from '../composables/useComboDirty.js'
 import { buildComboUpdate } from '../composables/useComboApply.js'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { useProfilesCache } from '../composables/useProfilesCache'
 import { useBeans } from '../composables/useBeans'
+import { profileFirstStepTemp } from '../composables/useProfileCurve.js'
 
 const { t } = useI18n()
-const router = useRouter()
 const route = useRoute()
 
 // Layout system
@@ -82,6 +81,14 @@ const shotPlanLines = computed(() => {
     lines.push({ kind: 'coffee', text: '' })
   }
 
+  // Configured brew temp = profile's first-step temp (the next-shot target, NOT
+  // live heater telemetry). Read independent of ctx; omitted when unknown.
+  const brewTemp = profileFirstStepTemp(workflow.profile)
+  if (brewTemp != null) {
+    const display = Number.isInteger(brewTemp) ? brewTemp.toFixed(0) : brewTemp.toFixed(1)
+    lines.push({ kind: 'temperature', text: t('idle.configuredBrewTemp', { temp: display }) })
+  }
+
   // Operation status — show only when enabled (duration > 0). buildWorkflowUpdate
   // in RecipeEditorPage writes duration: 0 to mean "disabled" for all three
   // operations, so a single check covers both combo-driven and ad-hoc state.
@@ -133,34 +140,41 @@ const editPopupVisible = ref(false)
 const editPopupPreset = ref(null)
 const editPopupIndex = ref(-1)
 
+// Single-flight guard: while a recipe load is in flight, further recipe taps
+// are ignored (never queued) and the widget controls are visually disabled so a
+// user can't start an old workflow while a new one is still being resolved.
+const recipeSelectionBusy = ref(false)
+provide('recipeSelectionBusy', recipeSelectionBusy)
+
 async function onComboSelect(index) {
-  if (!settings) return
+  if (!settings || recipeSelectionBusy.value) return
   const combo = workflowCombos.value[index]
   if (!combo) return
-
-  const previousIndex = settings.settings.selectedWorkflowCombo
-  // Optimistic selection — reverted below if the workflow update fails.
-  settings.settings.selectedWorkflowCombo = index
-
-  const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans, toast })
-
-  if (Object.keys(update).length === 0) {
-    toast?.success(`Loaded ${combo.name || 'combo'}`)
-    return
-  }
-
+  recipeSelectionBusy.value = true
   try {
-    await updateWorkflow(update)
-    // Mirror the server-confirmed workflow back into the local settings
-    // cache so SteamPage / FlushPage / HotWaterPage read the freshly applied
-    // values (and any clamping the gateway may have applied).
-    operationSettings?.syncFromWorkflow?.()
+    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans })
+    if (Object.keys(update).length > 0) {
+      await updateWorkflow(update)
+      // Mirror the server-confirmed workflow back into the local settings
+      // cache so SteamPage / FlushPage / HotWaterPage read the freshly applied
+      // values (and any clamping the gateway may have applied).
+      operationSettings?.syncFromWorkflow?.()
+    }
+    // Commit the selection ONLY after the load succeeded — never optimistically.
+    // selectedWorkflowCombo is auto-persisted with an 800ms debounce: a slow
+    // load (bean/profile lookup or PUT past that debounce) that then failed or
+    // lost the app would otherwise leave a stored baseline for a recipe that
+    // was never applied to the gateway (the boot path no longer auto-applies
+    // the selected recipe, so the mismatch would survive restart).
+    settings.settings.selectedWorkflowCombo = index
     toast?.success(`Loaded ${combo.name || 'combo'}`)
   } catch {
-    // Revert the optimistic selection so the UI doesn't lie about which
-    // combo is active when the gateway rejected the update.
-    settings.settings.selectedWorkflowCombo = previousIndex
-    toast?.error(`Failed to load ${combo.name || 'combo'}`)
+    // A referenced profile/bean/batch could not resolve, or the gateway
+    // rejected the update — never publish partial state; keep the previous
+    // selection (nothing was committed above, so nothing to revert).
+    toast?.error(`Could not load ${combo.name || 'combo'}`)
+  } finally {
+    recipeSelectionBusy.value = false
   }
 }
 
@@ -195,28 +209,28 @@ function onComboEditCancel() {
   editPopupVisible.value = false
 }
 
-async function startEspresso() {
+// Starts never navigate. Success is followed by the machine reporting the
+// new state over WS, and App.vue's machine-state watcher then navigates.
+// A failed start therefore leaves the user on the idle page (with an error
+// toast) instead of stranding them on an operation page that never started.
+function startEspresso() {
   if (!isReady.value) return
-  await setMachineState('espresso').catch(() => {})
-  router.push('/espresso')
+  userMachineCommand('espresso', toast)
 }
 
-async function startSteam() {
+function startSteam() {
   if (!isReady.value) return
-  await setMachineState('steam').catch(() => {})
-  router.push('/steam')
+  userMachineCommand('steam', toast)
 }
 
-async function startHotWater() {
+function startHotWater() {
   if (!isReady.value) return
-  await setMachineState('hotWater').catch(() => {})
-  router.push('/hotwater')
+  userMachineCommand('hotWater', toast)
 }
 
-async function startFlush() {
+function startFlush() {
   if (!isReady.value) return
-  await setMachineState('flush').catch(() => {})
-  router.push('/flush')
+  userMachineCommand('flush', toast)
 }
 
 // ---- Layout helpers ----
@@ -298,12 +312,6 @@ onMounted(() => {
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
         :selected-workflow-combo-modified="selectedComboModified"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
         v-on="widgetEvents"
       />
     </div>
@@ -319,12 +327,6 @@ onMounted(() => {
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
         :selected-workflow-combo-modified="selectedComboModified"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
         v-on="widgetEvents"
       />
     </div>
@@ -484,6 +486,15 @@ onMounted(() => {
       "bottom-left"
       "bottom-right";
     gap: var(--spacing-medium);
+  }
+
+  /* Let the stacked center rows size to their content so a tall mobile home
+     stacks cleanly (page scrolls) instead of one column overflowing into the
+     next row and overlapping its widgets. */
+  .idle-page__center-left,
+  .idle-page__center-right {
+    min-height: auto;
+    justify-content: flex-start;
   }
 
   .idle-page--center-left-only {

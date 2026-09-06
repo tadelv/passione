@@ -31,6 +31,10 @@ const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
 const updateWorkflow = inject('updateWorkflow', null)
 const toast = inject('toast', null)
+// Provided by IdlePage — true while a recipe is being loaded into the live
+// workflow. Guarded here (defense in depth) so a write issued from an
+// already-open popup never races the in-flight recipe load.
+const recipeSelectionBusy = inject('recipeSelectionBusy', ref(false))
 
 const busyId = ref(null)
 
@@ -68,6 +72,7 @@ const sortedBeans = computed(() => {
 
 async function pick(bean) {
   if (!updateWorkflow) return
+  if (recipeSelectionBusy.value) return // single-flight: never write during a recipe load
   busyId.value = bean.id
   try {
     const batchId = activeBatches.value[bean.id] ?? null
@@ -90,6 +95,7 @@ async function pick(bean) {
 
 async function clearCoffee() {
   if (!updateWorkflow) return
+  if (recipeSelectionBusy.value) return // single-flight: never write during a recipe load
   busyId.value = '__clear__'
   try {
     await updateWorkflow({

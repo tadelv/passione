@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import BottomBar from '../components/BottomBar.vue'
 import { getShotsPaginated, getShot } from '../api/rest.js'
 import { normalizeShotSlim } from '../composables/useShotNormalize'
+import { buildShotWorkflowUpdate } from '../composables/useComboApply'
 
 const router = useRouter()
 const toast = inject('toast', null)
@@ -178,47 +179,18 @@ async function loadShotWorkflow(shot) {
     if (toast) toast.warning('No profile data available for this shot')
     return
   }
-  let profile = null
   let full = null
   try {
     full = await getShot(id)
-    profile = full?.profile || full?.workflow?.profile || null
   } catch {
-    // fall through — profile stays null, handled below
-  }
-  if (!profile) {
     if (toast) toast.warning('No profile data available for this shot')
     return
   }
   try {
-    const update = { profile }
-
-    // Restore full workflow context from the shot (coffee, grinder, dose).
-    // Prefer the entity IDs over text — once the bean/grinder records are
-    // linked, the gateway and consumers read live from the records. Falling
-    // back to text only when no link exists keeps manual-entry shots working.
-    const srcCtx = full?.workflow?.context ?? {}
-    const context = {}
-    if (srcCtx.beanBatchId) context.beanBatchId = srcCtx.beanBatchId
-    if (srcCtx.grinderId) context.grinderId = srcCtx.grinderId
-    if (!context.beanBatchId) {
-      if (shot.coffeeName) context.coffeeName = shot.coffeeName
-      if (shot.coffeeRoaster) context.coffeeRoaster = shot.coffeeRoaster
-    }
-    if (!context.grinderId) {
-      if (shot.grinderModel) context.grinderModel = shot.grinderModel
-      if (shot.grinderSetting != null) context.grinderSetting = String(shot.grinderSetting)
-    }
-    if (shot.doseIn) context.targetDoseWeight = shot.doseIn
-    if (shot.doseOut) context.targetYield = shot.doseOut
-    const srcExtras = srcCtx.extras ?? {}
-    const extras = {}
-    if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
-    if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
-    if (srcExtras.basketType != null) extras.basketType = srcExtras.basketType
-    if (Object.keys(extras).length > 0) context.extras = extras
-    if (Object.keys(context).length > 0) update.context = context
-
+    // Shared shot→workflow builder (also used by the home last-shot Repeat)
+    // so both entry points restore identical next-shot parameters. On failure
+    // it throws rather than publishing a mixed identity.
+    const update = await buildShotWorkflowUpdate(full, { beans: beansApi, toast })
     await updateWorkflow(update)
     if (toast) toast.success('Workflow loaded from shot')
     router.push('/')

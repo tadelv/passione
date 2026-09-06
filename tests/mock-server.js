@@ -45,6 +45,31 @@ const mockWorkflow = {
   },
 }
 
+// Gateway parity: drop TOP-LEVEL null keys of workflow.context (WorkflowContext
+// .toJson omits them). Never recurses into extras — map null values round-trip.
+function stripNullContextKeys(wf) {
+  const ctx = wf && wf.context
+  if (ctx && typeof ctx === 'object') {
+    for (const k of Object.keys(ctx)) {
+      if (ctx[k] === null) delete ctx[k]
+    }
+  }
+}
+
+// Gateway parity: the real /workflow PUT deep-merges the request into the
+// current workflow (deepMergeJson), so an omitted field retains its previous
+// value while an explicit null sets it null. Mirror that recursively in place.
+function deepMergeWorkflow(target, patch) {
+  for (const [k, v] of Object.entries(patch ?? {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v) &&
+        target[k] && typeof target[k] === 'object' && !Array.isArray(target[k])) {
+      deepMergeWorkflow(target[k], v)
+    } else {
+      target[k] = v
+    }
+  }
+}
+
 const mockSnapshot = {
   timestamp: new Date().toISOString(),
   state: { state: 'idle', substate: 'ready' },
@@ -419,11 +444,19 @@ function routeApi(path, method, body, res, url, headers = {}) {
   }
 
   // Workflow
+  // Mirror the real gateway: WorkflowContext.toJson omits null fields, so after
+  // storage and on every GET/PUT echo, drop TOP-LEVEL context keys whose value
+  // is null (do NOT recurse — extras map null values survive the Dart round-trip).
   if (path === '/api/v1/workflow' && method === 'GET') {
+    stripNullContextKeys(mockWorkflow)
     return json(mockWorkflow)
   }
   if (path === '/api/v1/workflow' && method === 'PUT') {
-    if (body) Object.assign(mockWorkflow, body)
+    // Deep merge (the real gateway merges the request into the current
+    // workflow, so an omitted context field must retain its previous value
+    // instead of being discarded by a shallow replace).
+    if (body) deepMergeWorkflow(mockWorkflow, body)
+    stripNullContextKeys(mockWorkflow)
     return json(mockWorkflow)
   }
 

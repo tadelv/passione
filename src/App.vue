@@ -25,16 +25,13 @@ import { useOperationSettings } from './composables/useOperationSettings.js'
 import { useToast } from './composables/useToast.js'
 import { useConnectionError } from './composables/useConnectionError.js'
 import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
-import { bootReady } from './composables/useBootReady.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
 import { useShotCache } from './composables/useShotCache'
-import { useProfilesCache } from './composables/useProfilesCache'
 import { useMachineCapabilities } from './composables/useMachineCapabilities'
 import { useMilkProbe } from './composables/useMilkProbe'
-import { buildComboUpdate } from './composables/useComboApply.js'
-import { isComboModifiedVsWorkflow } from './composables/useComboDirty.js'
-import { setMachineState, getLatestShot } from './api/rest.js'
+import { userMachineCommand } from './composables/useMachineCommand.js'
+import { getLatestShot } from './api/rest.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -53,7 +50,6 @@ const shotData = useShotData()
 const beansComposable = useBeans()
 const grindersComposable = useGrinders()
 const shotCache = useShotCache()
-const profilesCache = useProfilesCache()
 const machineCapabilities = useMachineCapabilities()
 const milkProbe = useMilkProbe()
 
@@ -554,18 +550,28 @@ function onKeyDown(e) {
   // Ignore during layout editing
   if (editingLayout.value) return
 
-  // Screensaver: any key wakes (like Decenza)
-  if (machine.state.value === 'sleeping' && route.path === '/screensaver') {
-    e.preventDefault()
-    setMachineState('idle').catch(() => {})
-    return
-  }
+  // Only unmodified, user-initiated keys are appliance shortcuts. Browser
+  // and app chords (Ctrl/Cmd/Alt+…), IME composition, OS key auto-repeat,
+  // and keys another handler already consumed must pass through untouched —
+  // otherwise Ctrl/Cmd+W/F/S would start operations and closing the app
+  // would become a machine command.
+  if (e.defaultPrevented) return
+  if (e.isComposing) return
+  if (e.repeat) return
+  if (e.ctrlKey || e.metaKey || e.altKey) return
 
   // Ignore when typing in input fields (incl. custom spinbutton controls like
   // ValueInput, whose root is a div[role=spinbutton] — otherwise keys like
   // '0'-'4'/'h' typed while adjusting a value trigger the operation/nav
   // shortcuts and start operations or navigate away).
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable || e.target.closest?.('[role="spinbutton"]')) {
+    return
+  }
+
+  // Screensaver: any key wakes (like Decenza)
+  if (machine.state.value === 'sleeping' && route.path === '/screensaver') {
+    e.preventDefault()
+    userMachineCommand('idle', toast)
     return
   }
 
@@ -579,27 +585,27 @@ function onKeyDown(e) {
       case 'e':
       case '2':
         e.preventDefault()
-        setMachineState('espresso').catch(() => {})
+        userMachineCommand('espresso', toast)
         return
       case 's':
       case '3':
         e.preventDefault()
-        setMachineState('steam').catch(() => {})
+        userMachineCommand('steam', toast)
         return
       case 'w':
       case '4':
         e.preventDefault()
-        setMachineState('hotWater').catch(() => {})
+        userMachineCommand('hotWater', toast)
         return
       case 'f':
       case '1':
         e.preventDefault()
-        setMachineState('flush').catch(() => {})
+        userMachineCommand('flush', toast)
         return
       case 'p':
       case '0':
         e.preventDefault()
-        setMachineState('sleeping').catch(() => {})
+        userMachineCommand('sleeping', toast)
         return
     }
   }
@@ -609,7 +615,7 @@ function onKeyDown(e) {
     if (key === ' ' || key === 'escape' || key === 'backspace' || key === 'i') {
       e.preventDefault()
       markUserStop()
-      setMachineState('idle').catch(() => {})
+      userMachineCommand('idle', toast)
       return
     }
   }
@@ -619,7 +625,7 @@ function onKeyDown(e) {
     switch (key) {
       case 'i':
         e.preventDefault()
-        setMachineState('idle').catch(() => {})
+        userMachineCommand('idle', toast)
         return
       case 'h':
         e.preventDefault()
@@ -647,32 +653,6 @@ function onKeyDown(e) {
   }
 }
 
-// Push the last-selected recipe onto the live workflow at boot. A fresh
-// gateway boot starts with its own default/empty workflow, which would
-// otherwise silently disagree with whatever recipe pill the skin shows as
-// selected. Skipped when the workflow already matches (isComboModifiedVsWorkflow)
-// so a boot that already agrees with the gateway doesn't fire a redundant PUT.
-async function applySelectedComboOnBoot() {
-  const idx = settings.settings.selectedWorkflowCombo
-  const combo = settings.settings.workflowCombos?.[idx]
-  if (idx == null || idx < 0 || !combo) return
-  if (!isComboModifiedVsWorkflow(combo, workflow)) return
-
-  // Boot-quiet: profile/bean lookups are REST calls, not user-blocking on
-  // first render — firing them before the machine WS is up starves BLE
-  // pairing on the Teclast host (see CLAUDE.md Boot-quiet section).
-  await bootReady()
-
-  try {
-    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans: beansComposable, toast })
-    if (Object.keys(update).length > 0) {
-      await updateWorkflow(update)
-    }
-  } catch {
-    toast?.error(`Failed to load ${combo.name || 'recipe'}`)
-  }
-}
-
 onMounted(async () => {
   document.addEventListener('keydown', onKeyDown)
   // Suppress native context menu globally — this is a dedicated appliance UI,
@@ -687,7 +667,12 @@ onMounted(async () => {
   let synced = false
   try {
     await Promise.all([settings.load(), workflowReady])
-    await applySelectedComboOnBoot()
+    // The gateway's live workflow is authoritative at startup — there is no
+    // recipe write here. syncFromWorkflow() copies workflow steam/hotwater/
+    // flush values into settings so the operation pages match the machine;
+    // it reads only, it does not PUT the workflow back. The selected recipe
+    // stays a pure comparison baseline for the modified dot on the home
+    // screen (isComboModifiedVsWorkflow) rather than something to re-load.
     operationSettings.syncFromWorkflow()
     synced = true
   } finally {

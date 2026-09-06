@@ -31,6 +31,7 @@
     "saveAsNew": "Save as New Recipe",
     "toastSaved": "Saved to {name}",
     "toastCreated": "Created {name}",
+    "applyFailed": "Failed to apply this change to the machine",
     "newRecipeName": "New Recipe",
     "newRecipe": "+ New",
     "editRecipe": "Edit recipe",
@@ -92,6 +93,7 @@
     "machine": "Machine",
     "sleep": "Sleep",
     "pickCoffee": "Pick coffee",
+    "configuredBrewTemp": "{temp}°C configured brew",
     "clearCoffee": "Clear",
     "noBeans": "No beans yet.",
     "openCatalog": "Open catalog"

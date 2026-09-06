@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
-import { setMachineState, getLatestShot, getShot } from '../api/rest.js'
+import { getLatestShot, getShot } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 import ShotSilhouette from '../components/ShotSilhouette.vue'
 import ScreensaverWaterWarning from '../components/ScreensaverWaterWarning.vue'
 import UpdateAvailableBanner from '../components/UpdateAvailableBanner.vue'
@@ -10,6 +11,7 @@ import { useUpdateAvailable } from '../composables/useUpdateAvailable'
 const settingsInstance = inject('settings', null)
 const settings = settingsInstance?.settings
 const display = inject('display', null)
+const toast = inject('toast', null)
 
 // Clock state
 const hours = ref('00')
@@ -66,7 +68,7 @@ function updateClock() {
 }
 
 function wake() {
-  setMachineState('idle').catch(() => {})
+  userMachineCommand('idle', toast)
 }
 
 // Last Shot data

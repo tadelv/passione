@@ -11,8 +11,9 @@ import { useI18n } from 'vue-i18n'
 import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import BeanPickerPopup from './BeanPickerPopup.vue'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { buildShotWorkflowUpdate } from '../composables/useComboApply'
 import { useShotCache } from '../composables/useShotCache'
 import { bootReady } from '../composables/useBootReady'
 import { espressoIcon, steamIcon, hotWaterIcon, flushIcon } from '../assets/icons/operations.js'
@@ -73,6 +74,12 @@ const devices = inject('devices', null)
 const updateWorkflow = inject('updateWorkflow', null)
 const toast = inject('toast', null)
 const workflow = inject('workflow', null)
+const beansApi = inject('beansApi', null)
+// Provided by IdlePage — true while a recipe is being loaded into the live
+// workflow; the widget disables operation starts + recipe taps so a user can't
+// start the old workflow while the new one is still resolving.
+const recipeSelectionBusy = inject('recipeSelectionBusy', ref(false))
+const recipeBusy = computed(() => !!recipeSelectionBusy.value)
 
 // Bean picker popup state — opened from the coffee row of the shotPlan widget.
 const beanPickerOpen = ref(false)
@@ -82,8 +89,14 @@ const currentBatchId = computed(() => {
 })
 
 function onCoffeeRowClick() {
+  if (recipeBusy.value) return // single-flight: never open while a recipe load is resolving
   beanPickerOpen.value = true
 }
+
+// Group shot-plan lines by interaction: coffee → picker, config → editor, ops status-only.
+const coffeeLine = computed(() => props.shotPlanLines.find((l) => l.kind === 'coffee') || null)
+const configLines = computed(() => props.shotPlanLines.filter((l) => ['dose', 'grinder', 'temperature'].includes(l.kind)))
+const opsLine = computed(() => props.shotPlanLines.find((l) => l.kind === 'ops') || null)
 
 // ---- Last Shot ----
 //
@@ -97,6 +110,9 @@ function onCoffeeRowClick() {
 const shotCache = useShotCache()
 const lastShot = shotCache.latest
 const machineState = inject('machineState', ref(''))
+const shotDetailHref = computed(() =>
+  lastShot.value ? `#/shot/${encodeURIComponent(lastShot.value.id)}` : null
+)
 
 // Defer the initial fetch until the machine WS is up — see useBootReady.
 // The espresso→idle invalidation lives in App.vue (the widget is unmounted
@@ -147,35 +163,23 @@ const lastShotInfo = computed(() => {
 })
 
 async function repeatLastShot() {
+  if (recipeBusy.value) return // single-flight: never PUT while a recipe load is resolving
   const raw = lastShot.value
   if (!raw) return
-  const s = normalizeShot(raw)
-  const profile = raw.profile || raw.workflow?.profile
-  if (!profile) {
-    toast?.warning('No profile data available for this shot')
-    return
-  }
   try {
-    const update = { profile }
-    const context = {}
-    if (s.coffeeName) context.coffeeName = s.coffeeName
-    if (s.coffeeRoaster) context.coffeeRoaster = s.coffeeRoaster
-    if (s.grinderModel) context.grinderModel = s.grinderModel
-    if (s.grinderSetting != null) context.grinderSetting = String(s.grinderSetting)
-    if (s.doseIn) context.targetDoseWeight = s.doseIn
-    if (s.doseOut) context.targetYield = s.doseOut
-    const srcExtras = raw.workflow?.context?.extras ?? {}
-    const extras = {}
-    if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
-    if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
-    if (srcExtras.basketType != null) extras.basketType = srcExtras.basketType
-    if (Object.keys(extras).length > 0) context.extras = extras
-    if (Object.keys(context).length > 0) update.context = context
+    // Shared shot→workflow builder (also used by History Load) so Repeat and
+    // Load restore identical next-shot parameters. Scope: profile + context —
+    // never toggles steam/flush/hot-water.
+    const update = await buildShotWorkflowUpdate(raw, { beans: beansApi, toast })
     await updateWorkflow(update)
-    toast?.success('Workflow loaded from last shot')
+    if (toast) toast.success('Workflow loaded from last shot')
   } catch {
-    toast?.error('Failed to load workflow')
+    if (toast) toast.error('Failed to load workflow')
   }
+}
+
+function onSleep() {
+  userMachineCommand('sleeping', toast)
 }
 </script>
 
@@ -184,58 +188,65 @@ async function repeatLastShot() {
     <!-- Action buttons -->
     <template v-if="type === 'actionButtons'">
       <div class="layout-widget__actions">
-        <ActionButton :icon="espressoIcon" :label="t('idle.espresso')" :disabled="!isReady" @click="emit('start-espresso')" />
-        <ActionButton :icon="steamIcon" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady" @click="emit('start-steam')" />
-        <ActionButton :icon="hotWaterIcon" :label="t('idle.hotWater')" color="var(--color-flow)" :disabled="!isReady" @click="emit('start-hot-water')" />
-        <ActionButton :icon="flushIcon" :label="t('idle.flush')" color="var(--color-success)" :disabled="!isReady" @click="emit('start-flush')" />
+        <ActionButton :icon="espressoIcon" :label="t('idle.espresso')" :disabled="!isReady || recipeBusy" @click="emit('start-espresso')" />
+        <ActionButton :icon="steamIcon" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady || recipeBusy" @click="emit('start-steam')" />
+        <ActionButton :icon="hotWaterIcon" :label="t('idle.hotWater')" color="var(--color-flow)" :disabled="!isReady || recipeBusy" @click="emit('start-hot-water')" />
+        <ActionButton :icon="flushIcon" :label="t('idle.flush')" color="var(--color-success)" :disabled="!isReady || recipeBusy" @click="emit('start-flush')" />
       </div>
     </template>
 
     <!-- Shot plan -->
     <template v-else-if="type === 'shotPlan'">
-      <div class="layout-widget__shot-plan" role="button" tabindex="0" @click="router.push('/recipe/edit')" @keydown.enter="router.push('/recipe/edit')" @keydown.space.prevent="router.push('/recipe/edit')">
-        <div v-if="profileName" class="layout-widget__profile" @click.stop="router.push('/profiles')">
-          {{ profileName }}
+      <div class="layout-widget__shot-plan">
+        <!-- Profile → profiles catalog. -->
+        <button
+          v-if="profileName"
+          type="button"
+          class="layout-widget__profile"
+          :aria-label="`Profile: ${profileName}`"
+          @click="router.push('/profiles')"
+        >{{ profileName }}</button>
+
+        <!-- Coffee row: own target, opens the bean picker. -->
+        <button
+          v-if="coffeeLine"
+          type="button"
+          class="layout-widget__plan-text layout-widget__plan-text--coffee"
+          :aria-label="t('idle.pickCoffee') || 'Pick coffee'"
+          :disabled="recipeBusy"
+          @click="onCoffeeRowClick"
+        >
+          <span>{{ coffeeLine.text || (t('idle.pickCoffee') || 'Pick coffee') }}</span>
+          <svg class="layout-widget__plan-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        <!-- Dose/grinder/temperature recipe summary → recipe editor. -->
+        <a
+          v-if="configLines.length"
+          class="layout-widget__plan-summary"
+          href="#/recipe/edit"
+          :aria-label="t('recipe.editRecipe')"
+        >
+          <template v-for="(line, i) in configLines" :key="i">
+            <div :class="['layout-widget__plan-text', `layout-widget__plan-text--${line.kind}`]">
+              {{ line.text }}
+            </div>
+          </template>
+        </a>
+
+        <!-- Operations row: condensed icon-prefixed chips — status only, not a target. -->
+        <div v-if="opsLine" class="layout-widget__plan-ops">
+          <span
+            v-for="entry in opsLine.entries"
+            :key="entry.op"
+            :class="['layout-widget__plan-op', `layout-widget__plan-op--${entry.op}`]"
+          >
+            <span class="layout-widget__plan-op-icon" v-html="OP_ICONS[entry.op]" aria-hidden="true" />
+            <span class="layout-widget__plan-op-text">{{ entry.text }}</span>
+          </span>
         </div>
-        <template v-for="(line, i) in shotPlanLines" :key="i">
-          <!-- Coffee row: tappable, opens bean picker. Always rendered so the
-               affordance is reachable even when no coffee is selected yet. -->
-          <div
-            v-if="line.kind === 'coffee'"
-            class="layout-widget__plan-text layout-widget__plan-text--coffee"
-            role="button"
-            tabindex="0"
-            :aria-label="t('idle.pickCoffee') || 'Pick coffee'"
-            @click.stop="onCoffeeRowClick"
-            @keydown.enter.stop.prevent="onCoffeeRowClick"
-            @keydown.space.stop.prevent="onCoffeeRowClick"
-          >
-            <span>{{ line.text || (t('idle.pickCoffee') || 'Pick coffee') }}</span>
-            <svg class="layout-widget__plan-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-          <!-- Operations row: condensed icon-prefixed chips for steam/hotwater/flush. -->
-          <div
-            v-else-if="line.kind === 'ops'"
-            class="layout-widget__plan-ops"
-          >
-            <span
-              v-for="entry in line.entries"
-              :key="entry.op"
-              :class="['layout-widget__plan-op', `layout-widget__plan-op--${entry.op}`]"
-            >
-              <span class="layout-widget__plan-op-icon" v-html="OP_ICONS[entry.op]" aria-hidden="true" />
-              <span class="layout-widget__plan-op-text">{{ entry.text }}</span>
-            </span>
-          </div>
-          <div
-            v-else
-            :class="['layout-widget__plan-text', `layout-widget__plan-text--${line.kind}`]"
-          >
-            {{ line.text }}
-          </div>
-        </template>
       </div>
       <BeanPickerPopup
         :visible="beanPickerOpen"
@@ -246,11 +257,16 @@ async function repeatLastShot() {
 
     <!-- Last Shot -->
     <template v-else-if="type === 'lastShot'">
-      <div v-if="lastShot" class="layout-widget__last-shot" role="button" tabindex="0" @click="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)" @keydown.enter="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)" @keydown.space.prevent="router.push(`/shot/${encodeURIComponent(lastShot.id)}`)">
+      <div v-if="lastShot" class="layout-widget__last-shot">
         <span class="layout-widget__section-label">Last Shot</span>
-        <div class="layout-widget__last-shot-card">
+        <!-- Detail link wraps chart + summary only (never Repeat). -->
+        <a
+          class="layout-widget__last-shot-card"
+          :href="shotDetailHref"
+          :aria-label="lastShotInfo.profile || 'View last shot'"
+        >
           <div class="layout-widget__last-shot-chart">
-            <HistoryShotGraph :shot="lastShot" />
+            <HistoryShotGraph :shot="lastShot" compact />
           </div>
           <div class="layout-widget__last-shot-info">
             <span v-if="lastShotInfo.profile" class="layout-widget__last-shot-profile">{{ lastShotInfo.profile }}</span>
@@ -258,9 +274,10 @@ async function repeatLastShot() {
             <span v-if="lastShotInfo.dose" class="layout-widget__last-shot-detail">{{ lastShotInfo.dose }}</span>
             <span v-if="lastShotInfo.grinder" class="layout-widget__last-shot-detail">{{ lastShotInfo.grinder }}</span>
             <span v-if="lastShotInfo.duration" class="layout-widget__last-shot-detail">{{ lastShotInfo.duration }}</span>
-            <button class="layout-widget__repeat-btn" @click.stop="repeatLastShot" aria-label="Repeat last shot">Repeat</button>
           </div>
-        </div>
+        </a>
+        <!-- Repeat: sibling of the detail link (load-only). -->
+        <button class="layout-widget__repeat-btn" :disabled="recipeBusy" @click="repeatLastShot" aria-label="Repeat last shot">Repeat</button>
       </div>
     </template>
 
@@ -277,6 +294,7 @@ async function repeatLastShot() {
           :selected-index="selectedWorkflowCombo"
           :edit-enabled="true"
           :confirm-activate="false"
+          :disabled="recipeBusy"
           :modified="selectedWorkflowComboModified"
           @select="idx => emit('workflow-combo-select', idx)"
           @edit="idx => emit('workflow-combo-edit', idx)"
@@ -299,7 +317,7 @@ async function repeatLastShot() {
       <div class="layout-widget__sleep">
         <button
           class="layout-widget__nav-btn layout-widget__nav-btn--sleep"
-          @click="setMachineState('sleeping').catch(() => {})"
+          @click="onSleep"
         >{{ t('idle.sleep') }}</button>
       </div>
     </template>
@@ -354,12 +372,27 @@ async function repeatLastShot() {
 }
 
 .layout-widget__profile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--font-title);
   font-weight: bold;
   color: var(--color-text);
   text-align: center;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 8px;
+}
+
+.layout-widget__profile:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-button);
 }
 
 .layout-widget__plan-text {
@@ -374,15 +407,34 @@ async function repeatLastShot() {
   opacity: 0.7;
 }
 
-/* Coffee row — bean picker affordance with chevron. */
+/* Coffee row — bean picker affordance with chevron (own native button). */
 .layout-widget__plan-text--coffee {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 4px 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: none;
   border-radius: 999px;
+  box-sizing: border-box;
   background: var(--color-surface-pressed, rgba(255, 255, 255, 0.05));
   color: var(--color-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Dose/grinder/temperature recipe summary → recipe editor. */
+.layout-widget__plan-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .layout-widget__plan-chevron {
@@ -399,7 +451,7 @@ async function repeatLastShot() {
   margin-top: 2px;
   font-size: var(--font-caption);
   color: var(--color-text-secondary);
-  cursor: pointer; /* parent click goes to recipe editor */
+  cursor: default; /* status-only — does not open the recipe editor */
 }
 
 .layout-widget__plan-op {
@@ -437,7 +489,6 @@ async function repeatLastShot() {
   align-items: center;
   gap: 4px;
   width: 100%;
-  cursor: pointer;
 }
 
 .layout-widget__last-shot-card {
@@ -445,6 +496,10 @@ async function repeatLastShot() {
   gap: var(--spacing-medium);
   width: 100%;
   max-width: 700px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .layout-widget__last-shot-chart {
@@ -482,8 +537,13 @@ async function repeatLastShot() {
 
 .layout-widget__repeat-btn {
   margin-top: 4px;
-  padding: 6px 16px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 18px;
+  border-radius: 8px;
   border: 1px solid var(--color-primary);
   background: transparent;
   color: var(--color-primary);
@@ -496,6 +556,16 @@ async function repeatLastShot() {
 
 .layout-widget__repeat-btn:active {
   opacity: 0.7;
+}
+
+.layout-widget__repeat-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.layout-widget__plan-text--coffee:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---- Preset sections ---- */
@@ -596,12 +666,18 @@ async function repeatLastShot() {
 }
 
 .layout-widget__scale-btn {
-  padding: 4px 12px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  box-sizing: border-box;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
-  font-size: var(--font-sm);
+  font-size: var(--font-md);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -630,8 +706,14 @@ async function repeatLastShot() {
 }
 
 .layout-widget__nav-btn {
-  padding: 8px 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 20px;
   border-radius: 8px;
+  box-sizing: border-box;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-secondary);
@@ -665,12 +747,15 @@ async function repeatLastShot() {
   }
 
   .layout-widget__last-shot-chart {
-    height: 140px;
+    flex: none;
+    width: 100%;
+    height: 150px;
   }
 
   .layout-widget__last-shot-info {
     min-width: 0;
     max-width: none;
+    width: 100%;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 4px 12px;

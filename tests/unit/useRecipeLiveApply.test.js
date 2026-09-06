@@ -16,6 +16,59 @@ import { strict as assert } from 'node:assert'
 import { ref, reactive } from 'vue'
 import { useRecipeLiveApply } from '../../src/composables/useRecipeLiveApply.js'
 
+function makeLiveApplyHarness() {
+  const workflow = reactive({ profile: null, context: { extras: {} } })
+  const refs = {
+    brewTemperature: ref(93),
+    coffeeName: ref(''), roaster: ref(''), grinder: ref(''), grinderSetting: ref(''),
+    doseIn: ref(18), doseOut: ref(36), profileId: ref(null), profileTitle: ref(''),
+    grinderRpm: ref(1200), basketSize: ref(18), basketType: ref(''),
+    includeSteam: ref(false), steamDuration: ref(30), steamFlow: ref(1.5), steamTemperature: ref(160),
+    includeFlush: ref(false), flushDuration: ref(5), flushFlowRate: ref(6),
+    includeHotWater: ref(false), hotWaterVolume: ref(200), hotWaterTemperature: ref(80),
+    selectedGrinderId: ref(null),
+    updating: ref(false),
+  }
+  const errorCalls = []
+  const toast = { error: (m) => errorCalls.push(m) }
+  let failNext = true
+  const updateWorkflow = async () => {
+    if (failNext) throw new Error('gateway rejected')
+  }
+  const ctx = {
+    settings: { settings: { steamFlow: 1.5, flushFlowRate: 6, flushTemperature: 90, hotWaterTemperature: 80, hotWaterFlow: 6, showGrinderRpm: false, showBasketData: false } },
+    workflow,
+    updateWorkflow,
+    toast,
+    t: null,
+    selectedBeanId: ref(null), selectedBatchId: ref(null), selectedGrinder: ref(null), linkedBean: ref(null),
+    pickBrewTempFromProfile: () => null,
+  }
+  const { applyToLiveWorkflow } = useRecipeLiveApply(refs, ctx)
+  return { applyToLiveWorkflow, errorCalls, setFailNext: (v) => { failNext = v } }
+}
+
+describe('applyToLiveWorkflow — error surfacing', () => {
+  it('surfaces one error per consecutive-failure run and resets after success', async () => {
+    const { applyToLiveWorkflow, errorCalls, setFailNext } = makeLiveApplyHarness()
+
+    // Two failures in a row: only ONE toast (no spam per failed PUT).
+    setFailNext(true)
+    await applyToLiveWorkflow()
+    await applyToLiveWorkflow()
+    assert.equal(errorCalls.length, 1)
+
+    // A success resets the run, so a later failure may toast again.
+    setFailNext(false)
+    await applyToLiveWorkflow()
+    assert.equal(errorCalls.length, 1)
+
+    setFailNext(true)
+    await applyToLiveWorkflow()
+    assert.equal(errorCalls.length, 2)
+  })
+})
+
 function makeHarness() {
   const workflow = reactive({ profile: null })
   const refs = {
@@ -27,6 +80,7 @@ function makeHarness() {
     includeFlush: ref(false), flushDuration: ref(5), flushFlowRate: ref(6),
     includeHotWater: ref(false), hotWaterVolume: ref(200), hotWaterTemperature: ref(80),
     selectedGrinderId: ref(null),
+    updating: ref(false),
   }
   const ctx = {
     settings: { settings: {} },

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import ShotGraph from '../components/ShotGraph.vue'
 import PhaseTimeline from '../components/PhaseTimeline.vue'
 import CupFillView from '../components/CupFillView.vue'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 
 const router = useRouter()
 
@@ -105,14 +105,32 @@ async function skipStep() {
   }
 }
 
-async function stopAndGoBack() {
-  markUserStop?.()
-  try {
-    await setMachineState('idle')
-  } catch {
-    // Navigation will happen via auto-nav watcher in App.vue
+// User asked to stop: once the machine is *observed* idle we leave the
+// espresso page. This is an intent set on click and consumed by the watcher
+// below; the HTTP response is only evidence a write was accepted, never
+// grounds for navigation. Because the watcher is set up here (not after an
+// awaited response), navigating away mid-request tears it down with the
+// component — a late Stop response cannot redirect from an unmounted page or
+// leave an orphan watcher behind.
+const leaveWhenIdle = ref(false)
+watch(machineState, (state) => {
+  if (state === 'idle' && leaveWhenIdle.value) {
+    leaveWhenIdle.value = false
+    router.push('/')
   }
-  router.push('/')
+})
+
+async function stopAndGoBack() {
+  // Machine is already idle (lingering espresso page after a finished shot):
+  // just leave — no unnecessary machine command, no overlay dance.
+  if (machineState.value === 'idle') {
+    router.push('/')
+    return
+  }
+  markUserStop?.()
+  leaveWhenIdle.value = true
+  const stopped = await userMachineCommand('idle', toast)
+  if (!stopped) leaveWhenIdle.value = false // failed → stay; Stop stays available for retry
 }
 </script>
 

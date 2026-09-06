@@ -1,12 +1,13 @@
 <script setup>
 import { computed, inject, onMounted } from 'vue'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 
 const machineState = inject('machineState')
 const weight = inject('weight')
 const settings = inject('settings')
 const scale = inject('scale')
 const operationSettings = inject('operationSettings', null)
+const toast = inject('toast', null)
 
 const isDispensing = computed(() => machineState.value === 'hotWater')
 
@@ -36,11 +37,11 @@ onMounted(() => {
 })
 
 function stopHotWater() {
-  setMachineState('idle').catch(() => {})
+  userMachineCommand('idle', toast)
 }
 
 function startHotWater() {
-  setMachineState('hotWater').catch(() => {})
+  userMachineCommand('hotWater', toast)
 }
 </script>
 

@@ -1,11 +1,12 @@
 <script setup>
 import { computed, inject, onMounted } from 'vue'
-import { setMachineState } from '../api/rest.js'
+import { userMachineCommand } from '../composables/useMachineCommand.js'
 
 const machineState = inject('machineState')
 const shotTime = inject('shotTime')
 const settings = inject('settings')
 const operationSettings = inject('operationSettings', null)
+const toast = inject('toast', null)
 
 // Refresh local flush settings from the live workflow on mount so values
 // reflect any updates made elsewhere (workflow editor, other client).
@@ -30,11 +31,11 @@ const timerProgress = computed(() =>
 )
 
 function stopFlush() {
-  setMachineState('idle').catch(() => {})
+  userMachineCommand('idle', toast)
 }
 
 function startFlush() {
-  setMachineState('flush').catch(() => {})
+  userMachineCommand('flush', toast)
 }
 </script>
 
