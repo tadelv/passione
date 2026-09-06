@@ -329,4 +329,47 @@ test.describe('Recipe editor', () => {
     expect(wf?.context?.targetDoseWeight).toBe(20)
     expect(wf?.context?.targetYield).toBe(40)
   })
+
+  test('busy selection area is inert: keyboard cannot focus/mutate the form mid-selection', async ({ page, request }) => {
+    await loadAppAt(page, '/recipe/edit')
+    await page.waitForSelector('.recipe-pill-rail__pill', { timeout: 10000 })
+    await page.waitForTimeout(200)
+
+    // Hold the selection PUT open so the editable area stays busy while we
+    // probe for focus/mutation. A keyboard user must be unable to reach or
+    // change a field (or Save) during the pending selection.
+    await page.route('**/api/v1/workflow', async (route) => {
+      if (route.request().method() === 'PUT') {
+        await new Promise((r) => setTimeout(r, 1500))
+      }
+      await route.continue()
+    })
+
+    await page.locator('.recipe-pill-rail__pill').first().click()
+    await page.waitForTimeout(150)
+
+    const area = page.locator('.recipe-editor__area')
+    // Busy region is announced and native-inert (pointer + keyboard + focus).
+    expect(await area.evaluate((el) => el.hasAttribute('inert'))).toBe(true)
+    expect(await area.evaluate((el) => el.getAttribute('aria-busy'))).toBe('true')
+
+    // Trying to focus a form control inside the inert area must not move focus
+    // into it — the pending selection cannot be mutated by the keyboard.
+    const focusLandedInside = await page.evaluate(() => {
+      const el = document.querySelector('.recipe-editor__area')
+      const btn = el?.querySelector('[data-testid="recipe-doseIn"] .value-input__btn')
+      btn?.focus()
+      return el ? el.contains(document.activeElement) : false
+    })
+    expect(focusLandedInside).toBe(false)
+
+    // Release the PUT; the selection completes and busy clears.
+    await expect.poll(() => area.evaluate((el) => el.hasAttribute('inert'))).toBe(false)
+    await page.waitForTimeout(300)
+
+    // The form reflects the recipe's default dose — the keyboard probe never
+    // reached a control, so nothing was mutated (18, not 18.1).
+    const wf = await readWorkflow(request)
+    expect(wf?.context?.targetDoseWeight).toBe(18)
+  })
 })

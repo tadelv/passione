@@ -16,6 +16,8 @@ const props = defineProps({
   modified: { type: Boolean, default: false },
   /** Accessible label for the recipe list */
   ariaLabel: { type: String, default: 'Recipes' },
+  /** When true the recipe pills are inert (an intentional selection is loading) */
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['select', 'edit', 'new'])
@@ -33,6 +35,7 @@ const displayPresets = computed(() =>
 )
 
 function onClick(index, event) {
+  if (props.disabled) return
   // Double-tap → edit (event.detail is the native click count)
   if (event.detail >= 2) {
     emit('edit', index)
@@ -67,6 +70,7 @@ function onNew() {
           class="recipe-pill-rail__pill"
           role="option"
           :aria-selected="preset.index === selectedIndex"
+          :disabled="disabled"
           :aria-label="modified && preset.index === selectedIndex
             ? `${preset.display}, ${t('recipe.unsavedChanges')}`
             : undefined"

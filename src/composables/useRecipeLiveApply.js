@@ -1,5 +1,6 @@
 import { watch, onBeforeUnmount } from 'vue'
 import { roundGrinderSetting } from './useGrinderSetting.js'
+import { applyBrewTemperatureOverride } from './useProfileCurve.js'
 
 /**
  * Owns the recipe editor's live-apply pipeline: the 23-ref watcher (checks
@@ -27,30 +28,11 @@ export function useRecipeLiveApply(refs, ctx) {
   } = ctx
 
   // Build a modified profile payload with the recipe's brewTemperature
-  // override applied as a *delta*, not an absolute flat overwrite: the first
-  // step anchors at brewTemperature and every later step shifts by the same
-  // amount, preserving the profile's per-step temperature curve (e.g. a
-  // [90, 86] profile with brewTemperature 90 → 92 becomes [92, 88], not
-  // [92, 92]). Returns null when no profile is available or brewTemperature
-  // is unset (no override to apply).
+  // override applied as a *delta*, not an absolute flat overwrite — see
+  // applyBrewTemperatureOverride (shared with buildComboUpdate). Returns null
+  // when no profile is available or brewTemperature is unset (no override).
   function buildTemperatureOverrideProfile() {
-    const base = workflow?.profile
-    if (!base || refs.brewTemperature.value == null) return null
-    const steps = base.steps ?? base.frames ?? []
-    if (!steps.length) return null
-    const clone = JSON.parse(JSON.stringify(base))
-    const t = refs.brewTemperature.value
-    const cloneSteps = clone.steps ?? clone.frames
-    // Delta from the first step, matched to the display value's rounding
-    // (pickBrewTempFromProfile rounds to 1 decimal).
-    const first = cloneSteps[0]?.temperature
-    const delta = typeof first === 'number' ? t - Math.round(first * 10) / 10 : 0
-    for (const s of cloneSteps) {
-      s.temperature = typeof s.temperature === 'number'
-        ? Math.round((s.temperature + delta) * 10) / 10
-        : t
-    }
-    return clone
+    return applyBrewTemperatureOverride(workflow?.profile, refs.brewTemperature.value)
   }
 
   // ---- Build workflow update payload from current form state ----
@@ -64,8 +46,12 @@ export function useRecipeLiveApply(refs, ctx) {
       grinderModel: selectedGrinder.value?.model ?? (refs.grinder.value || null),
       grinderSetting: roundGrinderSetting(refs.grinderSetting.value, selectedGrinder.value),
     }
-    if (refs.selectedGrinderId.value) ctxPayload.grinderId = String(refs.selectedGrinderId.value)
-    if (selectedBatchId.value) ctxPayload.beanBatchId = String(selectedBatchId.value)
+    // Send entity IDs as explicit values — always present. When unlinked they
+    // are null so the gateway clears a previous association (omission is not a
+    // clear; the workflow PUT deep-merges and an omitted key retains whatever
+    // a previously-loaded recipe/shot set on the machine).
+    ctxPayload.grinderId = refs.selectedGrinderId.value ? String(refs.selectedGrinderId.value) : null
+    ctxPayload.beanBatchId = selectedBatchId.value ? String(selectedBatchId.value) : null
     const showRpm = !!settings?.settings?.showGrinderRpm
     const showBasket = !!settings?.settings?.showBasketData
     if (showRpm || showBasket) {

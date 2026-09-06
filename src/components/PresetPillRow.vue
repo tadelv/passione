@@ -21,6 +21,8 @@ const props = defineProps({
   modified: { type: Boolean, default: false },
   /** Text appended to the selected pill's aria-label when modified. */
   modifiedLabel: { type: String, default: 'unsaved changes' },
+  /** When true, pills are inert (an intentional selection is loading). */
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -53,6 +55,7 @@ function clearConfirm() {
 }
 
 function onClick(index, event) {
+  if (props.disabled) return
   // Double-tap → edit (event.detail is the native click count)
   if (event.detail >= 2 && props.editEnabled) {
     clearConfirm()
@@ -106,6 +109,7 @@ function onClick(index, event) {
         }"
         role="option"
         :aria-selected="preset.index === selectedIndex"
+        :disabled="disabled"
         :aria-label="modified && preset.index === selectedIndex
           ? `${preset.display}, ${modifiedLabel}`
           : undefined"

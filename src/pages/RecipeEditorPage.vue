@@ -17,6 +17,8 @@ import { useRecipeForm } from '../composables/useRecipeForm'
 import { useRecipeLiveApply } from '../composables/useRecipeLiveApply'
 import { useRecipeOverlay } from '../composables/useRecipeOverlay'
 import { useRecipePersist } from '../composables/useRecipePersist'
+import { buildComboUpdate } from '../composables/useComboApply'
+import { useProfilesCache } from '../composables/useProfilesCache'
 import { LIMITS } from '../constants/limits'
 
 const { suggestions: historySuggestions, load: loadHistorySuggestions } = useShotHistorySuggestions()
@@ -28,6 +30,8 @@ const updateWorkflow = inject('updateWorkflow')
 const toast = inject('toast', null)
 const router = useRouter()
 const { t } = useI18n()
+
+const profilesCache = useProfilesCache()
 
 const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
@@ -138,7 +142,6 @@ const recipeSummary = computed(() => {
 
 // ---- Overlay composable ----
 const {
-  loadFromPreset,
   overlayFromWorkflow,
   hydrateFromWorkflowContext,
   onChangeProfile,
@@ -304,16 +307,44 @@ function daysSinceRoast(batch) {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-function onPresetSelect(index) {
-  if (!settings) return
-  settings.settings.selectedWorkflowCombo = index
-  // Intentional user selection — load the recipe, then apply it to the live
-  // workflow exactly once after hydration. loadFromPreset keeps the updating
-  // guard raised through its async entity lookups, so the live-apply debounce
-  // won't fire on its own; this explicit apply is the single push.
-  loadFromPreset(index).then(() => {
-    if (!editorDisposed) applyToLiveWorkflow()
-  }).catch(() => {})
+// ---- Intentional recipe selection ----
+// Single-flight + read-only: build the coherent DETACHED payload via the SAME
+// buildComboUpdate as home (entity links + profile curve + validation) BEFORE
+// touching any form ref, PUT it once, and only on a confirmed response update
+// the selected index and overlay the confirmed gateway state into the form. A
+// failed lookup or leaving mid-selection never mutates the form or publishes
+// partial state. The editable region + Save are disabled while busy; Home stays
+// usable. A later tap while one is in flight is ignored (busy), never queued.
+const selectionBusy = ref(false)
+
+async function onPresetSelect(index) {
+  if (!settings || selectionBusy.value) return
+  const combo = workflowCombos.value[index]
+  if (!combo) return
+  selectionBusy.value = true
+  refsForEditor.updating.value = true
+  try {
+    const update = await buildComboUpdate(combo, workflow, {
+      profilesCache, settings, beans: beansApi,
+    })
+    if (editorDisposed) return
+    await updateWorkflow(update) // the single intentional PUT
+    if (editorDisposed) return
+    // Gateway echo Profile carries no id (Profile.toJson) — keep the catalog
+    // profileId/title on the form so the saved recipe stays linked by identity.
+    if (combo.profileId) profileId.value = combo.profileId
+    else if (combo.profileTitle) profileTitle.value = combo.profileTitle
+    settings.settings.selectedWorkflowCombo = index
+    await overlayFromWorkflow() // reflect confirmed gateway state read-only
+  } catch (err) {
+    if (editorDisposed) return
+    toast?.error?.(err?.message || (t?.('recipe.loadFailed') ?? 'Could not load this recipe'))
+  } finally {
+    if (!editorDisposed) {
+      selectionBusy.value = false
+      refsForEditor.updating.value = false
+    }
+  }
 }
 
 // ---- Combo edit popup ----
@@ -441,11 +472,15 @@ watch(() => workflow?.profile, (newProfile) => {
           :presets="workflowCombos"
           :selected-index="selectedIndex"
           :modified="dirty && selectedIndex >= 0"
+          :disabled="selectionBusy"
           :aria-label="t('recipe.recipes')"
           @select="onPresetSelect"
           @edit="onComboEdit"
           @new="onSaveAsNewClick"
         />
+        <span v-if="selectionBusy" class="recipe-editor__selecting">
+          {{ t('recipe.loadingRecipe') || 'Loading recipe…' }}
+        </span>
       </div>
 
       <!-- Content area: header bar (recipe name + summary + save actions)
@@ -454,7 +489,12 @@ watch(() => workflow?.profile, (newProfile) => {
            Save buttons appear only when the form has diverged from the
            selected recipe (or any field has a value when no recipe is
            selected). Exit (Home) is always free. -->
-      <div class="recipe-editor__area">
+      <div
+        class="recipe-editor__area"
+        :class="{ 'recipe-editor__area--busy': selectionBusy }"
+        :aria-busy="selectionBusy || undefined"
+        :inert="selectionBusy ? '' : undefined"
+      >
         <div class="recipe-editor__area-header">
           <div class="recipe-editor__header-left">
             <span class="recipe-editor__header-name">{{ recipeName }}</span>
@@ -469,6 +509,7 @@ watch(() => workflow?.profile, (newProfile) => {
                 v-if="selectedIndex >= 0 && dirty"
                 class="recipe-editor__save-btn"
                 data-testid="wfe-save"
+                :disabled="selectionBusy"
                 @click="onSaveClick"
               >
                 <svg class="recipe-editor__save-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -482,6 +523,7 @@ watch(() => workflow?.profile, (newProfile) => {
                 v-if="dirty"
                 class="recipe-editor__save-btn recipe-editor__save-btn--secondary"
                 data-testid="wfe-save-as-new"
+                :disabled="selectionBusy"
                 @click="onSaveAsNewClick"
               >
                 <svg class="recipe-editor__save-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -935,6 +977,17 @@ watch(() => workflow?.profile, (newProfile) => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* While an intentional recipe selection is in flight, the editable region and
+   Save buttons are inert (busy) so no field edit / save can race the selection
+   PUT. pointer-events covers the pointer; the native `inert` binding (bound on
+   the area when selectionBusy) additionally removes it from keyboard/focus
+   order so a keyboard user cannot tab into or mutate the pending form. The
+   BottomBar (Home) is a sibling outside the inert area and stays usable. */
+.recipe-editor__area--busy {
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 /* ---- Header bar: recipe name + summary on left, badge + saves on right ---- */

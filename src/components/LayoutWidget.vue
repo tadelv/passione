@@ -13,6 +13,7 @@ import PresetPillRow from './PresetPillRow.vue'
 import BeanPickerPopup from './BeanPickerPopup.vue'
 import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { normalizeShot } from '../composables/useShotNormalize'
+import { buildShotWorkflowUpdate } from '../composables/useComboApply'
 import { useShotCache } from '../composables/useShotCache'
 import { bootReady } from '../composables/useBootReady'
 import { espressoIcon, steamIcon, hotWaterIcon, flushIcon } from '../assets/icons/operations.js'
@@ -73,6 +74,12 @@ const devices = inject('devices', null)
 const updateWorkflow = inject('updateWorkflow', null)
 const toast = inject('toast', null)
 const workflow = inject('workflow', null)
+const beansApi = inject('beansApi', null)
+// Provided by IdlePage — true while a recipe is being loaded into the live
+// workflow; the widget disables operation starts + recipe taps so a user can't
+// start the old workflow while the new one is still resolving.
+const recipeSelectionBusy = inject('recipeSelectionBusy', ref(false))
+const recipeBusy = computed(() => !!recipeSelectionBusy.value)
 
 // Bean picker popup state — opened from the coffee row of the shotPlan widget.
 const beanPickerOpen = ref(false)
@@ -149,32 +156,15 @@ const lastShotInfo = computed(() => {
 async function repeatLastShot() {
   const raw = lastShot.value
   if (!raw) return
-  const s = normalizeShot(raw)
-  const profile = raw.profile || raw.workflow?.profile
-  if (!profile) {
-    toast?.warning('No profile data available for this shot')
-    return
-  }
   try {
-    const update = { profile }
-    const context = {}
-    if (s.coffeeName) context.coffeeName = s.coffeeName
-    if (s.coffeeRoaster) context.coffeeRoaster = s.coffeeRoaster
-    if (s.grinderModel) context.grinderModel = s.grinderModel
-    if (s.grinderSetting != null) context.grinderSetting = String(s.grinderSetting)
-    if (s.doseIn) context.targetDoseWeight = s.doseIn
-    if (s.doseOut) context.targetYield = s.doseOut
-    const srcExtras = raw.workflow?.context?.extras ?? {}
-    const extras = {}
-    if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
-    if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
-    if (srcExtras.basketType != null) extras.basketType = srcExtras.basketType
-    if (Object.keys(extras).length > 0) context.extras = extras
-    if (Object.keys(context).length > 0) update.context = context
+    // Shared shot→workflow builder (also used by History Load) so Repeat and
+    // Load restore identical next-shot parameters. Scope: profile + context —
+    // never toggles steam/flush/hot-water.
+    const update = await buildShotWorkflowUpdate(raw, { beans: beansApi, toast })
     await updateWorkflow(update)
-    toast?.success('Workflow loaded from last shot')
+    if (toast) toast.success('Workflow loaded from last shot')
   } catch {
-    toast?.error('Failed to load workflow')
+    if (toast) toast.error('Failed to load workflow')
   }
 }
 
@@ -188,10 +178,10 @@ function onSleep() {
     <!-- Action buttons -->
     <template v-if="type === 'actionButtons'">
       <div class="layout-widget__actions">
-        <ActionButton :icon="espressoIcon" :label="t('idle.espresso')" :disabled="!isReady" @click="emit('start-espresso')" />
-        <ActionButton :icon="steamIcon" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady" @click="emit('start-steam')" />
-        <ActionButton :icon="hotWaterIcon" :label="t('idle.hotWater')" color="var(--color-flow)" :disabled="!isReady" @click="emit('start-hot-water')" />
-        <ActionButton :icon="flushIcon" :label="t('idle.flush')" color="var(--color-success)" :disabled="!isReady" @click="emit('start-flush')" />
+        <ActionButton :icon="espressoIcon" :label="t('idle.espresso')" :disabled="!isReady || recipeBusy" @click="emit('start-espresso')" />
+        <ActionButton :icon="steamIcon" :label="t('idle.steam')" color="var(--color-accent)" :disabled="!isReady || recipeBusy" @click="emit('start-steam')" />
+        <ActionButton :icon="hotWaterIcon" :label="t('idle.hotWater')" color="var(--color-flow)" :disabled="!isReady || recipeBusy" @click="emit('start-hot-water')" />
+        <ActionButton :icon="flushIcon" :label="t('idle.flush')" color="var(--color-success)" :disabled="!isReady || recipeBusy" @click="emit('start-flush')" />
       </div>
     </template>
 
@@ -281,6 +271,7 @@ function onSleep() {
           :selected-index="selectedWorkflowCombo"
           :edit-enabled="true"
           :confirm-activate="false"
+          :disabled="recipeBusy"
           :modified="selectedWorkflowComboModified"
           @select="idx => emit('workflow-combo-select', idx)"
           @edit="idx => emit('workflow-combo-edit', idx)"

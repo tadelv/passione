@@ -12,6 +12,7 @@
 
 import { ref, reactive, onMounted } from 'vue'
 import { getWorkflow as fetchWorkflow, updateWorkflow as putWorkflow } from '../api/rest'
+import { applyWorkflowData } from './useWorkflowMerge.js'
 
 /** Build a legacy doseData view backed by context fields. */
 function makeDoseAccessor(ctx) {
@@ -54,6 +55,17 @@ function makeCoffeeAccessor(ctx) {
     set roaster(v) { ctx.coffeeRoaster = v },
   }
 }
+
+/**
+ * Merge a gateway workflow response into the reactive workflow state.
+ *
+ * Context semantics are tri-state: a response that carries an own key — even
+ * null — is applied (an explicit null is an intentional clear), while an
+ * omitted key keeps the current value (partial patches). Legacy top-level
+ * fields backfill ONLY keys the response context did not explicitly carry, so
+ * a field the user explicitly cleared is never resurrected by a legacy sibling.
+ * Logic lives in useWorkflowMerge.js so it is unit-testable under node.
+ */
 
 export function useWorkflow() {
   const loading = ref(false)
@@ -99,65 +111,9 @@ export function useWorkflow() {
   })
 
   function applyData(data) {
-    if (!data) return
-    workflow.id = data.id ?? workflow.id
-    workflow.name = data.name ?? workflow.name
-    workflow.description = data.description ?? workflow.description
-    workflow.profile = data.profile ?? workflow.profile
-    workflow.steamSettings = data.steamSettings ?? workflow.steamSettings
-    workflow.hotWaterData = data.hotWaterData ?? workflow.hotWaterData
-    workflow.rinseData = data.rinseData ?? workflow.rinseData
-
-    // Prefer context from server response; backfill from legacy fields if needed
-    const ctx = data.context
-    if (ctx) {
-      workflow.context.targetDoseWeight = ctx.targetDoseWeight ?? workflow.context.targetDoseWeight
-      workflow.context.targetYield = ctx.targetYield ?? workflow.context.targetYield
-      workflow.context.grinderId = ctx.grinderId ?? workflow.context.grinderId
-      workflow.context.grinderModel = ctx.grinderModel ?? workflow.context.grinderModel
-      workflow.context.grinderSetting = ctx.grinderSetting ?? workflow.context.grinderSetting
-      workflow.context.beanBatchId = ctx.beanBatchId ?? workflow.context.beanBatchId
-      workflow.context.coffeeName = ctx.coffeeName ?? workflow.context.coffeeName
-      workflow.context.coffeeRoaster = ctx.coffeeRoaster ?? workflow.context.coffeeRoaster
-      workflow.context.finalBeverageType = ctx.finalBeverageType ?? workflow.context.finalBeverageType
-      if (ctx.extras && typeof ctx.extras === 'object') {
-        workflow.context.extras = { ...workflow.context.extras, ...ctx.extras }
-      }
-    }
-
-    // Backfill from legacy fields when context fields are still null
-    const dose = data.doseData
-    if (dose) {
-      if (workflow.context.targetDoseWeight == null) {
-        workflow.context.targetDoseWeight = dose.doseIn ?? dose.dose ?? null
-      }
-      if (workflow.context.targetYield == null) {
-        workflow.context.targetYield = dose.doseOut ?? dose.targetWeight ?? null
-      }
-    }
-
-    const grinder = data.grinderData
-    if (grinder) {
-      if (workflow.context.grinderModel == null) {
-        workflow.context.grinderModel = grinder.model ?? grinder.grinder ?? grinder.name ?? null
-      }
-      if (workflow.context.grinderSetting == null) {
-        workflow.context.grinderSetting = grinder.setting ?? grinder.grindSetting ?? null
-      }
-    }
-
-    const coffee = data.coffeeData
-    if (coffee) {
-      if (workflow.context.coffeeName == null) {
-        workflow.context.coffeeName = coffee.name ?? null
-      }
-      if (workflow.context.coffeeRoaster == null) {
-        workflow.context.coffeeRoaster = coffee.roaster ?? null
-      }
-    }
+    applyWorkflowData(workflow, data)
   }
 
-  /** Fetch the current workflow from the gateway. */
   async function refresh() {
     loading.value = true
     error.value = null

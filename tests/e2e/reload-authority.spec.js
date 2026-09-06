@@ -293,24 +293,37 @@ test.describe('Reload / startup authority', () => {
   })
 
   test('edit then slow recipe selection then immediate Home issues no intermediate write', async ({ page, request }) => {
-    await seedRecipes(request, [PLAIN_RECIPE, BEAN_RECIPE])
+    // The selected slow recipe links a bean UNIQUE to this selection (never
+    // warmed by mount hydration), so its lookup is genuinely uncached/in-flight
+    // when the user leaves — not warmed by a prior helper's network ordering.
+    const LEAVE_BEAN = 'bean-leave-unique'
+    const LEAVE_BATCH = 'batch-leave-unique'
+    const LEAVE_RECIPE = { ...BEAN_RECIPE, id: 'afternoon-leave', selectedBeanId: LEAVE_BEAN, selectedBatchId: LEAVE_BATCH }
+    await seedRecipes(request, [PLAIN_RECIPE, LEAVE_RECIPE])
     await setWorkflowDefault(request)
     await injectBean(request)
+    await request.post(`${BASE_URL}/api/v1/test/inject-bean-with-batch`, {
+      data: { beanId: LEAVE_BEAN, beanName: 'Leave Bean', beanRoaster: 'R', batchId: LEAVE_BATCH },
+      headers: { 'Content-Type': 'application/json' },
+    })
     const puts = countWorkflowPuts(page)
     await delayBeanLookups(page, 1200)
 
     await page.goto('/#/recipe/edit')
     await expect(page.locator('.recipe-pill-rail__pill')).toHaveCount(2, { timeout: 10000 })
+    await page.waitForTimeout(400) // let mount hydration settle so the leave is unambiguous
 
     // A genuine dose edit arms the 300ms debounce...
     await page.locator('[data-testid="recipe-doseIn"] .value-input__btn[aria-label="Increase value"]').click()
-    // ...then the user picks the slow bean-linked recipe and immediately leaves.
+    // ...then the user picks the slow (uncached) bean-linked recipe and leaves
+    // (hash→home) while the selection is still resolving.
     await page.locator('.recipe-pill-rail__pill').nth(1).click()
-    await page.locator('.bottom-bar__home').click()
+    await page.evaluate(() => { window.location.hash = '/#/' })
+    await expect(page).toHaveURL(/\/#\/$/, { timeout: 5000 })
     await page.waitForTimeout(1800)
 
-    // Neither the pre-hydration defaults nor an intermediate form reached the
-    // gateway (the pending dose edit was superseded by the slow selection).
+    // Neither the pre-hydration defaults, the pending dose edit, nor the
+    // in-flight selection reached the gateway (leaving abandons the selection).
     expect(puts.count()).toBe(0)
   })
 

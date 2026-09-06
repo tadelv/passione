@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, inject, provide, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LayoutWidget from '../components/LayoutWidget.vue'
@@ -131,34 +131,37 @@ const editPopupVisible = ref(false)
 const editPopupPreset = ref(null)
 const editPopupIndex = ref(-1)
 
+// Single-flight guard: while a recipe load is in flight, further recipe taps
+// are ignored (never queued) and the widget controls are visually disabled so a
+// user can't start an old workflow while a new one is still being resolved.
+const recipeSelectionBusy = ref(false)
+provide('recipeSelectionBusy', recipeSelectionBusy)
+
 async function onComboSelect(index) {
-  if (!settings) return
+  if (!settings || recipeSelectionBusy.value) return
   const combo = workflowCombos.value[index]
   if (!combo) return
-
+  recipeSelectionBusy.value = true
   const previousIndex = settings.settings.selectedWorkflowCombo
-  // Optimistic selection — reverted below if the workflow update fails.
+  // Optimistic selection — reverted below if the load or update fails.
   settings.settings.selectedWorkflowCombo = index
-
-  const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans, toast })
-
-  if (Object.keys(update).length === 0) {
-    toast?.success(`Loaded ${combo.name || 'combo'}`)
-    return
-  }
-
   try {
-    await updateWorkflow(update)
-    // Mirror the server-confirmed workflow back into the local settings
-    // cache so SteamPage / FlushPage / HotWaterPage read the freshly applied
-    // values (and any clamping the gateway may have applied).
-    operationSettings?.syncFromWorkflow?.()
+    const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans })
+    if (Object.keys(update).length > 0) {
+      await updateWorkflow(update)
+      // Mirror the server-confirmed workflow back into the local settings
+      // cache so SteamPage / FlushPage / HotWaterPage read the freshly applied
+      // values (and any clamping the gateway may have applied).
+      operationSettings?.syncFromWorkflow?.()
+    }
     toast?.success(`Loaded ${combo.name || 'combo'}`)
   } catch {
-    // Revert the optimistic selection so the UI doesn't lie about which
-    // combo is active when the gateway rejected the update.
+    // A referenced profile/bean/batch could not resolve, or the gateway
+    // rejected the update — never publish partial state; revert the selection.
     settings.settings.selectedWorkflowCombo = previousIndex
-    toast?.error(`Failed to load ${combo.name || 'combo'}`)
+    toast?.error(`Could not load ${combo.name || 'combo'}`)
+  } finally {
+    recipeSelectionBusy.value = false
   }
 }
 
