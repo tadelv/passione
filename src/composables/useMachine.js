@@ -5,7 +5,7 @@
  * for all telemetry fields plus derived state flags for easy consumption.
  */
 
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { WS_URL } from '../api/gateway'
 import { ReconnectingWebSocket } from '../api/websocket'
 import { setMachineState } from '../api/rest'
@@ -128,17 +128,25 @@ export function useMachine() {
     if (data.state) {
       const newState = data.state.state ?? 'unknown'
       const newSubstate = data.state.substate ?? 'unknown'
+      const oldState = state.value
+      const oldSubstate = substate.value
 
       // Track previous state for transition detection
-      if (newState !== state.value) {
-        previousState.value = state.value
+      if (newState !== oldState) {
+        previousState.value = oldState
       }
-      if (newSubstate !== substate.value) {
-        previousSubstate.value = substate.value
+      if (newSubstate !== oldSubstate) {
+        previousSubstate.value = oldSubstate
       }
 
       state.value = newState
       substate.value = newSubstate
+
+      // Drive the shot timer from a single coherent view of state + substate.
+      // Unlike the old split state/substate watchers, this also sees direct
+      // different-operation transitions that leave the substate unchanged
+      // (e.g. steam/pouring → hotWater/pouring).
+      _onFlowChange(newState, newSubstate, oldState)
     }
 
     pressure.value = data.pressure ?? 0
@@ -154,14 +162,33 @@ export function useMachine() {
   }
 
   // ---- Shot timer -----------------------------------------------------------
+  // One coherent handler (_onFlowChange) watches state + substate together. It
+  // is driven from onMessage (where both change atomically) rather than from
+  // two separate Vue watchers so that a direct different-operation transition
+  // that leaves the substate unchanged (operation A/pouring → B/pouring) is
+  // not lost.
+  //
+  // Rules:
+  //  - Entering a NEW flowing operation (the machine state value changed)
+  //    resets the clock — including a direct A → B hand-off where the substate
+  //    is unchanged.
+  //  - Espresso starts ticking at `preinfusion` (or at `pouring` when
+  //    preinfusion is skipped) and runs continuously across preinfusion →
+  //    pouring (no reset).
+  //  - Steam/hotWater/flush tick only from `pouring`.
+  //  - `preparingForShot` preheat never ticks.
+  //  - Ticking freezes at `pouringDone` or when the operation exits, and the
+  //    frozen value is the exact final elapsed (not a stale last-100ms tick).
+  //  - Elapsed is anchored on performance.now() (monotonic) so OS/NTP clock
+  //    adjustments cannot step the displayed time backward/forward.
 
   function _startShotTimer() {
-    _shotStartTime.value = Date.now()
-    shotTime.value = 0
     _stopShotTimer()
+    _shotStartTime.value = performance.now()
+    shotTime.value = 0
     _shotTimerInterval = setInterval(() => {
       if (_shotStartTime.value !== null) {
-        shotTime.value = (Date.now() - _shotStartTime.value) / 1000
+        shotTime.value = (performance.now() - _shotStartTime.value) / 1000
       }
     }, 100)
   }
@@ -173,39 +200,63 @@ export function useMachine() {
     }
   }
 
+  // Freeze at the exact final elapsed (rather than the last 100ms tick) and
+  // clear the anchor so a later exit transition cannot add idle time to the
+  // frozen value. No-op when nothing is running.
+  function _freezeShotTimer() {
+    if (_shotStartTime.value !== null) {
+      shotTime.value = (performance.now() - _shotStartTime.value) / 1000
+    }
+    _stopShotTimer()
+    _shotStartTime.value = null
+  }
+
   function _resetShotTimer() {
     _stopShotTimer()
     _shotStartTime.value = null
     shotTime.value = 0
   }
 
-  // Start/stop shot timer on state transitions
-  watch(state, (newState, oldState) => {
-    if (newState === oldState) return
+  // True when the given operation is actively dispensing and should tick.
+  // Espresso counts from preinfusion (with pouring as the fallback when
+  // preinfusion is skipped); steam/hotWater/flush count only from pouring.
+  function _isExtracting(stateName, substateName) {
+    if (stateName === 'espresso') {
+      return substateName === 'preinfusion' || substateName === 'pouring'
+    }
+    return substateName === 'pouring'
+  }
 
-    if (FLOWING_STATES.has(newState)) {
-      // Entering any flowing state: reset timer. Timer starts via the
-      // substate watcher when the machine actually begins pouring (see below).
+  // Coherent state + substate transition handler (called from onMessage with
+  // the previous snapshot's machine state).
+  function _onFlowChange(newState, newSubstate, oldState) {
+    if (!FLOWING_STATES.has(newState)) {
+      // Not in a flowing operation — settle any running clock at its exact
+      // final elapsed. No-op when the operation never started ticking.
+      _freezeShotTimer()
+      return
+    }
+
+    // Entering a flowing operation. A different machine-state value means a NEW
+    // operation — including a direct operation A → operation B hand-off whose
+    // substate may be unchanged (steam/pouring → hotWater/pouring). Reset the
+    // clock so B measures only its own extraction. Transitions that stay within
+    // one operation (espresso preinfusion → pouring) keep the same state value
+    // and therefore do not reset.
+    if (oldState !== newState) {
       _resetShotTimer()
-    } else if (FLOWING_STATES.has(oldState)) {
-      // Leaving a flowing operation — keep final time visible but stop ticking
-      _stopShotTimer()
     }
-  })
 
-  // Drive the shot timer from the `pouring` substate. The DE1 transitions
-  // preparingForShot → pouring → pouringDone for every flowing operation
-  // (espresso, steam, hotWater, flush) — we only tick while the machine is
-  // actually dispensing, not during preheat/stabilise or the brief
-  // pouringDone handoff. Start on entering pouring, stop on leaving it.
-  watch(substate, (newSubstate, oldSubstate) => {
-    if (!FLOWING_STATES.has(state.value)) return
-    if (newSubstate === 'pouring' && _shotStartTime.value === null) {
-      _startShotTimer()
-    } else if (oldSubstate === 'pouring' && newSubstate !== 'pouring') {
-      _stopShotTimer()
+    // Start ticking once this operation reaches active extraction. If already
+    // started and still extracting, do nothing (repeated snapshots and the
+    // espresso preinfusion → pouring roll-over must not reset). If it reached
+    // a terminal/non-extracting substate (pouringDone), freeze the exact final.
+    if (_isExtracting(newState, newSubstate)) {
+      if (_shotStartTime.value === null) _startShotTimer()
+    } else if (_shotStartTime.value !== null) {
+      _freezeShotTimer()
     }
-  })
+  }
 
   // ---- Connection management ------------------------------------------------
 
