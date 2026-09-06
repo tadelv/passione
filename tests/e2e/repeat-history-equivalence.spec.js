@@ -55,6 +55,14 @@ async function expectLoaded(wf) {
 }
 
 // Collect the browser's real workflow PUT bodies and any espresso machine start.
+// A machine start can be signalled two ways: a state/command in a PUT/POST body
+// OR a path-only command (e.g. PUT /api/v1/machine/state/espresso). Count both.
+function isEspressoStart(url, req) {
+  if (/\/machine\/state\/espresso$/.test(url) || /\/machine\/espresso$/.test(url)) return true
+  let body = null
+  try { body = req.postDataJSON() } catch { /* ignore */ }
+  return body?.state === 'espresso' || body?.command === 'espresso'
+}
 function track(page) {
   const wfPuts = []
   const espressoStarts = []
@@ -64,15 +72,27 @@ function track(page) {
       wfPuts.push(req.postData() || '')
     }
     if (/\/api\/v1\/machine(\/state)?(?:\/[a-zA-Z]+)?$/.test(url) && (req.method() === 'PUT' || req.method() === 'POST')) {
-      let body = null
-      try { body = req.postDataJSON() } catch { /* ignore */ }
-      if (body?.state === 'espresso' || body?.command === 'espresso') espressoStarts.push(url)
+      if (isEspressoStart(url, req)) espressoStarts.push(url)
     }
   })
   return { wfPuts, espressoStarts, wfCount: () => wfPuts.length }
 }
 
 test.describe('Home Repeat / History Load equivalence (audit #3)', () => {
+  // Hermetic fixture: other spec files (e.g. post-shot-flow's inject-fresh-shot)
+  // leave an injected-latest override in the shared mock (/shots/latest returns
+  // it over the seeded shot). Clear that override AND any injected-shot residue
+  // up front so this file's seed is authoritative, then tear down after so we
+  // never leak into later files. Never touches production shot semantics.
+  test.beforeEach(async ({ request }) => {
+    await request.post(`${B}/api/v1/test/reset-shot-poll-state`)
+    await request.post(`${B}/api/v1/test/reset-bean-test-state`)
+  })
+  test.afterEach(async ({ request }) => {
+    await request.post(`${B}/api/v1/test/reset-shot-poll-state`)
+    await request.post(`${B}/api/v1/test/reset-bean-test-state`)
+  })
+
   test('home Repeat restores ids + bean text + setting + planned target, ops unchanged', async ({ page, request }) => {
     await seed(request)
 

@@ -252,11 +252,33 @@ test.describe('Home UX audit #5', () => {
 
       mkdirSync(SHOT_DIR, { recursive: true })
       await page.screenshot({ path: `${SHOT_DIR}/home-after-${width}x${height}.png`, fullPage: true })
-      // Mobile: also capture the bottom of the page (after scrolling) so the
-      // supervisor can verify Repeat, recipe pills, and footer are all reachable.
+      // Mobile: also capture the bottom of the page so the supervisor can
+      // verify Sleep, the footer nav and Repeat are all reachable. Scrolling the
+      // whole .idle-page into view does not scroll its parent to the footer, so
+      // bring the sleep button (bottom-most control) into view instead.
       if (width === 390) {
-        await page.evaluate(() => { document.querySelector('.idle-page')?.scrollIntoView({ block: 'end' }) })
-        await settle(page)
+        const sleep = page.locator('.layout-widget__nav-btn--sleep')
+        await sleep.scrollIntoViewIfNeeded()
+        await settle(page) // let toasts clear before the bottom capture
+        // The page scrolls inside .app-main (overflow-y:auto), not the window.
+        const st = await page.evaluate(() => {
+          const sc = document.querySelector('.app-main')
+          const box = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { top: b.top, bottom: b.bottom } }
+          const cr = sc ? sc.getBoundingClientRect() : null
+          return {
+            scrolled: sc ? sc.scrollTop : -1,
+            vpTop: cr ? cr.top : 0,
+            vpBottom: cr ? cr.bottom : window.innerHeight,
+            sleep: box(document.querySelector('.layout-widget__nav-btn--sleep')),
+            nav: box(document.querySelector('.layout-widget__nav')),
+          }
+        })
+        expect(st.scrolled, 'actually scrolled to the bottom (not a top duplicate)').toBeGreaterThan(0)
+        expect(st.sleep, 'sleep button reachable after scroll').toBeTruthy()
+        expect(st.sleep.top, 'sleep not clipped above viewport').toBeGreaterThanOrEqual(st.vpTop - 1)
+        expect(st.sleep.bottom, 'sleep fully inside viewport').toBeLessThanOrEqual(st.vpBottom + 1)
+        expect(st.nav, 'footer nav reachable after scroll').toBeTruthy()
+        expect(st.nav.bottom, 'footer nav inside viewport').toBeLessThanOrEqual(st.vpBottom + 1)
         await page.screenshot({ path: `${SHOT_DIR}/home-after-${width}x${height}-bottom.png` })
       }
     }
