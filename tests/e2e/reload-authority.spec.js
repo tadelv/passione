@@ -334,7 +334,11 @@ test.describe('Reload / startup authority', () => {
     await seedRecipes(request, [PLAIN_RECIPE])
     await setWorkflow(request, {
       profile: { id: 'profile-test1234567890abcdef', title: 'Classic Blooming', author: 'Test Author' },
-      context: { targetDoseWeight: 18, targetYield: 36, coffeeName: null, coffeeRoaster: null },
+      // A coherent clear nulls the whole link (beanBatchId + grinderId) exactly
+      // as the picker/manual-recipe flows do — leaving a batch id set while only
+      // the text is null is an incoherent state the app would never produce, and
+      // the editor would (correctly) re-derive the linked bean's text from it.
+      context: { targetDoseWeight: 18, targetYield: 36, coffeeName: null, coffeeRoaster: null, beanBatchId: null, grinderId: null },
     })
 
     await page.goto('/#/recipe/edit')

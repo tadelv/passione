@@ -299,7 +299,7 @@ test.describe('Home UX audit #5', () => {
     expect(txt).not.toContain('NaN')
 
     // Unknown profile (no steps) → temperature omitted, not invented.
-    await request.put(`${B}/api/v1/workflow`, { data: { profile: { title: 'No Steps', id: 'no-steps' } }, headers: { 'Content-Type': 'application/json' } })
+    await request.put(`${B}/api/v1/workflow`, { data: { profile: { title: 'No Steps', id: 'no-steps', steps: [] } }, headers: { 'Content-Type': 'application/json' } })
     await page.reload()
     await waitForHomeWidgets(page)
     await expect(page.locator('.layout-widget__plan-text--temperature')).toHaveCount(0)

@@ -151,9 +151,6 @@ async function onComboSelect(index) {
   const combo = workflowCombos.value[index]
   if (!combo) return
   recipeSelectionBusy.value = true
-  const previousIndex = settings.settings.selectedWorkflowCombo
-  // Optimistic selection — reverted below if the load or update fails.
-  settings.settings.selectedWorkflowCombo = index
   try {
     const update = await buildComboUpdate(combo, workflow, { profilesCache, settings, beans })
     if (Object.keys(update).length > 0) {
@@ -163,11 +160,18 @@ async function onComboSelect(index) {
       // values (and any clamping the gateway may have applied).
       operationSettings?.syncFromWorkflow?.()
     }
+    // Commit the selection ONLY after the load succeeded — never optimistically.
+    // selectedWorkflowCombo is auto-persisted with an 800ms debounce: a slow
+    // load (bean/profile lookup or PUT past that debounce) that then failed or
+    // lost the app would otherwise leave a stored baseline for a recipe that
+    // was never applied to the gateway (the boot path no longer auto-applies
+    // the selected recipe, so the mismatch would survive restart).
+    settings.settings.selectedWorkflowCombo = index
     toast?.success(`Loaded ${combo.name || 'combo'}`)
   } catch {
     // A referenced profile/bean/batch could not resolve, or the gateway
-    // rejected the update — never publish partial state; revert the selection.
-    settings.settings.selectedWorkflowCombo = previousIndex
+    // rejected the update — never publish partial state; keep the previous
+    // selection (nothing was committed above, so nothing to revert).
     toast?.error(`Could not load ${combo.name || 'combo'}`)
   } finally {
     recipeSelectionBusy.value = false

@@ -35,6 +35,13 @@ async function readWorkflow(request) {
   return r.ok() ? r.json() : null
 }
 
+async function readSelectedCombo(request) {
+  const r = await request.get(`${B}/api/v1/store/decenza-js/combos`)
+  if (!r.ok()) return undefined
+  const kv = await r.json()
+  return kv?.selectedWorkflowCombo
+}
+
 // Open the coffee picker from the shot-plan row and wait for the active-batch
 // resolution that drives the --selected highlight to settle (so a not-yet-loaded
 // popup can't false-positive a clean "nothing selected" state).
@@ -186,5 +193,67 @@ test.describe('Home recipe loading clears/switches associations (audit #3)', () 
     const wf = await readWorkflow(request)
     expect(wf?.context?.beanBatchId).toBe('batchB')
     expect(wf?.context?.coffeeName).toBe('Bean B')
+  })
+
+  test('selected recipe is committed to the persisted settings ONLY after the load succeeds', async ({ page, request }) => {
+    // Manual is initially selected (index 1). Selecting the linked recipe (index 0)
+    // must not flip the persisted selectedWorkflowCombo until the load has actually
+    // succeeded — selectedWorkflowCombo auto-saves with an 800ms debounce, so an
+    // optimistic assignment would persist index 0 while the (slow) load is still
+    // resolving and then leave that stale baseline if the load failed or the app
+    // died before the revert was persisted.
+    await reset(request)
+    await injectBean(request, 'beanB', 'Bean B', 'batchB')
+    const linked = recipe('rb', 'Linked B', { selectedBeanId: 'beanB', selectedBatchId: 'batchB', coffeeName: '', roaster: '' })
+    const manual = recipe('rm', 'Manual', { coffeeName: 'Manual Coffee' })
+    await request.post(`${B}/api/v1/store/decenza-js/combos`, { data: { workflowCombos: [linked, manual], selectedWorkflowCombo: 1 }, headers: { 'Content-Type': 'application/json' } })
+
+    await page.goto('/')
+    await page.waitForSelector('.preset-pill-row__pill', { timeout: 10000 })
+    await page.waitForTimeout(500)
+
+    const puts = countWorkflowPuts(page)
+    // Hold bean/batch lookups open well past the 800ms settings debounce.
+    await delayBeanLookups(page, 3000)
+    await page.locator('.preset-pill-row__pill').nth(0).click()
+
+    // Past the debounce (would have persisted index 0 optimistically) but still
+    // inside the held lookup: the persisted selection must remain 1.
+    await page.waitForTimeout(2300)
+    expect(await readSelectedCombo(request)).toBe(1)
+    expect(puts.count()).toBe(0)
+
+    // Lookup releases → load succeeds → selection commits → debounce persists 0.
+    await expect.poll(() => puts.count()).toBe(1)
+    await expect.poll(async () => await readSelectedCombo(request)).toBe(0)
+    const wf = await readWorkflow(request)
+    expect(wf?.context?.beanBatchId).toBe('batchB')
+  })
+
+  test('failed slow recipe load never persists the attempted selection', async ({ page, request }) => {
+    // Ghost references a batch that does not exist; its (delayed) resolution
+    // throws AFTER the settings debounce would have persisted an optimistic
+    // index. The persisted selectedWorkflowCombo must stay on Manual (1).
+    await reset(request)
+    const ghost = recipe('rg', 'Ghost', { selectedBatchId: 'ghost-batch', coffeeName: '', roaster: '' })
+    const manual = recipe('rm', 'Manual', { coffeeName: 'Manual Coffee' })
+    await request.post(`${B}/api/v1/store/decenza-js/combos`, { data: { workflowCombos: [ghost, manual], selectedWorkflowCombo: 1 }, headers: { 'Content-Type': 'application/json' } })
+
+    await page.goto('/')
+    await page.waitForSelector('.preset-pill-row__pill', { timeout: 10000 })
+    await page.waitForTimeout(500)
+
+    const puts = countWorkflowPuts(page)
+    await delayBeanLookups(page, 3000)
+    await page.locator('.preset-pill-row__pill').nth(0).click()
+
+    // Past the debounce but before the (delayed) failure: still 1, no PUT.
+    await page.waitForTimeout(2300)
+    expect(await readSelectedCombo(request)).toBe(1)
+    expect(puts.count()).toBe(0)
+
+    // Failure lands (~3s), busy clears; the attempted index must never persist.
+    await expect.poll(async () => await readSelectedCombo(request)).toBe(1)
+    expect(puts.count()).toBe(0)
   })
 })

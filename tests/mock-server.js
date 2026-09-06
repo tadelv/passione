@@ -56,6 +56,20 @@ function stripNullContextKeys(wf) {
   }
 }
 
+// Gateway parity: the real /workflow PUT deep-merges the request into the
+// current workflow (deepMergeJson), so an omitted field retains its previous
+// value while an explicit null sets it null. Mirror that recursively in place.
+function deepMergeWorkflow(target, patch) {
+  for (const [k, v] of Object.entries(patch ?? {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v) &&
+        target[k] && typeof target[k] === 'object' && !Array.isArray(target[k])) {
+      deepMergeWorkflow(target[k], v)
+    } else {
+      target[k] = v
+    }
+  }
+}
+
 const mockSnapshot = {
   timestamp: new Date().toISOString(),
   state: { state: 'idle', substate: 'ready' },
@@ -438,7 +452,10 @@ function routeApi(path, method, body, res, url, headers = {}) {
     return json(mockWorkflow)
   }
   if (path === '/api/v1/workflow' && method === 'PUT') {
-    if (body) Object.assign(mockWorkflow, body)
+    // Deep merge (the real gateway merges the request into the current
+    // workflow, so an omitted context field must retain its previous value
+    // instead of being discarded by a shallow replace).
+    if (body) deepMergeWorkflow(mockWorkflow, body)
     stripNullContextKeys(mockWorkflow)
     return json(mockWorkflow)
   }
