@@ -24,6 +24,12 @@ const props = defineProps({
    *    { measurements: [{ timestamp, pressure, flow, mixTemperature, weight, ... }, ...] }
    */
   shot: { type: Object, default: null },
+  /**
+   * Compact mode for small cards (e.g. the home last-shot widget): renders the
+   * legend wrapped and at a smaller size so it fits a narrow chart column.
+   * The full history/shot pages leave this off and keep the one-line legend.
+   */
+  compact: { type: Boolean, default: false },
 })
 
 const chartEl = ref(null)
@@ -201,7 +207,7 @@ onUnmounted(() => {
 <template>
   <div class="history-shot-graph">
     <div ref="chartEl" class="history-shot-graph__canvas"></div>
-    <div class="history-shot-graph__legend">
+    <div class="history-shot-graph__legend" :class="{ 'history-shot-graph__legend--compact': compact }">
       <span class="history-shot-graph__legend-item">
         <span class="history-shot-graph__swatch" :style="{ background: COLORS.pressure }"></span>
         Pressure
@@ -256,6 +262,19 @@ onUnmounted(() => {
   padding: 6px 8px;
   font-size: var(--font-sm);
   color: var(--text-secondary, #a0a8b8);
+}
+
+/* Compact (small-card) legend: wrap instead of overflowing, smaller items. */
+.history-shot-graph__legend--compact {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  column-gap: 10px;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.history-shot-graph__legend--compact .history-shot-graph__legend-sep {
+  display: none;
 }
 
 .history-shot-graph__legend-item {

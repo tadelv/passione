@@ -11,6 +11,7 @@ import { buildComboUpdate } from '../composables/useComboApply.js'
 import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { useProfilesCache } from '../composables/useProfilesCache'
 import { useBeans } from '../composables/useBeans'
+import { profileFirstStepTemp } from '../composables/useProfileCurve.js'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -78,6 +79,14 @@ const shotPlanLines = computed(() => {
     else if (grinderName) lines.push({ kind: 'grinder', text: grinderName })
   } else {
     lines.push({ kind: 'coffee', text: '' })
+  }
+
+  // Configured brew temp = profile's first-step temp (the next-shot target, NOT
+  // live heater telemetry). Read independent of ctx; omitted when unknown.
+  const brewTemp = profileFirstStepTemp(workflow.profile)
+  if (brewTemp != null) {
+    const display = Number.isInteger(brewTemp) ? brewTemp.toFixed(0) : brewTemp.toFixed(1)
+    lines.push({ kind: 'temperature', text: t('idle.configuredBrewTemp', { temp: display }) })
   }
 
   // Operation status — show only when enabled (duration > 0). buildWorkflowUpdate
@@ -299,12 +308,6 @@ onMounted(() => {
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
         :selected-workflow-combo-modified="selectedComboModified"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
         v-on="widgetEvents"
       />
     </div>
@@ -320,12 +323,6 @@ onMounted(() => {
         :workflow-combos="workflowCombos"
         :selected-workflow-combo="selectedWorkflowCombo"
         :selected-workflow-combo-modified="selectedComboModified"
-        :steam-presets="steamPresets"
-        :selected-steam-preset="selectedSteamPreset"
-        :hot-water-presets="hotWaterPresets"
-        :selected-hot-water-preset="selectedHotWaterPreset"
-        :flush-presets="flushPresets"
-        :selected-flush-preset="selectedFlushPreset"
         v-on="widgetEvents"
       />
     </div>
@@ -485,6 +482,15 @@ onMounted(() => {
       "bottom-left"
       "bottom-right";
     gap: var(--spacing-medium);
+  }
+
+  /* Let the stacked center rows size to their content so a tall mobile home
+     stacks cleanly (page scrolls) instead of one column overflowing into the
+     next row and overlapping its widgets. */
+  .idle-page__center-left,
+  .idle-page__center-right {
+    min-height: auto;
+    justify-content: flex-start;
   }
 
   .idle-page--center-left-only {

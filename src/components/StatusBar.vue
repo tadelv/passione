@@ -236,7 +236,13 @@ const timeToReadyLabel = computed(() => {
 }
 
 .status-bar__scan-btn {
-  padding: 2px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 10px;
+  box-sizing: border-box;
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: transparent;
@@ -255,5 +261,37 @@ const timeToReadyLabel = computed(() => {
 .status-bar__scan-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Narrow widths: keep the clock and telemetry from colliding in the header. */
+@media (max-width: 480px) {
+  .status-bar {
+    gap: 8px;
+  }
+
+  .status-bar__left {
+    gap: 6px;
+  }
+
+  .status-bar__right {
+    gap: 6px;
+  }
+
+  .status-bar__state {
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .status-bar__clock {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .status-bar__temp,
+  .status-bar__steam-temp,
+  .status-bar__water {
+    font-size: 11px;
+    white-space: nowrap;
+  }
 }
 </style>
