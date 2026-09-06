@@ -108,13 +108,12 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
   // ---- Coffee / bean-batch / grinder links + text ----
   const { bean, batchId } = await resolveComboBeanLink(combo, beans) // throws propagate
   const grinderId = combo.selectedGrinderId ? String(combo.selectedGrinderId) : null
-  const hasBasketExtras = combo.grinderRpm != null || combo.basketSize != null || combo.basketType != null
   const hasContext =
     combo.doseIn != null || combo.doseOut != null ||
     !!combo.coffeeName || !!combo.roaster || !!combo.beanBrand || !!combo.beanType ||
     !!combo.grinder || combo.grinderSetting != null ||
     !!combo.selectedBeanId || !!combo.selectedBatchId || !!combo.selectedGrinderId ||
-    hasBasketExtras
+    combo.grinderRpm != null || combo.basketSize != null || combo.basketType != null
 
   if (hasContext) {
     // Linked bean is source of truth for coffee text (combos blank it on link).
@@ -130,12 +129,13 @@ export async function buildComboUpdate(combo, workflow, { profilesCache, setting
       beanBatchId: batchId || null,
       grinderId,
     }
-    if (hasBasketExtras) {
-      context.extras = {
-        grinderRpm: combo.grinderRpm ?? null,
-        basketSize: combo.basketSize ?? null,
-        basketType: combo.basketType ?? null,
-      }
+    // Power-user extras ALWAYS emitted so loading a recipe WITHOUT rpm/basket
+    // clears a previous recipe's values (the deep merge sets them null in the
+    // extras map, which round-trips null).
+    context.extras = {
+      grinderRpm: combo.grinderRpm ?? null,
+      basketSize: combo.basketSize ?? null,
+      basketType: combo.basketType ?? null,
     }
     update.context = context
   }
@@ -241,11 +241,13 @@ export async function buildShotWorkflowUpdate(raw, { beans } = {}) {
   }
 
   const srcExtras = ctx.extras ?? {}
-  const extras = {}
-  if (srcExtras.grinderRpm != null) extras.grinderRpm = srcExtras.grinderRpm
-  if (srcExtras.basketSize != null) extras.basketSize = srcExtras.basketSize
-  if (srcExtras.basketType != null) extras.basketType = srcExtras.basketType
-  if (Object.keys(extras).length > 0) context.extras = extras
+  // Power-user extras ALWAYS emitted (null when the shot carries none) so a
+  // Repeat/Load of a shot without rpm/basket clears a previous recipe's values.
+  context.extras = {
+    grinderRpm: srcExtras.grinderRpm ?? null,
+    basketSize: srcExtras.basketSize ?? null,
+    basketType: srcExtras.basketType ?? null,
+  }
 
   update.context = context
   return update

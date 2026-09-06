@@ -125,6 +125,24 @@ describe('buildComboUpdate — coherent recipe loading (audit #3)', () => {
     assert.equal(update.context.coffeeName, 'Free Coffee')
   })
 
+  it('always emits power-user extras, clearing stale keys when the recipe has none', async () => {
+    const combo = { coffeeName: 'Coffee', grinder: 'GM', doseIn: 18, doseOut: 36 } // no rpm/basket
+    const update = await buildComboUpdate(combo, {}, {})
+    assert.deepEqual(update.context.extras, {
+      grinderRpm: null,
+      basketSize: null,
+      basketType: null,
+    })
+  })
+
+  it('emits recipe power-user extras values when present', async () => {
+    const combo = { coffeeName: 'Coffee', grinder: 'GM', doseIn: 18, doseOut: 36, grinderRpm: 1200, basketSize: 18, basketType: 'VST' }
+    const update = await buildComboUpdate(combo, {}, {})
+    assert.equal(update.context.extras.grinderRpm, 1200)
+    assert.equal(update.context.extras.basketSize, 18)
+    assert.equal(update.context.extras.basketType, 'VST')
+  })
+
   it('applies the brew temperature as a per-step delta without mutating the cached profile', async () => {
     const profile = { title: 'P', steps: [{ temperature: 90 }, { temperature: 86 }] }
     const combo = { profileId: 'p1', brewTemperature: 94 }
@@ -201,6 +219,16 @@ describe('buildShotWorkflowUpdate — shared Repeat/History loader (audit #3)', 
     const update = await buildShotWorkflowUpdate(raw, {})
     assert.equal(update.context.targetDoseWeight, 18)
     assert.equal(update.context.targetYield, 36) // planned, not 44
+  })
+
+  it('emits null power-user extras for a shot without rpm/basket (clears stale)', async () => {
+    const raw = { profile, workflow: { context: { targetDoseWeight: 18, targetYield: 36, coffeeName: 'Old', coffeeRoaster: 'OR' } } }
+    const update = await buildShotWorkflowUpdate(raw, {})
+    assert.deepEqual(update.context.extras, {
+      grinderRpm: null,
+      basketSize: null,
+      basketType: null,
+    })
   })
 
   it('clears prior ids for a manual/no-link shot and sends no fabricated yield', async () => {

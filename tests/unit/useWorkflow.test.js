@@ -1,12 +1,14 @@
 /**
  * Unit test for useWorkflow.applyWorkflowData — tri-state null handling.
  *
- * The workflow PUT is a deep merge on the gateway; a recipe/shot that omits an
- * entity ID keeps the previously-loaded association. And the client's apply of
- * a server echo must treat an explicit null (own key present) as an intentional
- * clear rather than ignoring it the way `??` did — while still preserving fields
- * the response omits, and never resurrecting an explicitly-cleared field from a
- * legacy top-level sibling (doseData / grinderData / coffeeData).
+ * Every input to applyWorkflowData is a CANONICAL full workflow snapshot (GET
+ * refresh / PUT echo). The gateway's WorkflowContext.toJson omits null fields,
+ * so an absent tracked scalar context key means the server value is null —
+ * absence is an authoritative clear, indistinguishable from an explicit
+ * own-key null (the way `??` previously ignored BOTH). Legacy top-level
+ * siblings (doseData / grinderData / coffeeData) backfill ONLY keys the
+ * response context did not explicitly carry, and only while that field is null
+ * after the clear, so an explicitly-cleared field is never resurrected.
  *
  * Run: node --test tests/unit/useWorkflow.test.js
  */
@@ -54,15 +56,44 @@ describe('applyWorkflowData — tri-state context merge', () => {
     assert.equal(wf.context.coffeeName, null)
   })
 
-  it('preserves omitted fields (partial patch does not wipe them)', () => {
+  it('clears a tracked scalar key the response omits (absent nullable = server null)', () => {
+    const wf = freshWorkflow()
+    // A local association from a previously loaded recipe.
+    wf.context.beanBatchId = 'A'
+    wf.context.grinderId = 'g'
+    wf.context.coffeeName = 'C'
+    // Echo after an explicit-null clear: toJson omits the now-null keys.
+    applyWorkflowData(wf, { context: { targetDoseWeight: 18 } })
+    assert.equal(wf.context.beanBatchId, null)
+    assert.equal(wf.context.grinderId, null)
+    assert.equal(wf.context.coffeeName, null)
+    // A key the response DOES carry is applied, not cleared.
+    assert.equal(wf.context.targetDoseWeight, 18)
+  })
+
+  it('omitted dose/grinder/coffee text clears too (all tracked scalar keys)', () => {
     const wf = freshWorkflow()
     wf.context.targetDoseWeight = 18
     wf.context.targetYield = 36
-    wf.context.coffeeName = 'Keep'
-    applyWorkflowData(wf, { context: { targetDoseWeight: 20 } })
+    wf.context.grinderModel = 'GM'
+    wf.context.grinderSetting = '12'
+    wf.context.coffeeRoaster = 'R'
+    wf.context.finalBeverageType = 'espresso'
+    applyWorkflowData(wf, { context: {} })
+    assert.equal(wf.context.targetDoseWeight, null)
+    assert.equal(wf.context.targetYield, null)
+    assert.equal(wf.context.grinderModel, null)
+    assert.equal(wf.context.grinderSetting, null)
+    assert.equal(wf.context.coffeeRoaster, null)
+    assert.equal(wf.context.finalBeverageType, null)
+  })
+
+  it('legacy backfill fills an omitted+cleared dose key after the context clear (old gateway)', () => {
+    const wf = freshWorkflow()
+    // Old gateway: context present but empty of dose; top-level doseData carries it.
+    applyWorkflowData(wf, { context: {}, doseData: { doseIn: 20, doseOut: 40 } })
     assert.equal(wf.context.targetDoseWeight, 20)
-    assert.equal(wf.context.targetYield, 36) // omitted → preserved
-    assert.equal(wf.context.coffeeName, 'Keep')
+    assert.equal(wf.context.targetYield, 40)
   })
 
   it('does not resurrect an explicitly-cleared coffee field from legacy coffeeData', () => {

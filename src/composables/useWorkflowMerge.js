@@ -4,17 +4,29 @@
  * Kept dependency-free so it can be unit-tested directly under node (useWorkflow
  * itself imports the extensionless REST api that node's resolver can't follow).
  *
- * Context semantics are tri-state: a response that carries an own key — even
- * null — is applied (an explicit null is an intentional clear), while an
- * omitted key keeps the current value (partial patches). Legacy top-level
- * fields (doseData / grinderData / coffeeData) backfill ONLY keys the response
- * context did not explicitly carry, so a field the user explicitly cleared is
- * never resurrected by a legacy sibling.
+ * RESPONSES ARE CANONICAL. Every input here is a full workflow snapshot (GET
+ * refresh or PUT echo), never a partial patch (grep-confirmed). The gateway's
+ * WorkflowContext.toJson omits null fields, so a tracked scalar context key the
+ * response is ABSENT means the server value is null — absence is an
+ * authoritative clear, indistinguishable from an explicit own-key null.
+ * Therefore omission sets the local field to null (it does NOT keep the stale
+ * local association, which previously made the bean picker / editor hydration
+ * re-highlight an old batch/grinder the gateway had already cleared).
+ *
+ * Legacy top-level fields (doseData / grinderData / coffeeData) backfill ONLY
+ * keys the response context did not explicitly carry, and only while that
+ * field is null after the clear, so an explicitly-cleared field is never
+ * resurrected by a legacy sibling.
+ *
+ * The extras map keeps plain merge semantics (unknown keys survive; a key the
+ * response carries — including an explicit null clear — is applied). extras is
+ * NOT canonical: its null values round-trip, so it is never cleared on omission.
  */
 
-/** Apply a single context field: own-key presence wins (value may be null). */
-function applyCtxField(ctx, key, inCtx, target) {
-  if (inCtx.has(key)) target[key] = ctx[key] ?? null
+/** Apply one tracked scalar context field: own-key presence OR absence both
+ *  resolve to the server value (absence means null on a canonical echo). */
+function applyCtxField(ctx, key, target) {
+  target[key] = ctx[key] ?? null
 }
 
 export function applyWorkflowData(wf, data) {
@@ -31,17 +43,18 @@ export function applyWorkflowData(wf, data) {
   const inCtx = ctx && typeof ctx === 'object' ? new Set(Object.keys(ctx)) : new Set()
   const c = wf.context
 
-  // Context fields from the server response — see module doc for tri-state.
+  // Context fields from the server response — see module doc. A canonical
+  // response omits null keys, so an absent tracked key clears it locally.
   if (ctx) {
-    applyCtxField(ctx, 'targetDoseWeight', inCtx, c)
-    applyCtxField(ctx, 'targetYield', inCtx, c)
-    applyCtxField(ctx, 'grinderId', inCtx, c)
-    applyCtxField(ctx, 'grinderModel', inCtx, c)
-    applyCtxField(ctx, 'grinderSetting', inCtx, c)
-    applyCtxField(ctx, 'beanBatchId', inCtx, c)
-    applyCtxField(ctx, 'coffeeName', inCtx, c)
-    applyCtxField(ctx, 'coffeeRoaster', inCtx, c)
-    applyCtxField(ctx, 'finalBeverageType', inCtx, c)
+    applyCtxField(ctx, 'targetDoseWeight', c)
+    applyCtxField(ctx, 'targetYield', c)
+    applyCtxField(ctx, 'grinderId', c)
+    applyCtxField(ctx, 'grinderModel', c)
+    applyCtxField(ctx, 'grinderSetting', c)
+    applyCtxField(ctx, 'beanBatchId', c)
+    applyCtxField(ctx, 'coffeeName', c)
+    applyCtxField(ctx, 'coffeeRoaster', c)
+    applyCtxField(ctx, 'finalBeverageType', c)
     if (ctx.extras && typeof ctx.extras === 'object') {
       // Merge extras: unknown keys in the current state survive; keys the
       // response carries (including null clears) are applied.

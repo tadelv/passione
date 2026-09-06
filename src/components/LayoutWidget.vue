@@ -89,6 +89,7 @@ const currentBatchId = computed(() => {
 })
 
 function onCoffeeRowClick() {
+  if (recipeBusy.value) return // single-flight: never open while a recipe load is resolving
   beanPickerOpen.value = true
 }
 
@@ -162,6 +163,7 @@ const lastShotInfo = computed(() => {
 })
 
 async function repeatLastShot() {
+  if (recipeBusy.value) return // single-flight: never PUT while a recipe load is resolving
   const raw = lastShot.value
   if (!raw) return
   try {
@@ -211,6 +213,7 @@ function onSleep() {
           type="button"
           class="layout-widget__plan-text layout-widget__plan-text--coffee"
           :aria-label="t('idle.pickCoffee') || 'Pick coffee'"
+          :disabled="recipeBusy"
           @click="onCoffeeRowClick"
         >
           <span>{{ coffeeLine.text || (t('idle.pickCoffee') || 'Pick coffee') }}</span>
@@ -274,7 +277,7 @@ function onSleep() {
           </div>
         </a>
         <!-- Repeat: sibling of the detail link (load-only). -->
-        <button class="layout-widget__repeat-btn" @click="repeatLastShot" aria-label="Repeat last shot">Repeat</button>
+        <button class="layout-widget__repeat-btn" :disabled="recipeBusy" @click="repeatLastShot" aria-label="Repeat last shot">Repeat</button>
       </div>
     </template>
 
@@ -553,6 +556,16 @@ function onSleep() {
 
 .layout-widget__repeat-btn:active {
   opacity: 0.7;
+}
+
+.layout-widget__repeat-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.layout-widget__plan-text--coffee:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---- Preset sections ---- */

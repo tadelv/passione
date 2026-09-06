@@ -59,12 +59,14 @@ function makeCoffeeAccessor(ctx) {
 /**
  * Merge a gateway workflow response into the reactive workflow state.
  *
- * Context semantics are tri-state: a response that carries an own key — even
- * null — is applied (an explicit null is an intentional clear), while an
- * omitted key keeps the current value (partial patches). Legacy top-level
- * fields backfill ONLY keys the response context did not explicitly carry, so
- * a field the user explicitly cleared is never resurrected by a legacy sibling.
- * Logic lives in useWorkflowMerge.js so it is unit-testable under node.
+ * RESPONSES ARE CANONICAL (full GET refresh / PUT echo). Context semantics are
+ * binary for tracked scalar keys: the gateway's WorkflowContext.toJson omits
+ * null fields, so an own key — even null — is applied AND an absent key is
+ * treated as server null = clear. Legacy top-level fields backfill ONLY keys
+ * the response context did not explicitly carry, and only while that field is
+ * null after the clear, so a field the user explicitly cleared is never
+ * resurrected by a legacy sibling. Logic lives in useWorkflowMerge.js so it is
+ * unit-testable under node.
  */
 
 export function useWorkflow() {

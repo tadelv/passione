@@ -45,6 +45,17 @@ const mockWorkflow = {
   },
 }
 
+// Gateway parity: drop TOP-LEVEL null keys of workflow.context (WorkflowContext
+// .toJson omits them). Never recurses into extras — map null values round-trip.
+function stripNullContextKeys(wf) {
+  const ctx = wf && wf.context
+  if (ctx && typeof ctx === 'object') {
+    for (const k of Object.keys(ctx)) {
+      if (ctx[k] === null) delete ctx[k]
+    }
+  }
+}
+
 const mockSnapshot = {
   timestamp: new Date().toISOString(),
   state: { state: 'idle', substate: 'ready' },
@@ -419,11 +430,16 @@ function routeApi(path, method, body, res, url, headers = {}) {
   }
 
   // Workflow
+  // Mirror the real gateway: WorkflowContext.toJson omits null fields, so after
+  // storage and on every GET/PUT echo, drop TOP-LEVEL context keys whose value
+  // is null (do NOT recurse — extras map null values survive the Dart round-trip).
   if (path === '/api/v1/workflow' && method === 'GET') {
+    stripNullContextKeys(mockWorkflow)
     return json(mockWorkflow)
   }
   if (path === '/api/v1/workflow' && method === 'PUT') {
     if (body) Object.assign(mockWorkflow, body)
+    stripNullContextKeys(mockWorkflow)
     return json(mockWorkflow)
   }
 
