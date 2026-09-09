@@ -132,6 +132,20 @@ const mockSkin = {
 
 let mockSkinUpdateError = false
 
+// weather.reaplugin websocket payload + connection counter (weather-widget e2e).
+const mockWeatherPayload = {
+  ok: true,
+  reason: 'ok',
+  ageMinutes: 3,
+  code: 1,
+  temperature: 21,
+  humidity: 58,
+  high: 24,
+  low: 13,
+  units: 'metric',
+}
+let weatherWsConnectionCount = 0
+
 // Deterministic content-hash for profiles (mimics gateway's profile:<20hex> ids)
 function hashProfile(profile) {
   const s = JSON.stringify(profile)
@@ -736,6 +750,15 @@ function routeApi(path, method, body, res, url, headers = {}) {
     })
   }
 
+  if (path === '/api/v1/test/weather-connections' && method === 'GET') {
+    return json({ count: weatherWsConnectionCount })
+  }
+
+  if (path === '/api/v1/test/reset-weather-connections' && method === 'POST') {
+    weatherWsConnectionCount = 0
+    return json({ ok: true })
+  }
+
   if (path === '/api/v1/test/fail-next-beans-get' && method === 'POST') {
     beansFailNextGet = true
     return json({ ok: true })
@@ -1020,6 +1043,14 @@ function setupWebSockets(server) {
     if (path === '/ws/v1/machine/waterLevels') {
       if (ws.readyState === 1) {
         ws.send(JSON.stringify(mockWaterLevels))
+      }
+      return
+    }
+
+    if (path === '/ws/v1/plugins/weather.reaplugin/weather') {
+      weatherWsConnectionCount += 1
+      if (ws.readyState === 1) {
+        ws.send(JSON.stringify(mockWeatherPayload))
       }
       return
     }

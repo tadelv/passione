@@ -155,6 +155,14 @@ function addWidget() {
         </select>
         <button class="drawer__add-btn" :disabled="!addWidgetType" @click="addWidget">Add</button>
       </div>
+
+      <p
+        v-if="widgets.includes('weather') || addWidgetType === 'weather'"
+        class="drawer__dep-hint"
+        data-testid="weather-dep-hint"
+      >
+        The Weather widget needs the weather.reaplugin plugin installed and configured (location, refresh, units).
+      </p>
     </div>
   </div>
 </template>
@@ -356,5 +364,11 @@ function addWidget() {
   font-size: var(--font-caption);
   color: var(--color-text-secondary);
   margin: 4px 0 0;
+}
+
+.drawer__dep-hint {
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 </style>
