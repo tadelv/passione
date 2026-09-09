@@ -1,6 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, inject } from 'vue'
 import { useLayout } from '../composables/useLayout.js'
+import SettingsToggle from './settings/SettingsToggle.vue'
+import { COMBO_EDITOR_TOOL_ORDER } from '../composables/useComboEditorConfig.js'
 
 const props = defineProps({
   zone: { type: String, required: true },
@@ -51,6 +53,35 @@ function removeWidget(index) {
   setZoneWidgets(props.zone, arr)
 }
 
+const settings = inject('settings', null)
+
+// Combo Editor widget tool-visibility config (gear on the comboEditor row).
+const configOpen = ref(false)
+const comboEditorPresent = computed(() => widgets.value.includes('comboEditor'))
+watch(comboEditorPresent, (v) => { if (!v) configOpen.value = false })
+const toolsCfg = computed(() => settings?.settings?.comboEditorTools ?? {})
+const COMBO_TOOL_LABELS = {
+  coffee: 'Coffee',
+  grind: 'Grind setting',
+  dose: 'Input / Ratio / Output',
+  temperature: 'Brew temperature',
+  grinderRpm: 'Grinder RPM',
+  basket: 'Basket',
+}
+const configTools = COMBO_EDITOR_TOOL_ORDER.map((k) => ({ key: k, label: COMBO_TOOL_LABELS[k] || k }))
+const enabledToolCount = computed(() => configTools.filter((x) => toolsCfg.value[x.key] === true).length)
+
+function onToggleTool(key) {
+  if (!toolsCfg.value || typeof toolsCfg.value !== 'object') return
+  // At-least-one-tool invariant: never turn off the last enabled tool.
+  if (toolsCfg.value[key] === true && enabledToolCount.value <= 1) return
+  toolsCfg.value[key] = !toolsCfg.value[key]
+}
+
+function toggleConfig() {
+  configOpen.value = !configOpen.value
+}
+
 function addWidget() {
   if (!addWidgetType.value) return
   setZoneWidgets(props.zone, [...widgets.value, addWidgetType.value])
@@ -89,10 +120,31 @@ function addWidget() {
               @click="removeWidget(idx)"
               aria-label="Remove widget"
             >&times;</button>
+            <button
+              v-if="wt === 'comboEditor'"
+              class="drawer__btn drawer__config-btn"
+              :class="{ 'drawer__config-btn--active': configOpen }"
+              @click="toggleConfig"
+              aria-label="Configure Combo Editor widget"
+            >⚙</button>
           </div>
         </div>
       </div>
       <p v-else class="drawer__empty">No widgets in this zone.</p>
+
+      <div v-if="configOpen && comboEditorPresent" class="drawer__config" data-testid="comboEditor-config">
+        <span class="drawer__config-title">Combo Editor tools <span class="drawer__hint">fixed order</span></span>
+        <div v-for="tool in configTools" :key="tool.key" class="drawer__config-row" :data-testid="`comboEditor-tool-${tool.key}`">
+          <span class="drawer__config-label">{{ tool.label }}</span>
+          <SettingsToggle
+            :model-value="toolsCfg[tool.key] === true"
+            :disabled="toolsCfg[tool.key] === true && enabledToolCount <= 1"
+            :aria-label="`Show ${tool.label}`"
+            @update:model-value="onToggleTool(tool.key)"
+          />
+        </div>
+        <p class="drawer__config-hint">At least one tool must stay enabled.</p>
+      </div>
 
       <div v-if="unusedWidgets.length" class="drawer__add-row">
         <select class="drawer__select" v-model="addWidgetType">
@@ -265,5 +317,44 @@ function addWidget() {
   background-color: var(--button-disabled);
   color: var(--button-disabled-text);
   cursor: default;
+}
+
+.drawer__config-btn--active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.drawer__config {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+}
+
+.drawer__config-title {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+.drawer__config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 4px;
+}
+
+.drawer__config-label {
+  font-size: var(--font-md);
+  color: var(--color-text);
+}
+
+.drawer__config-hint {
+  font-size: var(--font-caption);
+  color: var(--color-text-secondary);
+  margin: 4px 0 0;
 }
 </style>

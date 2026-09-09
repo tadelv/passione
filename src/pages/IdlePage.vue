@@ -45,25 +45,15 @@ const isReady = computed(() =>
   machineState.value === 'idle'
 )
 
-// Shot plan lines — from workflow data.
-// Items are { kind, text }. `kind` lets the widget render per-row affordances
-// (the coffee row opens a bean picker; operation rows are read-only).
+// Shot plan lines — from workflow data. Read-only "what is about to execute"
+// summary (dose/grinder/temp + operation status). Coffee selection is owned
+// by the comboEditor widget, not Shot Plan.
 const shotPlanLines = computed(() => {
   if (!workflow) return []
   const lines = []
   const ctx = workflow.context
 
-  // Coffee — always emitted (even empty) so the picker affordance is reachable
-  // when no bean is selected yet.
   if (ctx) {
-    const coffeeName = ctx.coffeeName
-    const roaster = ctx.coffeeRoaster
-    let coffeeText = ''
-    if (roaster && coffeeName) coffeeText = `${roaster} — ${coffeeName}`
-    else if (coffeeName) coffeeText = coffeeName
-    else if (roaster) coffeeText = roaster
-    lines.push({ kind: 'coffee', text: coffeeText })
-
     const doseIn = ctx.targetDoseWeight
     const doseOut = ctx.targetYield
     if (doseIn && doseOut) {
@@ -77,8 +67,6 @@ const shotPlanLines = computed(() => {
     if (grinderName && grinderSetting != null) lines.push({ kind: 'grinder', text: `${grinderName} @ ${grinderSetting}` })
     else if (grinderSetting != null) lines.push({ kind: 'grinder', text: `Grind: ${grinderSetting}` })
     else if (grinderName) lines.push({ kind: 'grinder', text: grinderName })
-  } else {
-    lines.push({ kind: 'coffee', text: '' })
   }
 
   // Configured brew temp = profile's first-step temp (the next-shot target, NOT

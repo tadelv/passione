@@ -26,13 +26,19 @@ const B = 'http://localhost:8080'
 const SHOT_DIR = '/tmp/passione-audit-agents'
 const SHOT_ID = 'homeux-shot'
 
+// comboEditor widget tool visibility this spec's home layout needs (coffee row
+// is asserted in every test). Re-seeded explicitly because the mock store
+// survives across spec files and combo-editor.spec.js persists a dose-only
+// comboEditorTools config.
+const COMBO_EDITOR_TOOLS = { coffee: true, grind: true, dose: true, temperature: false, grinderRpm: false, basket: false }
+
 // Full default-like layout (all seven widget types, saved-zone positions).
 const FULL_LAYOUT = {
   version: 2,
   zones: {
     topLeft: { widgets: ['scaleInfo'] },
     topRight: { widgets: [] },
-    centerLeft: { widgets: ['actionButtons', 'shotPlan'] },
+    centerLeft: { widgets: ['actionButtons', 'shotPlan', 'comboEditor'] },
     centerRight: { widgets: ['lastShot', 'workflowCombos'] },
     bottomLeft: { widgets: ['navButtons'] },
     bottomRight: { widgets: ['sleepButton'] },
@@ -63,6 +69,7 @@ const GRAPH_MEASUREMENTS = [0, 10, 20, 30].map((t, i) => ({
 async function seedHome(request, { withOps = false } = {}) {
   await request.put(`${B}/api/v1/machine/state/idle`)
   await request.post(`${B}/api/v1/store/decenza-js/layout`, { data: FULL_LAYOUT, headers: { 'Content-Type': 'application/json' } })
+  await request.post(`${B}/api/v1/store/decenza-js/comboEditor`, { data: { comboEditorTools: COMBO_EDITOR_TOOLS }, headers: { 'Content-Type': 'application/json' } })
   await request.post(`${B}/api/v1/store/decenza-js/combos`, { data: {
     workflowCombos: [{ id: 'r1', name: 'Morning Shot', emoji: '🌅', profileTitle: 'Numeric Profile', doseIn: 18, doseOut: 36 }],
     selectedWorkflowCombo: -1,
@@ -109,7 +116,7 @@ async function settle(page) {
 async function waitForHomeWidgets(page) {
   await page.waitForSelector('.layout-widget__repeat-btn', { timeout: 15000 })
   await page.waitForSelector('.layout-widget__profile', { timeout: 15000 })
-  await page.waitForSelector('.layout-widget__plan-text--coffee', { timeout: 15000 })
+  await page.waitForSelector('.combo-editor__coffee', { timeout: 15000 })
   await page.waitForSelector('.layout-widget__plan-summary', { timeout: 15000 })
   await settle(page)
 }
@@ -128,7 +135,7 @@ test.describe('Home UX audit #5', () => {
     // Regions that must be mutually non-overlapping (first instance each).
     const REGION_SELS = [
       ['profile', '.layout-widget__profile'],
-      ['coffee', '.layout-widget__plan-text--coffee'],
+      ['coffee', '.combo-editor__coffee'],
       ['config-summary', '.layout-widget__plan-summary'],
       ['ops', '.layout-widget__plan-ops'],
       ['scale-btn', '.layout-widget__scale-btn'],

@@ -43,6 +43,7 @@ const STACK_ZONES = new Set(['centerLeft', 'centerRight'])
 const WIDGET_TYPES = [
   'actionButtons',
   'shotPlan',
+  'comboEditor',
   'lastShot',
   'workflowCombos',
   'navButtons',
@@ -53,6 +54,7 @@ const WIDGET_TYPES = [
 const WIDGET_LABELS = {
   actionButtons: 'Action Buttons',
   shotPlan: 'Shot Plan',
+  comboEditor: 'Combo Editor',
   lastShot: 'Last Shot',
   workflowCombos: 'Recipes',
   navButtons: 'Navigation Buttons',
@@ -64,6 +66,7 @@ const WIDGET_LABELS = {
 const WIDGET_ZONE_RULES = {
   actionButtons: 'center',
   shotPlan: 'center',
+  comboEditor: 'center',
   lastShot: 'center',
   workflowCombos: 'center',
   navButtons: 'edge',
@@ -122,7 +125,7 @@ export function useLayout() {
       }
       const widgets = zoneConfig.widgets
         .map(w => (w === 'workflowPresets' ? 'workflowCombos' : w))
-        .filter(w => WIDGET_TYPES.includes(w))
+        .filter(w => WIDGET_TYPES.includes(w) && (w !== 'comboEditor' || STACK_ZONES.has(zoneName)))
       validated.zones[zoneName] = { widgets }
     }
 
@@ -190,7 +193,9 @@ export function useLayout() {
    */
   async function setZoneWidgets(zoneName, widgets) {
     if (!ZONE_NAMES.includes(zoneName)) return
-    const filtered = widgets.filter(w => WIDGET_TYPES.includes(w))
+    const filtered = widgets.filter(w =>
+      WIDGET_TYPES.includes(w) && (w !== 'comboEditor' || STACK_ZONES.has(zoneName))
+    )
     layout.value = {
       ...layout.value,
       zones: {

@@ -10,7 +10,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
-import BeanPickerPopup from './BeanPickerPopup.vue'
+import ComboEditorWidget from './ComboEditorWidget.vue'
 import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { buildShotWorkflowUpdate } from '../composables/useComboApply'
@@ -29,10 +29,10 @@ const props = defineProps({
   isReady: { type: Boolean, default: false },
   /**
    * Shot plan lines. Items are `{ kind, text }`:
-   *   - `coffee`  — clickable, opens the BeanPickerPopup.
-   *   - `dose`, `grinder` — non-interactive; the outer container handles
-   *     navigation to the recipe editor.
+   *   - `dose`, `grinder`, `temperature` — non-interactive execution summary;
+   *     the outer container handles navigation to the recipe editor.
    *   - `steam`, `hotwater`, `flush` — status-only.
+   *   Coffee selection lives in the `comboEditor` widget, not Shot Plan.
    */
   shotPlanLines: { type: Array, default: () => [] },
   /** Workflow combos */
@@ -81,20 +81,8 @@ const beansApi = inject('beansApi', null)
 const recipeSelectionBusy = inject('recipeSelectionBusy', ref(false))
 const recipeBusy = computed(() => !!recipeSelectionBusy.value)
 
-// Bean picker popup state — opened from the coffee row of the shotPlan widget.
-const beanPickerOpen = ref(false)
-const currentBatchId = computed(() => {
-  const id = workflow?.context?.beanBatchId
-  return id != null ? String(id) : null
-})
-
-function onCoffeeRowClick() {
-  if (recipeBusy.value) return // single-flight: never open while a recipe load is resolving
-  beanPickerOpen.value = true
-}
-
-// Group shot-plan lines by interaction: coffee → picker, config → editor, ops status-only.
-const coffeeLine = computed(() => props.shotPlanLines.find((l) => l.kind === 'coffee') || null)
+// Group shot-plan lines: execution summary → recipe editor, ops → status-only.
+// Coffee selection is owned by the `comboEditor` widget, not Shot Plan.
 const configLines = computed(() => props.shotPlanLines.filter((l) => ['dose', 'grinder', 'temperature'].includes(l.kind)))
 const opsLine = computed(() => props.shotPlanLines.find((l) => l.kind === 'ops') || null)
 
@@ -207,21 +195,6 @@ function onSleep() {
           @click="router.push('/profiles')"
         >{{ profileName }}</button>
 
-        <!-- Coffee row: own target, opens the bean picker. -->
-        <button
-          v-if="coffeeLine"
-          type="button"
-          class="layout-widget__plan-text layout-widget__plan-text--coffee"
-          :aria-label="t('idle.pickCoffee') || 'Pick coffee'"
-          :disabled="recipeBusy"
-          @click="onCoffeeRowClick"
-        >
-          <span>{{ coffeeLine.text || (t('idle.pickCoffee') || 'Pick coffee') }}</span>
-          <svg class="layout-widget__plan-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-
         <!-- Dose/grinder/temperature recipe summary → recipe editor. -->
         <a
           v-if="configLines.length"
@@ -248,11 +221,11 @@ function onSleep() {
           </span>
         </div>
       </div>
-      <BeanPickerPopup
-        :visible="beanPickerOpen"
-        :current-batch-id="currentBatchId"
-        @close="beanPickerOpen = false"
-      />
+    </template>
+
+    <!-- Combo Editor (quick live editor) -->
+    <template v-else-if="type === 'comboEditor'">
+      <ComboEditorWidget :edit-enabled="!recipeBusy" />
     </template>
 
     <!-- Last Shot -->
@@ -407,23 +380,6 @@ function onSleep() {
   opacity: 0.7;
 }
 
-/* Coffee row — bean picker affordance with chevron (own native button). */
-.layout-widget__plan-text--coffee {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 999px;
-  box-sizing: border-box;
-  background: var(--color-surface-pressed, rgba(255, 255, 255, 0.05));
-  color: var(--color-text);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
 /* Dose/grinder/temperature recipe summary → recipe editor. */
 .layout-widget__plan-summary {
   display: flex;
@@ -435,10 +391,6 @@ function onSleep() {
   text-decoration: none;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-}
-
-.layout-widget__plan-chevron {
-  color: var(--color-text-secondary);
 }
 
 /* Operation status row — condensed chips with icons. */
@@ -560,11 +512,6 @@ function onSleep() {
 
 .layout-widget__repeat-btn:disabled {
   opacity: 0.4;
-  cursor: default;
-}
-
-.layout-widget__plan-text--coffee:disabled {
-  opacity: 0.5;
   cursor: default;
 }
 

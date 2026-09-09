@@ -98,6 +98,22 @@
     "noBeans": "No beans yet.",
     "openCatalog": "Open catalog"
   },
+  "comboEditor": {
+    "title": "Combo Editor",
+    "editCombo": "Edit combo",
+    "selectCoffee": "Select coffee",
+    "grind": "Grind setting",
+    "input": "Input",
+    "ratio": "Ratio",
+    "output": "Output",
+    "temperature": "Brew temperature",
+    "rpm": "Grinder RPM",
+    "basket": "Basket",
+    "basketSize": "Size (g)",
+    "basketType": "Type",
+    "basketTypePlaceholder": "e.g. IMS Competition",
+    "applyFailed": "Failed to apply this change to the machine"
+  },
   "brew": {
     "title": "Brew",
     "temperature": "Temperature",

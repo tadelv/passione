@@ -13,6 +13,10 @@
 
 import { ref, reactive, watch, onMounted } from 'vue'
 import { getStoreValue, setStoreValue } from '../api/rest'
+import {
+  COMBO_EDITOR_TOOL_DEFAULTS,
+  normalizeComboEditorTools,
+} from './useComboEditorConfig.js'
 
 const NAMESPACE = 'decenza-js'
 const SAVE_DEBOUNCE_MS = 800
@@ -86,6 +90,9 @@ const DEFAULT_SETTINGS = {
   // Power-user recipe-editor fields (gate optional inputs)
   showGrinderRpm: false,
   showBasketData: false,
+
+  // Home comboEditor widget tool visibility (see useComboEditorConfig.js)
+  comboEditorTools: { ...COMBO_EDITOR_TOOL_DEFAULTS },
 
   // DYE sticky metadata
   dyeBeanBrand: '',
@@ -204,6 +211,9 @@ export function useSettings() {
     powerUser: [
       'showGrinderRpm', 'showBasketData',
     ],
+    comboEditor: [
+      'comboEditorTools',
+    ],
     accessibility: [
       'accessibilityEnabled', 'voiceAnnouncements', 'frameTickSounds',
       'announcementMode', 'announcementInterval',
@@ -240,8 +250,18 @@ export function useSettings() {
       }
     }
     _migrateSteamFlow()
+    _migrateComboEditorTools()
     _armWatchers()
     loaded.value = true
+  }
+
+  /**
+   * Sanitize a stored comboEditorTools config: unknown keys dropped, all-off
+   * configs restored to defaults (at-least-one-tool invariant). Runs before
+   * watchers are armed so the sanitizing assignment never triggers a save.
+   */
+  function _migrateComboEditorTools() {
+    settings.comboEditorTools = normalizeComboEditorTools(settings.comboEditorTools)
   }
 
   /**

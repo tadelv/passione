@@ -7,6 +7,11 @@ import { test, expect } from '@playwright/test'
 
 const B = 'http://localhost:8080'
 
+// comboEditor widget tool visibility this spec's home layout needs. Must be
+// re-seeded explicitly: other specs (combo-editor.spec.js config test) persist
+// a dose-only config, and the mock store survives across spec files.
+const COMBO_EDITOR_TOOLS = { coffee: true, grind: true, dose: true, temperature: false, grinderRpm: false, basket: false }
+
 function recipe(id, name, overrides = {}) {
   return {
     id, name,
@@ -22,7 +27,8 @@ function recipe(id, name, overrides = {}) {
 
 async function reset(request) {
   await request.put(`${B}/api/v1/machine/state/idle`)
-  await request.post(`${B}/api/v1/store/decenza-js/layout`, { data: { version: 2, zones: { topLeft: { widgets: ['scaleInfo'] }, topRight: { widgets: [] }, centerLeft: { widgets: ['actionButtons', 'shotPlan'] }, centerRight: { widgets: ['workflowCombos', 'lastShot'] }, bottomLeft: { widgets: ['navButtons'] }, bottomRight: { widgets: [] } } }, headers: { 'Content-Type': 'application/json' } })
+  await request.post(`${B}/api/v1/store/decenza-js/layout`, { data: { version: 2, zones: { topLeft: { widgets: ['scaleInfo'] }, topRight: { widgets: [] }, centerLeft: { widgets: ['actionButtons', 'shotPlan', 'comboEditor'] }, centerRight: { widgets: ['workflowCombos', 'lastShot'] }, bottomLeft: { widgets: ['navButtons'] }, bottomRight: { widgets: [] } } }, headers: { 'Content-Type': 'application/json' } })
+  await request.post(`${B}/api/v1/store/decenza-js/comboEditor`, { data: { comboEditorTools: COMBO_EDITOR_TOOLS }, headers: { 'Content-Type': 'application/json' } })
   await request.put(`${B}/api/v1/workflow`, { data: { profile: { title: 'Default Profile', id: 'default-profile-001' }, context: { targetDoseWeight: 18, targetYield: 36 } }, headers: { 'Content-Type': 'application/json' } })
 }
 
@@ -46,7 +52,7 @@ async function readSelectedCombo(request) {
 // resolution that drives the --selected highlight to settle (so a not-yet-loaded
 // popup can't false-positive a clean "nothing selected" state).
 async function openPickerSettled(page) {
-  await page.locator('.layout-widget__plan-text--coffee').first().click()
+  await page.locator('.combo-editor__coffee').first().click()
   const picker = page.locator('.bean-picker')
   await expect(picker).toBeVisible({ timeout: 5000 })
   await page.waitForResponse((r) => /\/api\/v1\/beans\/[^/]+\/batches$/.test(r.url()), { timeout: 5000 }).catch(() => {})
@@ -107,7 +113,7 @@ test.describe('Home recipe loading clears/switches associations (audit #3)', () 
     expect(wf?.context?.coffeeName).toBe('Manual Coffee')
 
     // Home shot-plan reflects the manual coffee.
-    const plan = page.locator('.layout-widget__plan-text--coffee').first()
+    const plan = page.locator('.combo-editor__coffee').first()
     await expect(plan).toContainText('Manual Coffee', { timeout: 5000 })
   })
 
@@ -134,7 +140,7 @@ test.describe('Home recipe loading clears/switches associations (audit #3)', () 
     wf = await readWorkflow(request)
     expect(wf?.context?.beanBatchId ?? null).toBeNull()
 
-    const plan = page.locator('.layout-widget__plan-text--coffee').first()
+    const plan = page.locator('.combo-editor__coffee').first()
     await expect(plan).toContainText('Manual Coffee', { timeout: 5000 })
 
     // CLIENT-side: open the coffee picker — no bean row may stay highlighted.
@@ -149,7 +155,7 @@ test.describe('Home recipe loading clears/switches associations (audit #3)', () 
     await page.reload()
     await page.waitForSelector('.preset-pill-row__pill', { timeout: 10000 })
     await page.waitForTimeout(600)
-    const plan2 = page.locator('.layout-widget__plan-text--coffee').first()
+    const plan2 = page.locator('.combo-editor__coffee').first()
     await expect(plan2).toContainText('Manual Coffee', { timeout: 5000 })
     const picker2 = await openPickerSettled(page)
     await expect(picker2.locator('.bean-picker__row--selected')).toHaveCount(0)
@@ -180,7 +186,7 @@ test.describe('Home recipe loading clears/switches associations (audit #3)', () 
 
     // Attempt (a) Repeat and (b) the coffee row while the load is in flight.
     await page.locator('.layout-widget__repeat-btn').click({ force: true }).catch(() => {})
-    await page.locator('.layout-widget__plan-text--coffee').first().click({ force: true }).catch(() => {})
+    await page.locator('.combo-editor__coffee').first().click({ force: true }).catch(() => {})
     await page.waitForTimeout(250)
 
     // The recipe's own PUT has not fired yet (bean lookup still held), so any
