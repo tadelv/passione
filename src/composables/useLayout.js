@@ -49,6 +49,7 @@ const WIDGET_TYPES = [
   'navButtons',
   'sleepButton',
   'scaleInfo',
+  'weather',
 ]
 
 const WIDGET_LABELS = {
@@ -60,6 +61,7 @@ const WIDGET_LABELS = {
   navButtons: 'Navigation Buttons',
   sleepButton: 'Sleep Button',
   scaleInfo: 'Scale Info',
+  weather: 'Weather',
 }
 
 // Which zones each widget type is allowed in
@@ -72,6 +74,7 @@ const WIDGET_ZONE_RULES = {
   navButtons: 'edge',
   sleepButton: 'edge',
   scaleInfo: 'edge',
+  weather: 'any',
 }
 
 // ---- Default layout (v2) ----------------------------------------------------

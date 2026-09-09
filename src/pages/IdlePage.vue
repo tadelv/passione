@@ -265,6 +265,7 @@ onMounted(() => {
         <LayoutWidget
           v-for="(widgetType, i) in zoneWidgets('topLeft')"
           :key="'tl-' + i"
+          :zone="'topLeft'"
           :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
@@ -278,6 +279,7 @@ onMounted(() => {
         <LayoutWidget
           v-for="(widgetType, i) in zoneWidgets('topRight')"
           :key="'tr-' + i"
+          :zone="'topRight'"
           :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
@@ -294,6 +296,7 @@ onMounted(() => {
       <LayoutWidget
         v-for="(widgetType, i) in zoneWidgets('centerLeft')"
         :key="'cl-' + i"
+        :zone="'centerLeft'"
         :type="widgetType"
         :is-ready="isReady"
         :shot-plan-lines="shotPlanLines"
@@ -309,6 +312,7 @@ onMounted(() => {
       <LayoutWidget
         v-for="(widgetType, i) in zoneWidgets('centerRight')"
         :key="'cr-' + i"
+        :zone="'centerRight'"
         :type="widgetType"
         :is-ready="isReady"
         :shot-plan-lines="shotPlanLines"
@@ -325,6 +329,7 @@ onMounted(() => {
         <LayoutWidget
           v-for="(widgetType, i) in zoneWidgets('bottomLeft')"
           :key="'bl-' + i"
+          :zone="'bottomLeft'"
           :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"
@@ -338,6 +343,7 @@ onMounted(() => {
         <LayoutWidget
           v-for="(widgetType, i) in zoneWidgets('bottomRight')"
           :key="'br-' + i"
+          :zone="'bottomRight'"
           :type="widgetType"
           :is-ready="isReady"
           :shot-plan-lines="shotPlanLines"

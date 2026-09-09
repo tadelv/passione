@@ -11,6 +11,8 @@ import { useI18n } from 'vue-i18n'
 import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import ComboEditorWidget from './ComboEditorWidget.vue'
+import WeatherWidget from './WeatherWidget.vue'
+import { useLayout } from '../composables/useLayout'
 import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { normalizeShot } from '../composables/useShotNormalize'
 import { buildShotWorkflowUpdate } from '../composables/useComboApply'
@@ -25,6 +27,11 @@ const HistoryShotGraph = defineAsyncComponent(() => import('./HistoryShotGraph.v
 const props = defineProps({
   /** Widget type string */
   type: { type: String, required: true },
+  /**
+   * Home zone this widget is placed in (topLeft/centerLeft/...). Used by
+   * widgets that adapt between compact edge and spacious center layouts.
+   */
+  zone: { type: String, default: '' },
   /** Whether machine is ready for operations */
   isReady: { type: Boolean, default: false },
   /**
@@ -59,6 +66,11 @@ const emit = defineEmits([
 
 const { t } = useI18n()
 const router = useRouter()
+
+// Density for adaptive widgets: center zones stack vertically and have
+// room to breathe; edge zones render compactly.
+const { STACK_ZONES } = useLayout()
+const widgetDensity = computed(() => (STACK_ZONES.has(props.zone) ? 'center' : 'edge'))
 
 // Injected from App.vue
 const machineConnected = inject('machineConnected', ref(false))
@@ -310,6 +322,11 @@ function onSleep() {
           </button>
         </template>
       </div>
+    </template>
+
+    <!-- Weather (passive, backed by weather.reaplugin) -->
+    <template v-else-if="type === 'weather'">
+      <WeatherWidget :density="widgetDensity" />
     </template>
 
   </div>
