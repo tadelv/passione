@@ -157,6 +157,14 @@ function addWidget() {
       </div>
 
       <p
+        v-if="widgets.includes('scriptWidget') || addWidgetType === 'scriptWidget'"
+        class="drawer__dep-hint"
+        data-testid="script-widget-dep-hint"
+      >
+        The Script Widget runs one JavaScript source configured in Settings → Display → Script Widget.
+      </p>
+
+      <p
         v-if="widgets.includes('weather') || addWidgetType === 'weather'"
         class="drawer__dep-hint"
         data-testid="weather-dep-hint"

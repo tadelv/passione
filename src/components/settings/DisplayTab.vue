@@ -2,6 +2,7 @@
 import LayoutTab from './LayoutTab.vue'
 import ScreensaverTab from './ScreensaverTab.vue'
 import ThemesTab from './ThemesTab.vue'
+import ScriptWidgetTab from './ScriptWidgetTab.vue'
 </script>
 
 <template>
@@ -9,6 +10,11 @@ import ThemesTab from './ThemesTab.vue'
     <section class="display-tab__section">
       <h3 class="display-tab__section-title">Home Layout</h3>
       <LayoutTab />
+    </section>
+
+    <section class="display-tab__section">
+      <h3 class="display-tab__section-title">Script Widget</h3>
+      <ScriptWidgetTab />
     </section>
 
     <section class="display-tab__section">

@@ -12,6 +12,7 @@ import ActionButton from './ActionButton.vue'
 import PresetPillRow from './PresetPillRow.vue'
 import ComboEditorWidget from './ComboEditorWidget.vue'
 import WeatherWidget from './WeatherWidget.vue'
+import ScriptWidgetRuntime from './ScriptWidgetRuntime.vue'
 import { useLayout } from '../composables/useLayout'
 import { userMachineCommand } from '../composables/useMachineCommand.js'
 import { normalizeShot } from '../composables/useShotNormalize'
@@ -72,6 +73,13 @@ const router = useRouter()
 const { STACK_ZONES } = useLayout()
 const widgetDensity = computed(() => (STACK_ZONES.has(props.zone) ? 'center' : 'edge'))
 
+// scriptWidget placement context: same zone split, exposed to user scripts
+// as full/compact density plus the layout zone id. Runs the globally applied
+// source; source changes flow through ScriptWidgetRuntime which recreates the
+// runtime (draft edits never touch the applied key, so they cannot re-run it).
+const scriptWidgetSource = computed(() => settings?.settings?.scriptWidgetApplied ?? '')
+const scriptWidgetDensity = computed(() => (STACK_ZONES.has(props.zone) ? 'full' : 'compact'))
+
 // Injected from App.vue
 const machineConnected = inject('machineConnected', ref(false))
 const scaleConnected = inject('scaleConnected', ref(false))
@@ -86,6 +94,7 @@ const devices = inject('devices', null)
 const updateWorkflow = inject('updateWorkflow', null)
 const toast = inject('toast', null)
 const workflow = inject('workflow', null)
+const settings = inject('settings', null)
 const beansApi = inject('beansApi', null)
 // Provided by IdlePage — true while a recipe is being loaded into the live
 // workflow; the widget disables operation starts + recipe taps so a user can't
@@ -327,6 +336,15 @@ function onSleep() {
     <!-- Weather (passive, backed by weather.reaplugin) -->
     <template v-else-if="type === 'weather'">
       <WeatherWidget :density="widgetDensity" />
+    </template>
+
+    <!-- Script Widget (custom JS, globally configured in Settings → Display) -->
+    <template v-else-if="type === 'scriptWidget'">
+      <ScriptWidgetRuntime
+        :source="scriptWidgetSource"
+        :zone="zone"
+        :density="scriptWidgetDensity"
+      />
     </template>
 
   </div>

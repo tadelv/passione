@@ -50,6 +50,7 @@ const WIDGET_TYPES = [
   'sleepButton',
   'scaleInfo',
   'weather',
+  'scriptWidget',
 ]
 
 const WIDGET_LABELS = {
@@ -62,6 +63,7 @@ const WIDGET_LABELS = {
   sleepButton: 'Sleep Button',
   scaleInfo: 'Scale Info',
   weather: 'Weather',
+  scriptWidget: 'Script Widget',
 }
 
 // Which zones each widget type is allowed in
@@ -75,6 +77,8 @@ const WIDGET_ZONE_RULES = {
   sleepButton: 'edge',
   scaleInfo: 'edge',
   weather: 'any',
+  // Custom-JS widget (issue #9) — one global source, placeable anywhere.
+  scriptWidget: 'any',
 }
 
 // ---- Default layout (v2) ----------------------------------------------------

@@ -106,6 +106,12 @@ const DEFAULT_SETTINGS = {
   // Banner re-appears once the bridge reports a still-newer version.
   dismissedUpdateVersion: '',
 
+  // Script widget (custom-JS home widget): the applied source Home runs vs
+  // the draft being edited in Settings. Draft edits autosave; only the
+  // explicit Apply action copies the draft onto the applied key.
+  scriptWidgetDraft: '',
+  scriptWidgetApplied: '',
+
 }
 
 // ---- Composable -------------------------------------------------------------
@@ -146,7 +152,9 @@ export function useSettings() {
   }
 
   /**
-   * Save a group of settings keys to the KV store.
+   * Save a group of settings keys to the KV store. Returns true when the
+   * store POST succeeded, false otherwise (debounced callers ignore this;
+   * immediate callers like Apply use it to avoid claiming persistence).
    */
   async function _saveGroup(groupKey, keys) {
     const payload = {}
@@ -155,8 +163,10 @@ export function useSettings() {
     }
     try {
       await setStoreValue(NAMESPACE, groupKey, payload)
+      return true
     } catch (e) {
       console.warn(`[useSettings] Failed to save ${groupKey}:`, e.message)
+      return false
     }
   }
 
@@ -221,6 +231,9 @@ export function useSettings() {
     dye: [
       'dyeBeanBrand', 'dyeBeanType', 'dyeRoastDate', 'dyeRoastLevel',
       'dyeGrinderModel', 'dyeGrinderSetting',
+    ],
+    scriptWidget: [
+      'scriptWidgetDraft', 'scriptWidgetApplied',
     ],
   }
 
@@ -318,13 +331,13 @@ export function useSettings() {
 
   /**
    * Force-save a specific setting immediately (bypasses debounce).
+   * Resolves true when the store POST succeeded, false otherwise.
    */
   async function saveImmediate(key) {
     const groupKey = _keyToGroup[key]
-    if (groupKey) {
-      clearTimeout(_saveTimers[groupKey])
-      await _saveGroup(groupKey, GROUPS[groupKey])
-    }
+    if (!groupKey) return false
+    clearTimeout(_saveTimers[groupKey])
+    return _saveGroup(groupKey, GROUPS[groupKey])
   }
 
   /**
