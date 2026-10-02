@@ -17,13 +17,15 @@ import { applyBrewTemperatureOverride } from './useProfileCurve.js'
  * @param {object} refs  Destructured form refs + `updating` Ref
  * @param {object} ctx   Injected context: { settings, workflow, updateWorkflow,
  *                       selectedBeanId, selectedBatchId, selectedGrinder,
- *                       linkedBean, pickBrewTempFromProfile }
+ *                       linkedBean, pickBrewTempFromProfile,
+ *                       runtimeGrinder, runtimeControlsSelectedGrinder }
  */
 export function useRecipeLiveApply(refs, ctx) {
   const {
     settings, workflow, updateWorkflow,
     selectedBeanId, selectedBatchId, selectedGrinder, linkedBean,
     pickBrewTempFromProfile,
+    runtimeGrinder = null, runtimeControlsSelectedGrinder = null,
     toast = null, t = null,
   } = ctx
 
@@ -44,7 +46,9 @@ export function useRecipeLiveApply(refs, ctx) {
       coffeeName: beanLinked ? (linkedBean.value?.name || null) : (refs.coffeeName.value || null),
       coffeeRoaster: beanLinked ? (linkedBean.value?.roaster || null) : (refs.roaster.value || null),
       grinderModel: selectedGrinder.value?.model ?? (refs.grinder.value || null),
-      grinderSetting: roundGrinderSetting(refs.grinderSetting.value, selectedGrinder.value),
+      grinderSetting: runtimeControlsSelectedGrinder?.value && runtimeGrinder?.supportsGrindSetting?.value
+        ? String(refs.grinderSetting.value)
+        : roundGrinderSetting(refs.grinderSetting.value, selectedGrinder.value),
     }
     // Send entity IDs as explicit values — always present. When unlinked they
     // are null so the gateway clears a previous association (omission is not a
@@ -52,7 +56,8 @@ export function useRecipeLiveApply(refs, ctx) {
     // a previously-loaded recipe/shot set on the machine).
     ctxPayload.grinderId = refs.selectedGrinderId.value ? String(refs.selectedGrinderId.value) : null
     ctxPayload.beanBatchId = selectedBatchId.value ? String(selectedBatchId.value) : null
-    const showRpm = !!settings?.settings?.showGrinderRpm
+    const showRpm = !!settings?.settings?.showGrinderRpm ||
+      !!(runtimeControlsSelectedGrinder?.value && runtimeGrinder?.supportsRpm?.value)
     const showBasket = !!settings?.settings?.showBasketData
     if (showRpm || showBasket) {
       ctxPayload.extras = { ...(workflow?.context?.extras ?? {}) }
@@ -81,12 +86,29 @@ export function useRecipeLiveApply(refs, ctx) {
     return payload
   }
 
+  const runtimeDirty = { setting: false, rpm: false }
+  const runtimeGeneration = { setting: 0, rpm: 0 }
+
+  watch(refs.grinderSetting, () => {
+    if (refs.updating.value) return
+    runtimeDirty.setting = true
+    runtimeGeneration.setting++
+  })
+  watch(refs.grinderRpm, () => {
+    if (refs.updating.value) return
+    runtimeDirty.rpm = true
+    runtimeGeneration.rpm++
+  })
+
   // ---- Apply current form state to the live workflow (no combo mutation) ----
   // `_applyFailed` is reset on every success so each run of consecutive
   // failures surfaces exactly one user-facing toast (no time-based spam
   // guard — a success clears it, so a fresh failure run can toast again).
   let _applyFailed = false
   async function applyToLiveWorkflow() {
+    const sentRuntimeGeneration = { ...runtimeGeneration }
+    const setting = refs.grinderSetting.value
+    const rpm = refs.grinderRpm.value
     try {
       const payload = buildWorkflowUpdate()
       const current = pickBrewTempFromProfile(workflow?.profile)
@@ -96,6 +118,17 @@ export function useRecipeLiveApply(refs, ctx) {
         if (override) payload.profile = override
       }
       await updateWorkflow(payload)
+      if (runtimeControlsSelectedGrinder?.value) {
+        if (runtimeDirty.setting && runtimeGrinder?.supportsGrindSetting?.value && setting !== '') {
+          await runtimeGrinder.setSetting(setting)
+        }
+        if (runtimeDirty.rpm && runtimeGrinder?.supportsRpm?.value) {
+          await runtimeGrinder.setRpm(rpm)
+        }
+      }
+      for (const key of Object.keys(runtimeDirty)) {
+        if (runtimeGeneration[key] === sentRuntimeGeneration[key]) runtimeDirty[key] = false
+      }
       _applyFailed = false
     } catch (err) {
       console.warn('[useRecipeLiveApply] live workflow update failed:', err)

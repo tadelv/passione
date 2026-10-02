@@ -13,7 +13,7 @@
  */
 import { describe, it } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { ref, reactive } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import { useRecipeLiveApply } from '../../src/composables/useRecipeLiveApply.js'
 
 function makeLiveApplyHarness() {
@@ -23,7 +23,7 @@ function makeLiveApplyHarness() {
     coffeeName: ref(''), roaster: ref(''), grinder: ref(''), grinderSetting: ref(''),
     doseIn: ref(18), doseOut: ref(36), profileId: ref(null), profileTitle: ref(''),
     grinderRpm: ref(1200), basketSize: ref(18), basketType: ref(''),
-    includeSteam: ref(false), steamDuration: ref(30), steamFlow: ref(1.5), steamTemperature: ref(160),
+    includeSteam: ref(false), steamDuration: ref(30), steamFlow: ref(1.5), steamTemperature: ref(160), steamStopAtTemperature: ref(0),
     includeFlush: ref(false), flushDuration: ref(5), flushFlowRate: ref(6),
     includeHotWater: ref(false), hotWaterVolume: ref(200), hotWaterTemperature: ref(80),
     selectedGrinderId: ref(null),
@@ -32,8 +32,17 @@ function makeLiveApplyHarness() {
   const errorCalls = []
   const toast = { error: (m) => errorCalls.push(m) }
   let failNext = true
-  const updateWorkflow = async () => {
+  let lastPayload = null
+  const updateWorkflow = async (payload) => {
+    lastPayload = payload
     if (failNext) throw new Error('gateway rejected')
+  }
+  const runtimeCalls = []
+  const runtimeGrinder = {
+    supportsGrindSetting: ref(true),
+    supportsRpm: ref(true),
+    setSetting: async (value) => runtimeCalls.push(['setting', value]),
+    setRpm: async (value) => runtimeCalls.push(['rpm', value]),
   }
   const ctx = {
     settings: { settings: { steamFlow: 1.5, flushFlowRate: 6, flushTemperature: 90, hotWaterTemperature: 80, hotWaterFlow: 6, showGrinderRpm: false, showBasketData: false } },
@@ -41,11 +50,21 @@ function makeLiveApplyHarness() {
     updateWorkflow,
     toast,
     t: null,
-    selectedBeanId: ref(null), selectedBatchId: ref(null), selectedGrinder: ref(null), linkedBean: ref(null),
+    selectedBeanId: ref(null), selectedBatchId: ref(null),
+    selectedGrinder: ref({ model: 'Test', settingSmallStep: 0.1 }), linkedBean: ref(null),
     pickBrewTempFromProfile: () => null,
+    runtimeGrinder,
+    runtimeControlsSelectedGrinder: ref(true),
   }
   const { applyToLiveWorkflow } = useRecipeLiveApply(refs, ctx)
-  return { applyToLiveWorkflow, errorCalls, setFailNext: (v) => { failNext = v } }
+  return {
+    refs,
+    applyToLiveWorkflow,
+    errorCalls,
+    runtimeCalls,
+    lastPayload: () => lastPayload,
+    setFailNext: (v) => { failNext = v },
+  }
 }
 
 describe('applyToLiveWorkflow — error surfacing', () => {
@@ -67,6 +86,22 @@ describe('applyToLiveWorkflow — error surfacing', () => {
     await applyToLiveWorkflow()
     assert.equal(errorCalls.length, 2)
   })
+
+  it('writes edited values to a linked driver without applying catalog rounding', async () => {
+    const { refs, applyToLiveWorkflow, runtimeCalls, lastPayload, setFailNext } = makeLiveApplyHarness()
+    setFailNext(false)
+    refs.grinderSetting.value = '12.30'
+    refs.grinderRpm.value = 900
+    await nextTick()
+
+    await applyToLiveWorkflow()
+    refs.updating.value = true
+    await nextTick()
+
+    assert.equal(lastPayload().context.grinderSetting, '12.30')
+    assert.equal(lastPayload().context.extras.grinderRpm, 900)
+    assert.deepEqual(runtimeCalls, [['setting', '12.30'], ['rpm', 900]])
+  })
 })
 
 function makeHarness() {
@@ -76,7 +111,7 @@ function makeHarness() {
     coffeeName: ref(''), roaster: ref(''), grinder: ref(''), grinderSetting: ref(''),
     doseIn: ref(18), doseOut: ref(36), profileId: ref(null), profileTitle: ref(''),
     grinderRpm: ref(1200), basketSize: ref(18), basketType: ref(''),
-    includeSteam: ref(false), steamDuration: ref(30), steamFlow: ref(1.5), steamTemperature: ref(160),
+    includeSteam: ref(false), steamDuration: ref(30), steamFlow: ref(1.5), steamTemperature: ref(160), steamStopAtTemperature: ref(0),
     includeFlush: ref(false), flushDuration: ref(5), flushFlowRate: ref(6),
     includeHotWater: ref(false), hotWaterVolume: ref(200), hotWaterTemperature: ref(80),
     selectedGrinderId: ref(null),

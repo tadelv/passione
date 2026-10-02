@@ -37,6 +37,7 @@ const beans = inject('beans', ref([]))
 const beansApi = inject('beansApi', null)
 const grinders = inject('grinders', ref([]))
 const grindersApi = inject('grindersApi', null)
+const connectedGrinder = inject('connectedGrinder', null)
 
 // ---- Workflow combos (from form composable) ----
 const form = useRecipeForm({ settings })
@@ -57,6 +58,19 @@ const {
 } = form
 
 const selectedGrinder = computed(() => grinders.value.find(g => g.id === selectedGrinderId.value) ?? null)
+const runtimeControlsSelectedGrinder = computed(() =>
+  !!connectedGrinder?.isConnected?.value &&
+  String(selectedGrinder.value?.extras?.runtimeDeviceId ?? '') === String(connectedGrinder.deviceId.value)
+)
+const driverControlsGrind = computed(() =>
+  runtimeControlsSelectedGrinder.value && connectedGrinder?.supportsGrindSetting?.value
+)
+const driverControlsRpm = computed(() =>
+  runtimeControlsSelectedGrinder.value && connectedGrinder?.supportsRpm?.value
+)
+const showGrinderRpm = computed(() =>
+  !!settings?.settings?.showGrinderRpm || driverControlsRpm.value
+)
 const batchesForBean = ref([])
 const showBatchList = ref(false)
 const {
@@ -98,6 +112,8 @@ const {
   settings, workflow, updateWorkflow,
   selectedBeanId, selectedBatchId, selectedGrinder, linkedBean,
   pickBrewTempFromProfile,
+  runtimeGrinder: connectedGrinder,
+  runtimeControlsSelectedGrinder,
   toast, t,
 })
 
@@ -224,6 +240,31 @@ onMounted(async () => {
     refsForEditor.updating.value = false
   }
 })
+
+async function syncRuntimeGrinderValues() {
+  if (hydrating.value || refsForEditor.updating.value || !runtimeControlsSelectedGrinder.value) return
+  refsForEditor.updating.value = true
+  try {
+    if (driverControlsGrind.value && connectedGrinder.setting.value != null) {
+      grinderSetting.value = String(connectedGrinder.setting.value)
+    }
+    if (driverControlsRpm.value && connectedGrinder.rpm.value != null) {
+      grinderRpm.value = connectedGrinder.rpm.value
+    }
+    await nextTick()
+  } finally {
+    refsForEditor.updating.value = false
+  }
+}
+
+watch([
+  hydrating,
+  runtimeControlsSelectedGrinder,
+  driverControlsGrind,
+  driverControlsRpm,
+  () => connectedGrinder?.setting?.value,
+  () => connectedGrinder?.rpm?.value,
+], syncRuntimeGrinderValues, { immediate: true })
 
 // ---- Operation settings popup ----
 // Which operation's popup is open ('steam' | 'flush' | 'hotwater' | null).
@@ -761,11 +802,15 @@ watch(() => workflow?.profile, (newProfile) => {
                 <template v-else>
                   <div class="recipe-editor__field">
                     <label class="recipe-editor__label">{{ t('recipe.grinderSetting') }}</label>
-                    <GrinderSettingInput v-model="grinderSetting" :grinder="selectedGrinder" />
+                    <GrinderSettingInput
+                      v-model="grinderSetting"
+                      :grinder="selectedGrinder"
+                      :driver-controlled="driverControlsGrind"
+                    />
                   </div>
                 </template>
 
-                <div v-if="settings?.settings?.showGrinderRpm" class="recipe-editor__field" data-testid="recipe-grinderRpm-field">
+                <div v-if="showGrinderRpm" class="recipe-editor__field" data-testid="recipe-grinderRpm-field">
                   <label class="recipe-editor__label">{{ t('recipe.rpm') }}</label>
                   <ValueInput
                     v-model="grinderRpm"

@@ -50,6 +50,7 @@ const updateWorkflow = inject('updateWorkflow', null)
 const settings = inject('settings', null)
 const toast = inject('toast', null)
 const grinders = inject('grinders', ref([]))
+const connectedGrinder = inject('connectedGrinder', null)
 
 // ---- Tool visibility (fixed order, see useComboEditorConfig.js) ----
 const tools = computed(() => normalizeComboEditorTools(settings?.settings?.comboEditorTools))
@@ -72,11 +73,7 @@ const num = (v) => {
 const doseInputCtx = computed(() => num(ctx.value.targetDoseWeight))
 const doseOutCtx = computed(() => num(ctx.value.targetYield))
 const doseAvailable = computed(() => doseInputCtx.value != null && doseOutCtx.value != null)
-const grindAvailable = computed(() => ctx.value.grinderSetting != null)
 const tempAvailable = computed(() => profileFirstStepTemp(workflow?.profile) != null)
-// RPM/basket live in workflow ctx extras; like the full editor they stay
-// editable once a workflow context exists (defaults apply until first edit).
-const rpmAvailable = computed(() => !!workflow?.context)
 const basketAvailable = computed(() => !!workflow?.context)
 
 const coffeeText = computed(() => {
@@ -105,6 +102,20 @@ const ctxGrinderId = computed(() => (ctx.value.grinderId != null ? String(ctx.va
 const selectedGrinder = computed(
   () => grinders.value.find((g) => String(g.id) === ctxGrinderId.value) ?? null
 )
+const runtimeControlsSelectedGrinder = computed(() =>
+  !!connectedGrinder?.isConnected?.value &&
+  String(selectedGrinder.value?.extras?.runtimeDeviceId ?? '') === String(connectedGrinder.deviceId.value)
+)
+const driverControlsGrind = computed(() =>
+  runtimeControlsSelectedGrinder.value && connectedGrinder?.supportsGrindSetting?.value
+)
+const driverControlsRpm = computed(() =>
+  runtimeControlsSelectedGrinder.value && connectedGrinder?.supportsRpm?.value
+)
+const grindAvailable = computed(() => ctx.value.grinderSetting != null || driverControlsGrind.value)
+// RPM remains editable as recipe metadata without a driver; when a linked
+// driver supports it, the reported runtime value takes precedence.
+const rpmAvailable = computed(() => !!workflow?.context || driverControlsRpm.value)
 
 // ---- Coffee (BeanPickerPopup owns the live-ctx write) ----
 const beanPickerOpen = ref(false)
@@ -145,7 +156,9 @@ function buildPatch() {
     patchCtx.targetYield = round1(doseOut.value)
   }
   if (dirty.grind && grindAvailable.value) {
-    patchCtx.grinderSetting = roundGrinderSetting(grinderSetting.value, selectedGrinder.value) ?? grinderSetting.value
+    patchCtx.grinderSetting = driverControlsGrind.value
+      ? String(grinderSetting.value)
+      : (roundGrinderSetting(grinderSetting.value, selectedGrinder.value) ?? grinderSetting.value)
   }
   if (dirty.rpm || dirty.basket) {
     const mergedExtras = { ...(workflow.context?.extras ?? {}) }
@@ -187,7 +200,17 @@ async function flushEdits() {
     for (const k of Object.keys(dirty)) {
       if (dirty[k]) sentGen[k] = dirtyGen[k]
     }
+    const sentSetting = grinderSetting.value
+    const sentRpm = grinderRpm.value
     await updateWorkflow(patch)
+    if (runtimeControlsSelectedGrinder.value) {
+      if (sentGen.grind != null && driverControlsGrind.value && sentSetting !== '') {
+        await connectedGrinder.setSetting(sentSetting)
+      }
+      if (sentGen.rpm != null && driverControlsRpm.value) {
+        await connectedGrinder.setRpm(sentRpm)
+      }
+    }
     for (const k of Object.keys(sentGen)) {
       if (dirtyGen[k] === sentGen[k]) dirty[k] = false
     }
@@ -216,12 +239,18 @@ async function mirrorFromWorkflow() {
       if (dOut != null) doseOut.value = dOut
       if (doseIn.value > 0 && doseOut.value > 0) ratioValue.value = round1(doseOut.value / doseIn.value)
     }
-    if (!dirty.grind && c.grinderSetting != null) grinderSetting.value = String(c.grinderSetting)
+    if (!dirty.grind) {
+      const liveSetting = driverControlsGrind.value ? connectedGrinder.setting.value : c.grinderSetting
+      if (liveSetting != null) grinderSetting.value = String(liveSetting)
+    }
     if (!dirty.temp) {
       const t0 = profileFirstStepTemp(workflow.profile)
       if (t0 != null) brewTemperature.value = t0
     }
-    if (!dirty.rpm && e.grinderRpm != null) grinderRpm.value = num(e.grinderRpm) ?? grinderRpm.value
+    if (!dirty.rpm) {
+      const liveRpm = driverControlsRpm.value ? connectedGrinder.rpm.value : e.grinderRpm
+      if (liveRpm != null) grinderRpm.value = num(liveRpm) ?? grinderRpm.value
+    }
     if (!dirty.basket) {
       if (e.basketSize != null) basketSize.value = num(e.basketSize) ?? basketSize.value
       if (e.basketType != null) basketType.value = String(e.basketType)
@@ -234,7 +263,15 @@ async function mirrorFromWorkflow() {
   }
 }
 
-watch(() => [workflow?.context, workflow?.profile], mirrorFromWorkflow, { deep: true, immediate: true })
+watch(() => [
+  workflow?.context,
+  workflow?.profile,
+  selectedGrinder.value?.extras?.runtimeDeviceId,
+  connectedGrinder?.deviceId?.value,
+  connectedGrinder?.capabilities?.value,
+  connectedGrinder?.setting?.value,
+  connectedGrinder?.rpm?.value,
+], mirrorFromWorkflow, { deep: true, immediate: true })
 
 // ---- Per-tool edit watchers (skip mirror/sync flushes) ----
 watch([doseIn, doseOut, ratioValue], () => {
@@ -320,7 +357,11 @@ function goFullEditor() {
       <span class="combo-editor__label">{{ t('comboEditor.grind') || 'Grind setting' }}</span>
       <span v-if="!grindAvailable" class="combo-editor__na" aria-hidden="true">—</span>
       <div v-else class="combo-editor__control">
-        <GrinderSettingInput v-model="grinderSetting" :grinder="selectedGrinder" />
+        <GrinderSettingInput
+          v-model="grinderSetting"
+          :grinder="selectedGrinder"
+          :driver-controlled="driverControlsGrind"
+        />
       </div>
     </div>
 

@@ -561,7 +561,23 @@ export function deleteBeanBatch(id) {
 }
 
 // ---------------------------------------------------------------------------
-// Grinders
+// Connected grinder
+// ---------------------------------------------------------------------------
+
+export function getConnectedGrinderInfo() {
+  return sendCommand('/api/v1/grinder/info')
+}
+
+export function setConnectedGrinderSetting(setting) {
+  return sendCommand('/api/v1/grinder/setting', 'PUT', { setting })
+}
+
+export function setConnectedGrinderRpm(rpm) {
+  return sendCommand('/api/v1/grinder/rpm', 'PUT', { rpm })
+}
+
+// ---------------------------------------------------------------------------
+// Grinder catalog
 // ---------------------------------------------------------------------------
 
 export function getGrinders(params = {}) {

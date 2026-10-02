@@ -2,7 +2,7 @@
  * Composable for real-time device state via ws/v1/devices.
  *
  * Provides reactive device list, scanning state, and derived connection
- * flags for machine/scale. Sends scan/connect/disconnect commands over
+ * flags for machine/scale/grinder. Sends scan/connect/disconnect commands over
  * the same bidirectional WebSocket.
  */
 
@@ -61,6 +61,14 @@ export function useDevices() {
     devices.value.find(d => d.type === 'scale' && d.state === 'connected') ?? null
   )
 
+  const grinderConnected = computed(() =>
+    devices.value.some(d => d.type === 'grinder' && d.state === 'connected')
+  )
+
+  const grinderDevice = computed(() =>
+    devices.value.find(d => d.type === 'grinder' && d.state === 'connected') ?? null
+  )
+
   /** Start a BLE/USB scan. Optionally auto-connect discovered devices. */
   function scan({ connect: autoConnect = false, quick = false } = {}) {
     ws?.send({ command: 'scan', connect: autoConnect, quick })
@@ -110,6 +118,8 @@ export function useDevices() {
     scaleConnected,
     machineDevice,
     scaleDevice,
+    grinderConnected,
+    grinderDevice,
     connectionPhase,
     foundMachines,
     foundScales,

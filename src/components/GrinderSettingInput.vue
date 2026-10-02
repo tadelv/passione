@@ -10,6 +10,7 @@ import {
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
   grinder: { type: Object, default: null },
+  driverControlled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -36,14 +37,25 @@ function onNumeric(v) {
 // recipe save, and dirty compare all see the normalized setting. Terminates:
 // a clean value re-enters unchanged.
 watch(() => props.modelValue, (v) => {
+  if (props.driverControlled) return
   const clean = roundGrinderSetting(v, props.grinder)
   if (clean !== v) emit('update:modelValue', clean)
 })
 </script>
 
 <template>
+  <input
+    v-if="driverControlled"
+    class="grinder-setting__text"
+    type="text"
+    aria-label="Connected grinder setting"
+    :value="modelValue"
+    @input="onInput"
+    placeholder="Grind setting"
+  />
+
   <select
-    v-if="grinder?.settingType === 'preset'"
+    v-else-if="grinder?.settingType === 'preset'"
     class="grinder-setting__select"
     aria-label="Grinder setting"
     :value="modelValue"

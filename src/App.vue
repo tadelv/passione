@@ -27,6 +27,7 @@ import { useConnectionError } from './composables/useConnectionError.js'
 import { useUpdateAvailable } from './composables/useUpdateAvailable.js'
 import { useBeans } from './composables/useBeans'
 import { useGrinders } from './composables/useGrinders'
+import { useConnectedGrinder } from './composables/useConnectedGrinder.js'
 import { useShotCache } from './composables/useShotCache'
 import { useMachineCapabilities } from './composables/useMachineCapabilities'
 import { useMilkProbe } from './composables/useMilkProbe'
@@ -41,6 +42,7 @@ const { t } = useI18n()
 const machine = useMachine()
 const devices = useDevices()
 const scale = useScale()
+const connectedGrinder = useConnectedGrinder(devices)
 const waterLevels = useWaterLevels()
 const timeToReady = useTimeToReady()
 const shotSettings = useShotSettings()
@@ -162,6 +164,7 @@ provide('beans', beansComposable.beans)
 provide('beansApi', beansComposable)
 provide('grinders', grindersComposable.grinders)
 provide('grindersApi', grindersComposable)
+provide('connectedGrinder', connectedGrinder)
 
 // Provide derived machine state flags
 provide('isReady', machine.isReady)
