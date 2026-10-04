@@ -1,6 +1,8 @@
 <script setup>
 import { ref, inject, computed } from 'vue'
 import { useConfirmAction } from '../../composables/useConfirmAction.js'
+import { cssColorToHex } from '../../composables/colorFormat.js'
+import ColorPicker from '../ColorPicker.vue'
 
 const theme = inject('theme', null)
 const settings = inject('settings', null)
@@ -46,6 +48,19 @@ const selectedColor = computed(() => {
   return currentColors.value[selectedColorToken.value] || ''
 })
 
+const selectedTokenLabel = computed(() =>
+  COLOR_CATEGORIES.flatMap(c => c.tokens).find(t => t.key === selectedColorToken.value)?.label ?? ''
+)
+
+// Visual colour picker. The native type="color" dialog is off-limits — see
+// CLAUDE.md; every other colour surface in the app uses ColorPicker.
+const pickerVisible = ref(false)
+
+// ColorPicker works in hex, but theme values are not always hex: the random
+// palette stores hsl(...). Convert for the picker only — the stored value is
+// left untouched so presets/random palettes keep their authored form.
+const pickerHex = computed(() => cssColorToHex(selectedColor.value) || '#000000')
+
 const hexInput = ref('')
 
 function selectColor(token) {
@@ -61,11 +76,10 @@ function onHexChange(e) {
   }
 }
 
-function onColorPickerChange(e) {
-  const val = e.target.value
-  hexInput.value = val
+function onPickerColor(hex) {
+  hexInput.value = hex
   if (theme) {
-    theme.setColor(selectedColorToken.value, val)
+    theme.setColor(selectedColorToken.value, hex)
   }
 }
 
@@ -148,14 +162,18 @@ function onResetClick() {
       <!-- Right: color editor -->
       <div class="themes-tab__editor" v-if="selectedColorToken">
         <h4 class="themes-tab__editor-title">
-          {{ COLOR_CATEGORIES.flatMap(c => c.tokens).find(t => t.key === selectedColorToken)?.label }}
+          {{ selectedTokenLabel }}
         </h4>
 
         <div class="themes-tab__editor-preview">
-          <span
+          <button
+            type="button"
             class="themes-tab__preview-swatch"
             :style="{ background: selectedColor }"
+            :aria-label="`Pick ${selectedTokenLabel} colour`"
+            @click="pickerVisible = true"
           />
+          <span class="themes-tab__preview-hint">Tap to pick</span>
         </div>
 
         <div class="themes-tab__editor-hex">
@@ -169,13 +187,6 @@ function onResetClick() {
             @change="onHexChange"
           />
         </div>
-
-        <input
-          type="color"
-          class="themes-tab__color-picker"
-          :value="selectedColor"
-          @input="onColorPickerChange"
-        />
       </div>
 
       <div v-else class="themes-tab__editor-placeholder">
@@ -196,6 +207,13 @@ function onResetClick() {
         {{ resetConfirm.isArmed('reset-theme') ? 'Tap again to confirm' : 'Reset theme' }}
       </button>
     </div>
+    <ColorPicker
+      :visible="pickerVisible"
+      :model-value="pickerHex"
+      :title="`${selectedTokenLabel} colour`"
+      @update:model-value="onPickerColor"
+      @close="pickerVisible = false"
+    />
   </div>
   <div v-else class="themes-tab__empty">Theme not available.</div>
 </template>
@@ -385,8 +403,21 @@ function onResetClick() {
 .themes-tab__preview-swatch {
   width: 48px;
   height: 48px;
+  padding: 0;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.themes-tab__preview-swatch:active {
+  transform: scale(0.94);
+}
+
+.themes-tab__preview-hint {
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
 }
 
 .themes-tab__editor-hex {
@@ -410,15 +441,6 @@ function onResetClick() {
   color: var(--color-text);
   font-family: monospace;
   font-size: var(--font-body);
-}
-
-.themes-tab__color-picker {
-  width: 100%;
-  height: 48px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: transparent;
 }
 
 .themes-tab__editor-placeholder {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -15,6 +15,10 @@ const v = ref(0)
 const dragging = ref(null) // 'pad' | 'hue' | null
 const padEl = ref(null)
 const hueEl = ref(null)
+const cardEl = ref(null)
+
+// Element that had focus when the dialog opened, restored on close.
+let previouslyFocused = null
 
 function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, n))
@@ -64,10 +68,21 @@ function syncFromModel() {
   v.value = vv
 }
 
-watch(() => props.visible, (vis) => {
+watch(() => props.visible, async (vis, wasVisible) => {
   if (vis) {
+    previouslyFocused = document.activeElement
     dragging.value = null
     syncFromModel()
+    // Move focus into the dialog so Escape and the arrow-key controls work
+    // immediately for keyboard users.
+    await nextTick()
+    // The dialog may have been closed (or unmounted) while we awaited the tick.
+    if (!props.visible) return
+    padEl.value?.focus?.()
+  } else if (wasVisible) {
+    // Hand focus back to whatever opened the dialog.
+    previouslyFocused?.focus?.()
+    previouslyFocused = null
   }
 })
 
@@ -121,12 +136,104 @@ function updateHue(e) {
 function endDrag() {
   dragging.value = null
 }
+
+// ---- Keyboard operation -----------------------------------------------------
+// A saturation/value pad has no native equivalent, so it is a labelled group
+// moved with the arrow keys (Shift for coarse steps). The resulting hex is
+// announced through the aria-live preview. The hue track is a real slider.
+
+const STEP_FINE = 0.01
+const STEP_COARSE = 0.1
+
+function onPadKeydown(e) {
+  const step = e.shiftKey ? STEP_COARSE : STEP_FINE
+  switch (e.key) {
+    case 'ArrowLeft': s.value = clamp(s.value - step, 0, 1); break
+    case 'ArrowRight': s.value = clamp(s.value + step, 0, 1); break
+    case 'ArrowUp': v.value = clamp(v.value + step, 0, 1); break
+    case 'ArrowDown': v.value = clamp(v.value - step, 0, 1); break
+    case 'Home': s.value = 0; v.value = 1; break
+    case 'End': s.value = 0; v.value = 0; break
+    default: return
+  }
+  e.preventDefault()
+  emitColor()
+}
+
+function onHueKeydown(e) {
+  const step = e.shiftKey ? 15 : 1
+  switch (e.key) {
+    case 'ArrowLeft':
+    case 'ArrowDown': h.value = clamp(h.value - step, 0, 360); break
+    case 'ArrowRight':
+    case 'ArrowUp': h.value = clamp(h.value + step, 0, 360); break
+    case 'Home': h.value = 0; break
+    case 'End': h.value = 360; break
+    default: return
+  }
+  e.preventDefault()
+  emitColor()
+}
+
+// ---- Modal keyboard handling -------------------------------------------------
+// The dialog is modal: it owns the keyboard while open. The overlay carries
+// @keydown.stop, which keeps keystrokes originating here away from App.vue's
+// global shortcut handler. That handler excludes INPUT / TEXTAREA / SELECT /
+// contentEditable / [role=spinbutton] but NOT these controls — so without this,
+// a plain letter key pressed while the picker is focused would start a real
+// machine operation ('e'/'2' espresso, 's'/'3' steam, …), and Escape would stop
+// a running one. Chord defaults (Ctrl/Cmd/Alt combos) are unaffected because
+// propagation is stopped, not the default action.
+
+/** Focusable controls inside the dialog, in tab order. */
+function focusables() {
+  const root = cardEl.value
+  if (!root) return []
+  return Array.from(root.querySelectorAll('button, [tabindex]:not([tabindex="-1"])'))
+    .filter((el) => !el.hasAttribute('disabled'))
+}
+
+function onDialogKeydown(e) {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    e.stopPropagation()
+    emit('close')
+    return
+  }
+
+  if (e.key !== 'Tab') return
+
+  // Contain Tab / Shift+Tab inside the dialog, and recover focus if it has
+  // somehow reached the obscured background.
+  const els = focusables()
+  if (els.length === 0) return
+  const first = els[0]
+  const last = els[els.length - 1]
+  const active = document.activeElement
+  const inside = !!cardEl.value?.contains(active)
+
+  if (e.shiftKey && (active === first || !inside)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && (active === last || !inside)) {
+    e.preventDefault()
+    first.focus()
+  }
+}
 </script>
 
 <template>
   <Transition name="popup-fade">
-    <div v-if="visible" class="color-picker" @click.self="emit('close')">
-      <div class="color-picker__card">
+    <div
+      v-if="visible"
+      class="color-picker"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="title"
+      @click.self="emit('close')"
+      @keydown.stop="onDialogKeydown"
+    >
+      <div ref="cardEl" class="color-picker__card">
         <div class="color-picker__header">
           <span class="color-picker__title">{{ title }}</span>
           <button class="color-picker__close" @click="emit('close')" aria-label="Close">
@@ -142,10 +249,14 @@ function endDrag() {
             ref="padEl"
             class="color-picker__pad"
             :style="{ backgroundColor: padBg }"
+            tabindex="0"
+            role="group"
+            aria-label="Saturation and value. Left and right change saturation, up and down change brightness."
             @pointerdown="onPadDown"
             @pointermove="onPadMove"
             @pointerup="endDrag"
             @pointercancel="endDrag"
+            @keydown="onPadKeydown"
           >
             <div class="color-picker__pad-white" />
             <div class="color-picker__pad-black" />
@@ -155,17 +266,25 @@ function endDrag() {
           <div
             ref="hueEl"
             class="color-picker__hue"
+            tabindex="0"
+            role="slider"
+            aria-label="Hue"
+            aria-valuemin="0"
+            aria-valuemax="360"
+            :aria-valuenow="Math.round(h)"
+            :aria-valuetext="`${Math.round(h)} degrees`"
             @pointerdown="onHueDown"
             @pointermove="onHueMove"
             @pointerup="endDrag"
             @pointercancel="endDrag"
+            @keydown="onHueKeydown"
           >
             <div class="color-picker__thumb" :style="{ left: hueLeft, backgroundColor: `hsl(${h}, 100%, 50%)` }" />
           </div>
 
           <div class="color-picker__preview">
             <span class="color-picker__preview-swatch" :style="{ backgroundColor: currentHex }" />
-            <span class="color-picker__preview-hex">{{ currentHex }}</span>
+            <span class="color-picker__preview-hex" role="status" aria-live="polite">{{ currentHex }}</span>
           </div>
         </div>
       </div>
@@ -236,6 +355,11 @@ function endDrag() {
   background: var(--color-surface-pressed);
 }
 
+.color-picker__close:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
 .color-picker__body {
   padding: 16px;
   display: flex;
@@ -304,6 +428,12 @@ function endDrag() {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--color-text);
   text-transform: uppercase;
+}
+
+.color-picker__pad:focus-visible,
+.color-picker__hue:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 3px;
 }
 
 .popup-fade-enter-active,
