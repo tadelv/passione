@@ -6,13 +6,24 @@
  * barista, basketType. Pulled from a mix of normalized fields, annotations
  * extras, legacy metadata, and `workflow.context.extras` (basketType).
  *
+ * Fetched through the paginated endpoint, which the gateway serves without the
+ * per-sample `measurements` array (`ShotRecord.toJsonWithoutMeasurements`).
+ * Every field above lives in `workflow` / `annotations` / `metadata`, so the
+ * mining is measurement-independent — see mineSuggestions(). Requesting the
+ * same 100 shots by id instead pulls FULL records: measured at ~13 MB of JSON
+ * and a +14 MB transient heap for 100 x 30 s shots, in order to produce seven
+ * short string lists.
+ *
  * Call invalidate() after a shot's annotations/context mutate so the next
  * caller remines fresh data.
  */
 
 import { ref } from 'vue'
-import { getShotIds, getShots } from '../api/rest.js'
-import { normalizeShot } from './useShotNormalize'
+import { getShotsPaginated } from '../api/rest.js'
+import { mineSuggestions } from './shotSuggestions.js'
+
+/** How many recent shots to mine. */
+const SUGGESTION_SAMPLE_SIZE = 100
 
 const EMPTY = {
   roaster: [],
@@ -43,48 +54,11 @@ async function load() {
   const myGen = generation
   inflight = (async () => {
     try {
-      const ids = await getShotIds()
-      const idList = Array.isArray(ids) ? ids : (ids?.ids ?? [])
-      const recentIds = idList.slice(0, 100)
-      if (recentIds.length === 0) return null
-      const result = await getShots(recentIds)
-      const shots = Array.isArray(result) ? result : (result?.shots ?? [])
-
-      const sets = {
-        roaster: new Set(),
-        beanBrand: new Set(),
-        beanType: new Set(),
-        grinderModel: new Set(),
-        grinderSetting: new Set(),
-        barista: new Set(),
-        basketType: new Set(),
-      }
-
-      for (const raw of shots) {
-        const n = normalizeShot(raw)
-        const extras = raw.annotations?.extras ?? {}
-        const meta = raw.metadata ?? {}
-        if (n.coffeeRoaster) sets.roaster.add(n.coffeeRoaster)
-        const beanBrandVal = extras.beanBrand ?? meta.beanBrand
-        if (beanBrandVal) sets.beanBrand.add(beanBrandVal)
-        if (n.coffeeName) sets.beanType.add(n.coffeeName)
-        if (n.grinderModel) sets.grinderModel.add(n.grinderModel)
-        if (n.grinderSetting != null) sets.grinderSetting.add(String(n.grinderSetting))
-        const baristaVal = extras.barista ?? meta.barista
-        if (baristaVal) sets.barista.add(baristaVal)
-        const basketTypeVal = raw.workflow?.context?.extras?.basketType
-        if (basketTypeVal) sets.basketType.add(basketTypeVal)
-      }
-
-      const next = {
-        roaster: [...sets.roaster].sort(),
-        beanBrand: [...sets.beanBrand].sort(),
-        beanType: [...sets.beanType].sort(),
-        grinderModel: [...sets.grinderModel].sort(),
-        grinderSetting: [...sets.grinderSetting].sort(),
-        barista: [...sets.barista].sort(),
-        basketType: [...sets.basketType].sort(),
-      }
+      // Paginated summaries carry workflow + annotations + metadata but omit
+      // the per-sample measurements array — which is all the mining needs.
+      const result = await getShotsPaginated(SUGGESTION_SAMPLE_SIZE, 0)
+      const next = mineSuggestions(result?.items)
+      if (!next) return null
       if (myGen === generation) cache = next
       return next
     } catch {
