@@ -1,6 +1,8 @@
 # Passione
 
-A modern web interface for the [DE1 espresso machine](https://decentespresso.com) via [Streamline-Bridge](https://github.com/tadelv/reaprime).
+A modern skin for the [DE1 espresso machine](https://decentespresso.com), powered by [Decaid](https://decentespresso.com/docs) (formerly Streamline-Bridge).
+
+Make Home your own with [live weather](#weather-widget) and [custom JavaScript widgets](#custom-script-widgets). [Install Passione](#installation) directly from Decaid.
 
 ![Home Screen](docs/screenshots/idle-page.png)
 
@@ -16,6 +18,27 @@ The home screen shows real-time machine data and quick-access operation buttons.
 - **Recipes** for one-tap switching between saved brewing configurations (profile + coffee + grinder + steam/hot water settings)
 - **Last shot** widget with mini graph, metrics, and **Repeat** button to reload the shot's workflow
 
+### Weather Widget
+
+See current conditions, temperature, today's high/low, and humidity alongside your coffee setup.
+
+1. Install and configure the **Weather plugin** (`weather.reaplugin`) in Decaid. See the [official skin and plugin installation guide](https://decentespresso.com/docs/how_to_install_skins_or_plugins_on_decaid).
+2. Set your location, units, and refresh preferences in the plugin — Passione uses those settings.
+3. In Passione, open **Settings → Display → Home Layout → Edit Layout** and add **Weather** to any zone.
+
+The widget shows a clear message when the plugin is missing, needs a location, or weather data is unavailable.
+
+### Custom Script Widgets
+
+Build your own Home readouts with JavaScript — for example, a custom scale display or a compact coffee-and-ratio card. Scripts receive machine, scale, and workflow snapshots through `passione.state`, with live updates via the `passione-state` event. Theme colours are available as `--passione-*` CSS variables.
+
+1. Open **Settings → Display → Script Widget**.
+2. Tap **Reset example** for a working starting point, or paste your own JavaScript.
+3. Tap **Test** to preview the draft, then **Apply** to use it on Home. Draft edits autosave without changing the active widget.
+4. Open **Home Layout → Edit Layout** and add **Script Widget** to any zone.
+
+Scripts run in an isolated iframe without access to Passione's page or storage, and are not granted Passione/Decaid privileges. **Only use scripts you trust:** networking is still allowed under normal browser rules.
+
 ### Recipe Editor
 
 Create and manage complete brewing recipes — profile, beans, grinder, dose, and operation settings — laid out for landscape tablets: a recipe rail on the left, a four-quadrant editor (Coffee, Grinder, Dose + Profile, Operations) on the right.
@@ -28,7 +51,8 @@ Create and manage complete brewing recipes — profile, beans, grinder, dose, an
 - Field edits apply live to the running workflow (300 ms debounce); saved recipes only change when you explicitly tap **Save** or **Save as New Recipe**
 - A small dot on the selected recipe marks any divergence between the live workflow and the saved recipe
 - From the home screen: tap a recipe to load it, double-tap to open the editor — the Espresso button is the only way to start a shot
-- Optional **power-user fields** — Settings → Brewing toggles "Show grinder RPM" and "Show basket data" surface RPM and basket size/type fields in the recipe editor and the shot review page. Per-grinder RPM range (Settings → Grinders) clamps the RPM input.
+- Optional **power-user fields** — Settings → Brewing toggles "Show grinder RPM" and "Show basket data" surface RPM and basket size/type fields in the recipe editor and the shot review page. Per-grinder RPM range (Catalog → Grinders) clamps the RPM input.
+- **Connected grinders** — link a catalog grinder to a connected device in Settings → Bridge. Supported grind-setting and RPM controls use the device's capabilities and reported values.
 
 ### Profile Management
 
@@ -71,26 +95,23 @@ Rearrange the home screen to show what matters to you.
 ![Layout Edit Mode](docs/screenshots/layout-edit-mode.png)
 ![Layout Editor Drawer](docs/screenshots/layout-editor-drawer.png)
 
-- Enter edit mode from Settings > Layout > "Edit Layout"
+- Enter edit mode from Settings → Display → Home Layout → **Edit Layout**
 - Six configurable zones (top, center, bottom -- left and right)
 - Drag to reorder, add, or remove widgets from each zone
 - Changes apply in real time -- edit directly on the live home screen
-- Available widgets: action buttons, shot plan, recipes, last shot, navigation, scale info, fullscreen toggle
+- Available widgets include action buttons, shot plan, recipes, combo editor, last shot, navigation, scale info, fullscreen toggle, **Weather**, and **Script Widget**
 
 ### Settings
 
 ![Settings](docs/screenshots/settings-page.png)
 
-- **Device**: Scan and connect to DE1 machines and scales
-- **Preferences**: Water level units (mm/ml), post-shot linger, accessibility
-- **Layout**: Launch the visual layout editor or reset to defaults
+- **Brewing**, **Power**, and **Water**: Brew preferences, sleep schedules, and water-level settings
+- **Display**: Home layout, custom script editor, screensaver, and theme colours
+- **Bridge**: Device connections, connected grinder linking, and Decaid configuration
 - **Visualizer**: Import shots from Decent Visualizer
-- **History**: Shot history management
-- **Gateway**: Configure Streamline-Bridge connection
-- **Screensaver**: Choose between flip clock, last shot recap, ambient glow, or disabled
-- **Themes**: Color scheme selection
-- **Beans**: Manage your coffee bean library
-- **Grinders**: Manage grinder profiles
+- **Accessibility** and **About**: Accessibility preferences, app information, updates, and shot-history management
+
+A **Bengle** tab appears when supported machine capabilities are available. Beans and grinders live in **Catalog**, accessible from the home-screen navigation widget.
 
 ### Espresso Extraction
 
@@ -131,47 +152,38 @@ Analyzes your shot history to surface your best-performing bean, profile, and gr
 
 ## Installation
 
-Passione is a skin for [Streamline-Bridge](https://github.com/tadelv/reaprime). You need Streamline-Bridge running on your DE1 tablet or local network.
+You need **Decaid** running on your tablet or computer. Follow Decent's illustrated guide: **[How to install skins or plugins on Decaid](https://decentespresso.com/docs/how_to_install_skins_or_plugins_on_decaid)**.
 
-### From GitHub Release (recommended)
+### Install the Latest Release (recommended)
 
-1. Open Streamline-Bridge settings on your tablet
-2. Go to **Skins** settings
-3. Install from URL using the latest release ZIP:
+1. Open Decaid's **Dashboard**.
+2. In the **Skins** section, tap the **cog wheel → Install skin**.
+3. Choose **GitHub Release** and enter `tadelv/passione` (not a full URL). Leave the optional asset name blank so Decaid picks the release ZIP automatically.
+4. Once installed, launch **Passione** from the Dashboard.
 
-```
-https://github.com/tadelv/passione/releases/latest/download/passione.zip
-```
+Prefer a ZIP? Download the `passione-v<version>.zip` asset from the [latest release](https://github.com/tadelv/passione/releases/latest), transfer it to your tablet if needed, and choose **ZIP file** in the same installer. Do not use GitHub's source-code ZIP.
 
-Or via the REST API:
+### Latest Development Build
+
+In the same installer, choose **GitHub Branch**, enter `tadelv/passione`, and set the branch to **`dist`**. Every push to `main` rebuilds it. This installs **Passione Dev** (`passione-dist`) alongside the release skin without overwriting it.
+
+### Install via REST API (advanced)
+
+Replace `<tablet-ip>` with your Decaid host's address. To install the latest release:
 
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-release \
   -H "Content-Type: application/json" \
-  -d '{"repo": "tadelv/passione", "asset": "passione.zip"}'
+  -d '{"repo": "tadelv/passione"}'
 ```
 
-### From `dist` Branch (latest development build)
-
-Every push to `main` triggers a GitHub Actions workflow that builds the project and pushes the output to the [`dist`](https://github.com/tadelv/passione/tree/dist) branch. This build installs as a separate skin (`passione-dist`) alongside the release skin so they don't overwrite each other:
+For the development build:
 
 ```bash
 curl -X POST http://<tablet-ip>:8080/api/v1/webui/skins/install/github-branch \
   -H "Content-Type: application/json" \
   -d '{"repo": "tadelv/passione", "branch": "dist"}'
 ```
-
-### Set as Default Skin
-
-After installing, set Passione as the default skin:
-
-```bash
-curl -X PUT http://<tablet-ip>:8080/api/v1/webui/skins/default \
-  -H "Content-Type: application/json" \
-  -d '{"skinId": "passione"}'
-```
-
-Then open `http://<tablet-ip>:3000` in a browser.
 
 ## Development
 
